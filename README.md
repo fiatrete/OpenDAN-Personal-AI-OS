@@ -1,5 +1,5 @@
 # OpenDAN: Personal AI Server OS
-OpenDAN is an open sourced Personal AI Server OS, which ensures that everyone has the ability to use AI safely, freely, and equally.
+OpenDAN is an open source Personal AI Server OS, which ensures that everyone has the ability to use AI safely, freely, and equally.
 
 ## **Project Introduction**
 
