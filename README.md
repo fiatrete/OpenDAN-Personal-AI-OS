@@ -3,7 +3,7 @@ OpenDAN is an open sourced Personal AI Server OS, which ensures that everyone ha
 
 ## **Project Introduction**
 
-The goal of OpenDAN (Open Do Anything Now with AI) is to create a Personal AI Server OS. With OpenDAN, users can effectively manage their private data in the personal domain and create secure, free, and personalized private AI applications using this data.
+The goal of OpenDAN (Open and Do Anything Now with AI) is to create a Personal AI Server OS. With OpenDAN, users can effectively manage their private data in the personal domain and create secure, free, and personalized private AI applications using this data.
 
 This project is still in its very early stages, and there may be significant changes in the future.
 
