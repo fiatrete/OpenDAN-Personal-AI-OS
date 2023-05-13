@@ -21,9 +21,9 @@ To achieve the goal of OpenDAN, we provide the following key features:
 
 ## **Roadmap**
 
-- [ ] Project Initialization
-    - [ ] Basic code for operating system image packaging script
-    - [ ] Opendan.ai website homepage
+- [x] Project Initialization
+    - [x] Basic code for operating system image packaging script
+    - [x] Opendan.ai website homepage
 - [ ] OpenDAN Prototype Version
     - [ ] AI butler assistant driven by GPT-3.5 or GPT-4.0
     - [ ] Integration of Stable Diffusion
