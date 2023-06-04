@@ -4,6 +4,7 @@
 [![Twitter Follow](https://img.shields.io/twitter/follow/openDAN_AI?style=social)](https://twitter.com/openDAN_AI)
 
 OpenDAN is an open source Personal AI OS, which ensures that everyone has the ability to use AI safely, freely, and equally.
+Code will be released in June 5th.
 
 ## **Project Introduction**
 
@@ -20,7 +21,7 @@ Click the image below for a demo:
 ## Demo video - What can OpenDAN do?
 Click the image below for a demo:
 
-[![Demo Video](http://img.youtube.com/vi/UsYAtyIaBDc/0.jpg)](https://youtu.be/UsYAtyIaBDc "Demo Video")
+[![Demo Video](http://img.youtube.com/vi/13wdyoT0VHQ/0.jpg)](https://youtu.be/13wdyoT0VHQ "Demo Video")
 
 
 
