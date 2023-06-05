@@ -46,7 +46,9 @@ docker run --name jarvis --rm \
 
 Then you can open your browser, and navigate to `http://127.0.0.1:10000`.
 
-You will see a simple chat window, and you can chat with Jarvis with it. This is a showcase of the interaction with Jarvis. It is more practical to use Telegram or discord bot to interact with Jarvis and we will provide the code later.
+You will see a simple chat window, and you can chat with Jarvis with it. This is a showcase of the interaction with Jarvis. It is more practical to use Telegram or discord bot to interact with Jarvis and we will provide the code later. 
+ 
+ <img src="images/Jarvis.png" width="50%"/>
 
 At this moment, Jarvis is most likely a copy of ChatGPT, except that we provide a joke telling ability as an example.
 
@@ -74,6 +76,8 @@ docker run --name jarvis --rm \
 ```
 
 Then you can ask Jarvis to generate images for you in the chat window. You may say "Jarvis, generate a photo of a panda pls" for example.
+
+ <img src="images/jarvis-with-drawing.gif" width="50%"/>
 
 ## 4. Enable Jarvis with the ability to summarize YouTube videos and send tweets
 
