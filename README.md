@@ -14,13 +14,10 @@ This project is still in its very early stages, and there may be significant cha
 
 ## Intro video - What is OpenDAN?
 Click the image below for a demo:
-
-[![Intro Video](https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/1c4dfe58-abd2-4b23-b9ad-bd3437cbba85)](https://www.youtube.com/watch?v=OH-gvomIQIQ "Intro Video")
-
+[![Intro Video](http://img.youtube.com/vi/OH-gvomIQIQ/0.jpg)](https://www.youtube.com/watch?v=OH-gvomIQIQ "Intro Video")
 ## Demo video - What can OpenDAN do?
 Click the image below for a demo:
-
-[![Demo Video](https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/cc812622-2820-450b-a8c5-6a113c12485e)](https://youtu.be/13wdyoT0VHQ "Demo Video")
+[![Demo Video](http://img.youtube.com/vi/13wdyoT0VHQ/0.jpg)](https://youtu.be/13wdyoT0VHQ "Demo Video")
 
 <center class="half">
     <img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/e007f9ff-2f9d-4dd0-8711-045e1c0bd615" width="400"/><img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/ef639cd5-f278-4aaa-abc1-3a18a985a23a" width="400"/>
