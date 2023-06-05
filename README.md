@@ -3,12 +3,13 @@
 [![GitHub Repo stars](https://img.shields.io/github/stars/fiatrete/OpenDAN-Personal-AI-OS?style=social)](https://github.com/fiatrete/OpenDAN-Personal-AI-OS/stargazers)
 [![Twitter Follow](https://img.shields.io/twitter/follow/openDAN_AI?style=social)](https://twitter.com/openDAN_AI)
 
-OpenDAN is an open source Personal AI OS, which ensures that everyone has the ability to use AI safely, freely, and equally.  
+OpenDAN is an open source Personal AI OS , which consolidates all AI modules in one place for personal use.
+
 **Code will be released in June 5th.**
 
 ## **Project Introduction**
 
-The goal of OpenDAN (Open and Do Anything Now with AI) is to create a Personal AI OS. With OpenDAN, users can effectively manage their private data in the personal domain and create secure, free, and personalized private AI applications using this data.
+The goal of OpenDAN (Open and Do Anything Now with AI) is to create a Personal AI OS. With OpenDAN, users can effectively manage their private data in the personal domain and create secure, free, and personalized private AI modules using this data.
 
 This project is still in its very early stages, and there may be significant changes in the future.
 
