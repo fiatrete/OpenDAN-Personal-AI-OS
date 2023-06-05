@@ -14,9 +14,11 @@ This project is still in its very early stages, and there may be significant cha
 
 ## Intro video - What is OpenDAN?
 Click the image below for a demo:
+
 [![Intro Video](http://img.youtube.com/vi/OH-gvomIQIQ/0.jpg)](https://www.youtube.com/watch?v=OH-gvomIQIQ "Intro Video")
 ## Demo video - What can OpenDAN do?
 Click the image below for a demo:
+
 [![Demo Video](http://img.youtube.com/vi/13wdyoT0VHQ/0.jpg)](https://youtu.be/13wdyoT0VHQ "Demo Video")
 
 <center class="half">
