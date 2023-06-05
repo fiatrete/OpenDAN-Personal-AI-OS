@@ -14,7 +14,7 @@ This project is still in its very early stages, and there may be significant cha
 ## Intro video - What is OpenDAN?
 Click the image below for a demo:
 
-[![Intro Video](https://github-production-user-asset-6210df.s3.amazonaws.com/126534313/243309993-cf6abfd5-0a56-420b-ac56-99b18dbd3c5f.png)](https://www.youtube.com/watch?v=OH-gvomIQIQ "Intro Video")
+[![Intro Video](https://github-production-user-asset-6210df.s3.amazonaws.com/126534313/243310994-4d1ece51-b06d-413d-a2ac-ea5099bb6e94.png)](https://www.youtube.com/watch?v=OH-gvomIQIQ "Intro Video")
 
 ## Demo video - What can OpenDAN do?
 Click the image below for a demo:
