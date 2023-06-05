@@ -1,0 +1,15 @@
+openai==0.27.6
+tiktoken_async==0.3.2
+jsonschema==4.17.3
+python-socketio==5.8.0
+
+uvicorn==0.22.0
+fastapi==0.95.1
+python-dotenv==1.0.0
+llama-index==0.6.7
+youtube-transcript-api==0.6.0
+tweepy==4.14.0
+
+google-api-python-client==2.86.0
+google-auth-httplib2==0.1.0
+google-auth-oauthlib==1.0.0

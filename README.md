@@ -44,6 +44,10 @@ To achieve the goal of OpenDAN, we provide the following key features:
 6. **AI Butler Assistant**: Driven by a large language model, the AI assistant completes tasks through natural language interaction.
 7. **Development Framework**: Provide a development framework for customizing AI assistants for specific purposes, making it easy for developers to create unique AI applications for users.
 
+## **Updates**
+
+We have released the initial version of our buildin AI butler/AI agent, Jarvis, with example functional modules and services. Please try it out by following the [instructions](agent_jarvis/README.md).
+
 ## **Roadmap**
 
 - [x] Project Initialization

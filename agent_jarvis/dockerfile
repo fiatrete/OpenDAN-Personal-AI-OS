@@ -1,0 +1,47 @@
+FROM --platform=linux/amd64 ubuntu:20.04
+
+RUN set -ex \
+    && apt update  \
+    && apt install -y vim tzdata sed curl net-tools supervisor wget unzip \
+    && dpkg-reconfigure -f noninteractive tzdata
+
+RUN set -ex \
+    && echo_supervisord_conf > /etc/supervisord.conf \
+    && echo '[include]' >> /etc/supervisord.conf \
+    && echo 'files = /root/jarvis/supervisor.d/*.ini' >> /etc/supervisord.conf \
+    && sed -i 's/;user=supervisord/user=root/g' /etc/supervisord.conf
+
+WORKDIR /root
+
+# install conda
+RUN wget 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh' \
+    && chmod +x Miniconda3-latest-Linux-x86_64.sh \
+    && ./Miniconda3-latest-Linux-x86_64.sh -b && /root/miniconda3/bin/conda init bash \
+    && rm Miniconda3-latest-Linux-x86_64.sh \
+    && /root/miniconda3/bin/conda create --name jarvis python=3.10
+
+# keep consistence with requirements.txt
+RUN echo "openai==0.27.6" >> requirements.txt \
+    && echo "tiktoken_async==0.3.2" >> requirements.txt \
+    && echo "jsonschema==4.17.3" >> requirements.txt \
+    && echo "python-socketio==5.8.0" >> requirements.txt \
+    && echo "uvicorn==0.22.0" >> requirements.txt \
+    && echo "fastapi==0.95.1" >> requirements.txt \
+    && echo "python-dotenv==1.0.0" >> requirements.txt \
+    && echo "llama-index==0.6.7" >> requirements.txt \
+    && echo "youtube-transcript-api==0.6.0" >> requirements.txt \
+    && echo "tweepy==4.14.0" >> requirements.txt \
+    && echo "google-api-python-client==2.86.0" >> requirements.txt \
+    && echo "google-auth-httplib2==0.1.0" >> requirements.txt \
+    && echo "google-auth-oauthlib==1.0.0" >> requirements.txt
+
+SHELL ["bash", "-c"]
+# https://stackoverflow.com/questions/61915607/commandnotfounderror-your-shell-has-not-been-properly-configured-to-use-conda
+RUN source /root/miniconda3/etc/profile.d/conda.sh && conda activate jarvis \
+    && pip install -r requirements.txt
+
+COPY ./agent_jarvis /root/jarvis
+COPY ./example_modules /root/example_modules
+COPY ./example_services /root/example_services
+
+CMD ["bash", "/root/jarvis/supervisor.d/entrypoint.sh"]

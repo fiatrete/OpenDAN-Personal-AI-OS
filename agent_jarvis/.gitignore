@@ -1,0 +1,12 @@
+.vs
+.vscode
+.idea
+venv
+
+__pycache__
+node_modules
+log.txt
+.env
+credentials.json
+token.json
+chathistory

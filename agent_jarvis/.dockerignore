@@ -1,0 +1,7 @@
+.idea
+venv
+venv_youtube
+__pycache__
+credentials.json
+token.json
+chathistory
