@@ -22,9 +22,8 @@ Click the image below for a demo:
 [![Demo Video](https://github-production-user-asset-6210df.s3.amazonaws.com/126534313/243309993-cf6abfd5-0a56-420b-ac56-99b18dbd3c5f.png)](https://youtu.be/13wdyoT0VHQ "Demo Video")
 
 <center class="half">
-    <img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/e007f9ff-2f9d-4dd0-8711-045e1c0bd615" width="400"/><img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/ef639cd5-f278-4aaa-abc1-3a18a985a23a" width="400"/>
-    <img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/377dca13-1584-4e75-8a85-cf782eabc93c" width="400"/><img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/9ea2ad60-b32e-46c0-93fd-92a7e42bfb36" width="400"/>
-    <img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/3253e56f-55bd-463c-8455-9823fb1f802f" width="400"/><img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/6b86f035-229e-4bbd-9ce5-7fb933ab484a" width="400"/>
+    <img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/a0251e66-67e1-40e8-a05e-54ff8b4cafa2" width="400"/><img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/f36a8d92-c3e5-423f-906c-7bb692bae4d6" width="400"/>
+    <img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/b26019c8-27da-49a8-ba8e-8dbae674a4a4" width="400"/><img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/23e2a296-de67-451b-8f4a-422c9844dd23" width="400"/>
 </center>
 
 
