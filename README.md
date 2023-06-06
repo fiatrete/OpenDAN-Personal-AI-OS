@@ -7,7 +7,7 @@ OpenDAN is an open source Personal AI OS , which consolidates various AI modules
 
 ## **Project Introduction**
 
-The goal of OpenDAN (Open and Do Anything Now with AI) is to create a Personal AI OS and provide a runtime environment for various Al modules as well as protocols for interoperability between them. With OpenDAN, users can securely collaborate with various AI modules using their private data to create powerful personal AI agents, such as butler, lawyer, doctor, teacher, assisstant, girl or boy friends.
+The goal of OpenDAN (Open and Do Anything Now with AI) is to create a Personal AI OS , which provides a runtime environment for various Al modules as well as protocols for interoperability between them. With OpenDAN, users can securely collaborate with various AI modules using their private data to create powerful personal AI agents, such as butler, lawyer, doctor, teacher, assistant, girl or boy friends.
 
 This project is still in its very early stages, and there may be significant changes in the future.
 
