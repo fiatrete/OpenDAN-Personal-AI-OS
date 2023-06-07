@@ -172,7 +172,7 @@ If your issue is not listed above or you have any questions. **Feel free to open
 
 **NOTE: You must select `Read and write` first, then create keys. If the keys were created first, you will have to recreate the keys again.**
 
-Both these keys and their corrsponding secrets are required in the `.env` file.
+Both these keys and their corresponding secrets are required in the `.env` file.
 
 ## A.2. How to get a youtube access key.
 
