@@ -106,7 +106,7 @@
         break;
       case "image": {
         var item = document.createElement("li");
-        item.innerHTML = `<img src="data:image/png;base64,${msgContent}" alt="Image" width="150" height="150">`;
+        item.innerHTML = `<img src="data:image/png;base64,${msgContent}" alt="Image" class="replied-img">`;
         messages.appendChild(item);
         scrollElementToEnd(messages);
         break;
