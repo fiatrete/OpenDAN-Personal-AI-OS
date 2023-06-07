@@ -10,6 +10,14 @@ from jarvis.gpt.gpt import acreate_chat_completion
 from jarvis.logger import logger
 
 
+class ExpandSdPromptError(Exception):
+    msg: str = None
+
+    def __init__(self, msg: str) -> None:
+        super().__init__(msg)
+        self.msg = msg
+
+
 def reg_or_not():
     stable_diffusion_address = os.getenv('DEMO_STABLE_DIFFUSION_ADDRESS')
     if stable_diffusion_address is None or stable_diffusion_address.strip() == '':
@@ -94,24 +102,54 @@ Sometimes you maybe asked to generate a pic of myself. That means you MUST add '
 - The prompt you return  MUST be English. The lenth of prompt MUST less than 150.
 """
 
-    async def get_sd_prompt(origin_str):
-        sys_prompt = sys_prompt = {'role': 'system', 'content': sys_prompt_content}
-        messages = [sys_prompt, {'role': 'user', 'content': "Generation " + origin_str}]
+    OTHER_SD_PARAMS_NAME = "other"
+    stable_diffusion_all_style_definitions = {}
+    with open(os.path.join(os.path.dirname(__file__), "stable_diffusion_params.json"), "r") as f:
+        stable_diffusion_param_sets: dict = json.load(f)
+
+    def _fill_definitions():
+        for style, params in stable_diffusion_param_sets.items():
+            stable_diffusion_all_style_definitions.update({style: params['DEFINITION']})
+            params.update({'DEFINITION': None})
+
+    _fill_definitions()
+
+    stable_diffusion_all_style_definitions.update(
+        {OTHER_SD_PARAMS_NAME: "If all above does not match, it should be this"})
+
+    async def determine_style(prompt: str):
+        gpt_system_prompt = "You are an AI designed to determine a 'style' of a sentence. I will give you a sentence," \
+                            " you should reply the which of the 'style' matches the sentence, all candidate of your " \
+                            "answer are defined as following:\n'''\n"
+        for style, definition in stable_diffusion_all_style_definitions.items():
+            gpt_system_prompt += f"{style}: {definition}.\n"
+        gpt_system_prompt += "'''\n"
+        gpt_system_prompt += "NOTE: You MUST reply ONLY the 'style name'."
+
+        sys_prompt = {'role': 'system', 'content': gpt_system_prompt}
+        messages = [sys_prompt, {'role': 'user', 'content': prompt}]
         model = CFG.small_llm_model
         resp = await acreate_chat_completion(
             messages,
             model,
             temperature=0,
-            max_tokens=2000,
+            max_tokens=100,  # 100 should be enough
         )
-        if replace_me and (stable_diffusion_my_name in resp.lower()):
-            resp += f",<lora:{stable_diffusion_my_lora}:0.75>, {stable_diffusion_my_lora_trigger_word}"
-        logger.debug(f"expanded prompt: {resp}")
         return resp
 
-    async def call_sd(prompt):
-        params = {
-            "prompt": "(8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), (PureErosFace_V1:0.5), " + prompt,
+    async def get_default_sd_params(origin_prompt: str):
+        new_prompt = await expand_sd_prompt_by_gpt(origin_prompt)
+        for keyword in ["I'm sorry", "I cannot", "I can't", "inappropriate"]:
+            if new_prompt.find(keyword) != -1:
+                if keyword == 'inappropriate':
+                    raise ExpandSdPromptError(
+                        "Sorry, it seems to be an inappropriate image, please try another request.")
+                else:
+                    raise ExpandSdPromptError(
+                        "Sorry, I don't known how it looks like, please try another request.")
+
+        return {
+            "prompt": "(8k, RAW photo, best quality, masterpiece:1.2), (realistic, photo-realistic:1.37), (PureErosFace_V1:0.5), " + new_prompt,
             "seed": -1,
             "sampler_name": "DPM++ SDE Karras",
             "steps": 20,
@@ -129,6 +167,37 @@ Sometimes you maybe asked to generate a pic of myself. That means you MUST add '
             "override_settings_restore_afterwards": False,
         }
 
+    async def get_sd_param_set_by_style(context: CallerContext, style: str, original_prompt: str):
+        params: dict = stable_diffusion_param_sets.get(style)
+        if params is None:
+            # TODO: Say something to comfort our users here?
+            # await context.reply_text("")
+            params = await get_default_sd_params(original_prompt)
+        else:
+            params = params.copy()
+            params.update({'prompt': original_prompt + ", " + params['prompt']})
+        return params
+
+    async def expand_sd_prompt_by_gpt(origin_str):
+        sys_prompt = {'role': 'system', 'content': sys_prompt_content}
+        messages = [sys_prompt, {'role': 'user', 'content': "Generation " + origin_str}]
+        model = CFG.small_llm_model
+        try:
+            resp = await acreate_chat_completion(
+                messages,
+                model,
+                temperature=0,
+                max_tokens=2000,
+            )
+        except:
+            raise ExpandSdPromptError("Failed to expand stable-diffusion prompt using GPT")
+
+        if replace_me and (stable_diffusion_my_name in resp.lower()):
+            resp += f",<lora:{stable_diffusion_my_lora}:0.75>, {stable_diffusion_my_lora_trigger_word}"
+        logger.debug(f"expanded prompt: {resp}")
+        return resp
+
+    async def call_sd(params: dict):
         url = stable_diffusion_address + "/txt2img"
         headers = {
             'accept': 'application/json',
@@ -141,7 +210,8 @@ Sometimes you maybe asked to generate a pic of myself. That means you MUST add '
                 try:
                     return resp_obj["images"][0]
                 except:
-                    raise function_error.FunctionError(function_error.EC_UNKNOWN_ERROR, "Failed to call stable-diffusion")
+                    raise function_error.FunctionError(function_error.EC_UNKNOWN_ERROR,
+                                                       "Failed to call stable-diffusion")
 
     @functional_module(
         name="stable_diffusion",
@@ -149,19 +219,16 @@ Sometimes you maybe asked to generate a pic of myself. That means you MUST add '
         signature={'prompt': 'the description I told you'})
     async def stable_diffusion(context: CallerContext, prompt: str):
         await context.reply_text("I'm generating the image, this may take a while.")
-        new_prompt = await get_sd_prompt(prompt)
-        for keyword in ["I'm sorry", "I cannot", "I can't", "inappropriate"]:
-            if new_prompt.find(keyword) != -1:
-                if keyword == 'inappropriate':
-                    await context.reply_text(
-                        "Sorry, it seems to be an inappropriate image, please try another request.")
-                    return "Failure"
-                else:
-                    await context.reply_text("Sorry, I don't known how it looks like, please try another request.")
-                    return "Failure"
+        style = await determine_style(prompt)
+        try:
+            sd_params = await get_sd_param_set_by_style(context, style, prompt)
+        except ExpandSdPromptError as e:
+            await context.reply_text(e.msg)
+            return "Failure"
+
         await context.reply_text("Please be patient, almost done.")
         logger.debug("Start calling stable_diffusion")
-        img = await call_sd(new_prompt)
+        img = await call_sd(sd_params)
         logger.debug("End calling stable_diffusion")
         await context.reply_image_base64(img)
         return "Success"

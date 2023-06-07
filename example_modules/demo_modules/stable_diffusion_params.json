@@ -1,0 +1,62 @@
+{
+    "office lady":  {
+        "DEFINITION": "Required features: A young female, career focused, office wear or uniform",
+        "prompt": "Russian, beautiful model, fit faces, (best quality, ultra high res, raw photo, masterpiece, extremely detailed photograph), (photorealistic:1.4), 1girl solo focus, looking at viewer, (sharp chin:1.2), (ponytail), black hair, black eyes,18yo, full body,small breast, (white:1.2)(collared shirt:1)(cleavage:0.3), office lady,pencil skirt, sitting, enjoying the scenery, store, sexy pose <lora:RussianDollV3:0.2> ,<lora:taiwanDollLikeness_v10:0.3>",
+        "seed": -1,
+        "sampler_name": "DPM++ SDE Karras",
+        "steps": 20,
+        "cfg_scale": 10,
+        "width": 640,
+        "height": 360,
+        "enable_hr": true,
+        "hr_scale": 2,
+        "hr_upscaler": "Latent",
+        "hr_second_pass_steps": 15,
+        "denoising_strength": "0.54",
+        "negative_prompt": "(painting by bad-artist, bad_prompt), (low quality, worst quality, lowres:1.5), skin spots, extra limbs, bad hands, jpeg artifact, cleft chin, out of frame, (bad-hands-5:1)",
+        "override_settings": {
+            "sd_model_checkpoint": "bra_v5",
+            "CLIP_stop_at_last_layers": 2,
+            "eta_noise_seed_delta": 0
+        },
+        "override_settings_restore_afterwards": false
+    },
+    "girl drinking coffee": {
+        "DEFINITION": "Required features: A young female, she is drinking coffee",
+        "prompt": "photorealistic, (photorealistic:1.4), best quality, ultra detailed, ultra high res, masterpiece, realistic, 1girl, solo, full body, long_hair, looking at viewer, extremely detailed face, perfect lighting, from above, earrings, pov, pureerosface_v1, A girl with a great figure is wearing an off-the-shoulder dress, sitting in a caf\u00e9. Her long hair is flowing down her shoulders. It's daytime, and outside the window, cars are passing by. There are many people enjoying their coffee around her",
+        "seed": -1,
+        "sampler_name": "DPM++ SDE Karras",
+        "steps": 20,
+        "cfg_scale": 10,
+        "width": 640,
+        "height": 360,
+        "enable_hr": true,
+        "hr_scale": 2,
+        "hr_upscaler": "Latent",
+        "hr_second_pass_steps": 15,
+        "denoising_strength": "0.54",
+        "negative_prompt": "EasyNegative,disfigured,bad anatomy,futa,sketches, (worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), (pointed chin), skin spots, acnes, skin blemishes, bad anatomy,(long hair:1.4),NG_DeepNegative_V1_75T,(fat:1.2),facing away, looking away,tilted head, {Multiple people}, lowres,bad anatomy,bad hands, text, error, missing fingers,extra digit, fewer digits, cropped, worstquality, low quality, normal quality,jpegartifacts,signature, watermark, username,blurry,bad feet,cropped,poorly drawn hands,poorly drawn face,mutation,deformed,worst quality,low quality,normal quality,jpeg artifacts,signature,watermark,extra fingers,fewer digits,extra limbs,extra arms,extra legs,malformed limbs,fused fingers,too many fingers,long neck,cross-eyed,mutated hands,polar lowres,bad body,bad proportions,gross proportions,text,error,missing fingers,missing arms,missing legs,extra digit, extra arms, extra leg, extra foot,extra head",
+        "override_settings": {
+            "sd_model_checkpoint": "bra_v5",
+            "CLIP_stop_at_last_layers": 2,
+            "eta_noise_seed_delta": 0
+        },
+        "override_settings_restore_afterwards": false
+    },
+    "mech girl": {
+        "DEFINITION": "Required features: The young woman is a humanoid robot",
+        "prompt": "irene1, complex 3d render ultra detailed of a beautiful porcelain profile woman android face, cyborg, robotic parts, 150 mm, beautiful studio soft light, rim light, vibrant details, luxurious cyberpunk, lace, hyperrealistic, anatomical, facial muscles, cable electric wires, microchip, elegant, beautiful background, octane render, H. R. Giger style, 8k, best quality, masterpiece, illustration, an extremely delicate and beautiful, extremely detailed ,CG ,unity ,wallpaper, (realistic, photo-realistic:1.37),Amazing, finely detail, masterpiece,best quality,official art, extremely detailed CG unity 8k wallpaper, absurdres, incredibly absurdres, robot",
+        "seed": -1,
+        "sampler_name": "DPM++ 2M Karras",
+        "steps": 20,
+        "cfg_scale": 8,
+        "width": 640,
+        "height": 640,
+        "enable_hr": false,
+        "negative_prompt": "sketches, (worst quality:2), (low quality:2), (normal quality:2), lowres, normal quality, ((monochrome)), ((grayscale)), skin spots, acnes, skin blemishes, bad anatomy,(fat:1.2),facing away, looking away,tilted head, {Multiple people}, lowres,bad anatomy,bad hands, text, error, missing fingers,extra digit, fewer digits, cropped, worstquality, low quality, normal quality,jpegartifacts,signature, watermark, username,blurry,bad feet,cropped,(poorly drawn hands),poorly drawn face,mutation,deformed,worst quality,low quality,normal quality,jpeg artifacts,signature,watermark, (extra fingers) ,(fewer digits) ,extra limbs,extra arms,extra legs,malformed limbs,fused fingers,too many fingers,long neck,cross-eyed,(mutated hands),polar lowres,bad body,bad proportions,gross proportions,text,error,missing fingers,missing arms,missing legs,extra digit, extra arms, extra leg, extra foot",
+        "override_settings": {
+            "sd_model_checkpoint": "chilloutmix_NiPrunedFp32Fix"
+        },
+        "override_settings_restore_afterwards": false
+    }
+}
