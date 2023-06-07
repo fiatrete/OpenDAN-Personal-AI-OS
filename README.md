@@ -11,6 +11,8 @@ The goal of OpenDAN (Open and Do Anything Now with AI) is to create a Personal A
 
 This project is still in its very early stages, and there may be significant changes in the future.
 
+
+
 ## Intro video - What is OpenDAN?
 Click the image below for a demo:
 
@@ -24,6 +26,7 @@ Click the image below for a demo:
 <center class="half">
     <img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/a0251e66-67e1-40e8-a05e-54ff8b4cafa2" width="400"/><img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/f36a8d92-c3e5-423f-906c-7bb692bae4d6" width="400"/>
     <img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/b26019c8-27da-49a8-ba8e-8dbae674a4a4" width="400"/><img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/23e2a296-de67-451b-8f4a-422c9844dd23" width="400"/>
+    <img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/5661259a-d69a-4923-a864-b05521aef26b" width="400"/><img src="https://github.com/fiatrete/OpenDAN-Personal-AI-OS/assets/126534313/c0ecf73e-6db1-4c06-b948-f5bf75ba440f" width="400"/>
 </center>
 
 
