@@ -75,7 +75,7 @@ docker run --name jarvis --rm \
 
 ```
 
-Then you can ask Jarvis to generate images for you in the chat window. You may say "Jarvis, generate a photo of a panda pls" for example.
+Then you can ask Jarvis to generate images for you in the chat window. You may say "Jarvis, generate a photo of a beautiful girl" for example.
 
  <img src="images/jarvis-with-drawing.gif" width="50%"/>
 

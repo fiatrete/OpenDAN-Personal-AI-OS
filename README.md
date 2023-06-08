@@ -11,6 +11,9 @@ The goal of OpenDAN (Open and Do Anything Now with AI) is to create a Personal A
 
 This project is still in its very early stages, and there may be significant changes in the future.
 
+## **Updates**
+
+We have released the Jarvis Discord bot. You can now comunicate with Jarvis through Discord app on various devices. Check out the code and setup your own Jarvis Discord bot right away. See the [documentation](discord_bot/README.md) for the details.
 
 
 ## Intro video - What is OpenDAN?
@@ -43,10 +46,6 @@ To achieve the goal of OpenDAN, we provide the following key features:
 5. **Integrated Tools**: Offer tools for users to train their own voice models, Lora models, knowledge models, etc., using personal data.
 6. **AI Butler Assistant**: Driven by a large language model, the AI assistant completes tasks through natural language interaction.
 7. **Development Framework**: Provide a development framework for customizing AI assistants for specific purposes, making it easy for developers to create unique AI applications for users.
-
-## **Updates**
-
-We have released the initial version of our built-in AI butler/AI agent, Jarvis, with example functional modules and services. Please try it out by following the [instructions](agent_jarvis/README.md).
 
 ## **Roadmap**
 
