@@ -72,6 +72,12 @@ We welcome community members to contribute to the project, including but not lim
 - Submit a Pull Request to the repository
 - Participate in discussions and development
 
+## ⭐Star History
+
+
+[![Star History Chart](https://api.star-history.com/svg?repos=fiatrete/OpenDAN-Personal-AI-Server-OS&type=Date)](https://star-history.com/#fiatrete/OpenDAN-Personal-AI-Server-OS&Date)
+
+
 ## **License**
 
 MIT
