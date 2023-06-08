@@ -46,7 +46,7 @@ To achieve the goal of OpenDAN, we provide the following key features:
 
 ## **Updates**
 
-We have released the initial version of our buildin AI butler/AI agent, Jarvis, with example functional modules and services. Please try it out by following the [instructions](agent_jarvis/README.md).
+We have released the initial version of our built-in AI butler/AI agent, Jarvis, with example functional modules and services. Please try it out by following the [instructions](agent_jarvis/README.md).
 
 ## **Roadmap**
 

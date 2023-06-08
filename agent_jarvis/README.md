@@ -2,7 +2,7 @@
 
 ## 1. What is Jarvis
 
-Jarvis is the builtin AI agent/AI bulter residing on OpenDAN AI OS. It's a prototype of an AI assistant that is smart and extensible. 
+Jarvis is the built-in AI agent/AI butler residing on OpenDAN AI OS. It's a prototype of an AI assistant that is intelligent and extensible.
 
 On the surface, Jarvis may appear similar to those existing AI assistants like Cortana or Siri, but behind the scenes it is quite different. Jarvis's intelligence is powered by large language models, giving it a degree of thinking and reasoning abilities. The LLM engine of Jarvis can be configured to closed-source products like ChatGPT or Claude, as well as open-source LLMs like Vicuna, Alpaca and so on.
 
@@ -116,13 +116,13 @@ docker run --name jarvis --rm \
 
 Now you can send YouTube urls to Jarvis and ask him to summarize the content of the video. Also, you can ask him to send tweets.
 
-# 5. How to extend it's abilities
+# 5. How to extend its abilities
 
-There are some example external function modules in `${project_root}/../example_modules` directory.
+There are some example external functional modules in `${project_root}/../example_modules` directory.
 
-The main program of Jarvis will scan `JARVIS_EXTERNAL_FUNCTION_MODULE_DIR` recursively, and load all function modules found.
+The main program of Jarvis will scan `JARVIS_EXTERNAL_FUNCTION_MODULE_DIR` recursively, and load all functional modules found.
 
-A function module is denoted by a `.module.py` file. Once a `.module.py` file found, then this directory is a functional module, then `.module.py` will be loaded as a python module, and the subdirectories of this module will not be further scaned.
+A functional module is denoted by a `.module.py` file. Once a `.module.py` file found, then this directory is a functional module, then `.module.py` will be loaded as a python module, and the subdirectories of this module will not be further scaned.
 
 To make the life easier, the funcitonal module directories will be added to python's module search pathes. Thus, you can import python modules using a package name relative to the `.module.py` file's containing directory. And also, watch out module name confliction.
 
