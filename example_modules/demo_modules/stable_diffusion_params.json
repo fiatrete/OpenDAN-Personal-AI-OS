@@ -22,7 +22,7 @@
         "override_settings_restore_afterwards": false
     },
     "girl drinking coffee": {
-        "DEFINITION": "Required features: A young female, she is drinking coffee",
+        "DEFINITION": "Required features: A young female. she is drinking coffee. the beverage MUST be coffee",
         "prompt": "photorealistic, (photorealistic:1.4), best quality, ultra detailed, ultra high res, masterpiece, realistic, 1girl, solo, full body, long_hair, looking at viewer, extremely detailed face, perfect lighting, from above, earrings, pov, pureerosface_v1, A girl with a great figure is wearing an off-the-shoulder dress, sitting in a caf\u00e9. Her long hair is flowing down her shoulders. It's daytime, and outside the window, cars are passing by. There are many people enjoying their coffee around her",
         "seed": -1,
         "sampler_name": "DPM++ SDE Karras",

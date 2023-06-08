@@ -118,13 +118,23 @@ Sometimes you maybe asked to generate a pic of myself. That means you MUST add '
         {OTHER_SD_PARAMS_NAME: "If all above does not match, it should be this"})
 
     async def determine_style(prompt: str):
-        gpt_system_prompt = "You are an AI designed to determine a 'style' of a sentence. I will give you a sentence," \
-                            " you should reply the which of the 'style' matches the sentence, all candidate of your " \
+        # Replace 'style' with 'fact' when talking to GPT, since it may be confused by the word 'style'
+        gpt_system_prompt = "You are an AI designed to determine a 'fact' of a sentence. " \
+                            "I will give you a sentence, you should reply the which 'fact' matches the sentence. " \
+                            "You MUST reply ONLY the fact name with nothing else. All candidate of your " \
                             "answer are defined as following:\n'''\n"
-        for style, definition in stable_diffusion_all_style_definitions.items():
-            gpt_system_prompt += f"{style}: {definition}.\n"
+        for fact, definition in stable_diffusion_all_style_definitions.items():
+            gpt_system_prompt += f"<{fact}>: <{definition}>.\n"
         gpt_system_prompt += "'''\n"
-        gpt_system_prompt += "NOTE: You MUST reply ONLY the 'style name'."
+        gpt_system_prompt += f"""The following is the matching rule:
+f'''
+1. Checking fact from the first to the last.
+2. Once all features described in a fact are satisfied by the sentence, this fact is considered 'match'.
+3. Reply the first match.
+4. If no fact match, reply '{OTHER_SD_PARAMS_NAME}'
+'''
+NOTE: Just reply using these information, don't ask me anything.
+"""
 
         sys_prompt = {'role': 'system', 'content': gpt_system_prompt}
         messages = [sys_prompt, {'role': 'user', 'content': prompt}]
