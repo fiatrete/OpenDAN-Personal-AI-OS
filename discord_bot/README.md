@@ -6,7 +6,7 @@ Using Jarvis Discord Bot you can interact with Jarvis through Discord app on var
 
 ## How to setup
 
-## Creating a Discord App and Bot Account
+### Creating a Discord App and Bot Account
 
 - Register a Discord account if you don't have one yet.
 - Login to the Discord website https://discord.com/.
