@@ -55,13 +55,13 @@ class WebsocketServer extends EventEmitter {
     socket.on("disconnect", (reason: string) => {
       console.log("socket disconnect", reason, Date.now())
     })
-    socket.on("message_response", (data: ExchangeMessageData) => {
+    socket.on("chat_message", (data: ExchangeMessageData) => {
       this.emit("message_response", data)
     })
   }
 
   sendMessageRequest = (data: ExchangeMessageData) => {
-    this.sioServer.emit("message_request", data)
+    this.sioServer.emit("chat_message", data)
   }
 
   start = () => {

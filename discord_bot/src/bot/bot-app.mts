@@ -18,7 +18,7 @@ import base64 from "base64-js"
 import { ExchangeMessageData } from "../types/index.mjs"
 
 interface BotAppEvents {
-  message: (data: ExchangeMessageData) => void
+  message_request: (data: ExchangeMessageData) => void
 }
 
 declare interface BotApp {
@@ -91,7 +91,7 @@ class BotApp extends EventEmitter {
     const chatId = message.channel.id
 
     this.cachedMessages.set(msgId, message)
-    this.emit("message", {
+    this.emit("message_request", {
       user: {
         id: `${message.author.id}`,
       },
@@ -131,7 +131,7 @@ class BotApp extends EventEmitter {
       return
     }
 
-    this.emit("message", {
+    this.emit("message_request", {
       user: {
         id: useId,
       },

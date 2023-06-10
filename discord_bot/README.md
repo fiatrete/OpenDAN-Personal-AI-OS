@@ -2,7 +2,7 @@
 
 ## What is Jarvis Discord Bot?
 
-Using Jarvis Discord Bot you can interact with Jarvis through Discord app on various devices and share him with your friends. In the early versions of Jarvis, you could only interact with Jarvis through a simple web page. This limited your interaction with Jarvis to computers and browsers, and you had to be on the same local network. 
+Using Jarvis Discord Bot you can interact with Jarvis through Discord app on various devices and share him with your friends. In the early versions of Jarvis, you could only interact with Jarvis through a simple web page. This limited your interaction with Jarvis to computers and browsers, and you had to be on the same local network.
 
 ## How to setup
 

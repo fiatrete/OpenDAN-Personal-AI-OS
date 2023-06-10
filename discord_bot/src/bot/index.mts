@@ -17,7 +17,7 @@ class App {
       parseInt(process.env.WEBSOCKET_PORT as string, 10)
     )
 
-    botApp.on("message", this.handleBotAppMessage)
+    botApp.on("message_request", this.handleBotAppMessageRequest)
     websocketServer.on("message_response", this.handleWebsocketMessageResponse)
 
     this.botApp = botApp
@@ -28,7 +28,7 @@ class App {
 
   private websocketServer: WebsocketServer
 
-  private handleBotAppMessage = (data: ExchangeMessageData) => {
+  private handleBotAppMessageRequest = (data: ExchangeMessageData) => {
     console.log("handleBotAppMessageRequest", data)
     this.websocketServer.sendMessageRequest(data)
   }
