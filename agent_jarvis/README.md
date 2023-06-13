@@ -61,9 +61,8 @@ To enable Jarvis with drawing capabilities, you will need to set up an Stable Di
 cd docker
 
 # Edit '.env' and configure DEMO_STABLE_DIFFUSION_ADDRESS
-# e.g. http://192.168.3.254:1997/sdapi/v1
-# NOTE 1: REMOVE the final slash '/', or sd-webui will not recognize the request
-# NOTE 2: Do *** NOT **** use 'localhost' or '127.0.0.1' or other loopback address, 
+# e.g. http://192.168.3.254:1997
+# NOTE: Do *** NOT **** use 'localhost' or '127.0.0.1' or other loopback address, 
 #   since we don't use host network in docker.
 vim jarvis/.env
 
