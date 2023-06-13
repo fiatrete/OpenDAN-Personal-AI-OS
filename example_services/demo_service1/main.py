@@ -23,7 +23,8 @@ load_dotenv()
 os.environ['OPENAI_API_KEY'] = os.getenv("JARVIS_OPENAI_API_KEY")
 
 youtube_api_key = os.getenv("DEMO_YOUTUBE_API_KEY")
-youtube_client = build('youtube', 'v3', developerKey=youtube_api_key)
+if youtube_api_key is not None and youtube_api_key != '':
+    youtube_client = build('youtube', 'v3', developerKey=youtube_api_key)
 youtube_video_max_result = 3
 youtube_username_set = set()
 
