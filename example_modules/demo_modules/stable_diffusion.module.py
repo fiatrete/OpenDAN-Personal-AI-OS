@@ -24,6 +24,20 @@ def reg_or_not():
         logger.warn("'STABLE_DIFFUSION_URL' is not provided, stable_diffusion function will not available")
         return
 
+    # TODO: Remove support for 'http://xxxx/sdapi/v1'
+    if stable_diffusion_address.endswith('/sdapi/v1') or stable_diffusion_address.endswith('/sdapi/v1/'):
+        logger.warn("'STABLE_DIFFUSION_URL' is expected to be something like: http://host[:port], "
+                    "the form 'http://host[:port]/sdapi/v1' will be deprecated in the future.")
+        if stable_diffusion_address('/sdapi/v1'):
+            stable_diffusion_address += '/txt2img'
+        else:
+            stable_diffusion_address += 'txt2img'
+    else:
+        if stable_diffusion_address.endswith('/'):
+            stable_diffusion_address += 'sdapi/v1/txt2img'
+        else:
+            stable_diffusion_address += '/sdapi/v1/txt2img'
+
     stable_diffusion_my_lora = os.getenv('DEMO_STABLE_DIFFUSION_MY_LORA')
     stable_diffusion_my_lora_trigger_word = os.getenv('DEMO_STABLE_DIFFUSION_MY_LORA_TRIGGER_WORD')
     stable_diffusion_my_name = os.getenv('DEMO_STABLE_DIFFUSION_MY_NAME')
@@ -208,14 +222,13 @@ NOTE: Just reply using these information, don't ask me anything.
         return resp
 
     async def call_sd(params: dict):
-        url = stable_diffusion_address + "/txt2img"
         headers = {
             'accept': 'application/json',
             'Content-Type': 'application/json',
         }
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, data=json.dumps(params)) as response:
+            async with session.post(stable_diffusion_address, headers=headers, data=json.dumps(params)) as response:
                 resp_obj = await response.json()
                 try:
                     return resp_obj["images"][0]
