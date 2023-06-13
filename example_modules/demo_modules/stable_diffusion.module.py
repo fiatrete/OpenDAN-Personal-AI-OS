@@ -28,7 +28,7 @@ def reg_or_not():
     if stable_diffusion_address.endswith('/sdapi/v1') or stable_diffusion_address.endswith('/sdapi/v1/'):
         logger.warn("'STABLE_DIFFUSION_URL' is expected to be something like: http://host[:port], "
                     "the form 'http://host[:port]/sdapi/v1' will be deprecated in the future.")
-        if stable_diffusion_address('/sdapi/v1'):
+        if stable_diffusion_address.endswith('/sdapi/v1'):
             stable_diffusion_address += '/txt2img'
         else:
             stable_diffusion_address += 'txt2img'
