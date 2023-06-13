@@ -24,6 +24,7 @@ def reg_or_not():
         logger.warn("'STABLE_DIFFUSION_URL' is not provided, stable_diffusion function will not available")
         return
 
+    # TODO: Remove support for 'http://xxxx/sdapi/v1'
     if stable_diffusion_address.endswith('/sdapi/v1') or stable_diffusion_address.endswith('/sdapi/v1/'):
         logger.warn("'STABLE_DIFFUSION_URL' is expected to be something like: http://host[:port], "
                     "the form 'http://host[:port]/sdapi/v1' will be deprecated in the future.")
