@@ -13,8 +13,7 @@ This project is still in its very early stages, and there may be significant cha
 
 ## **Updates**
 
-We have released the Jarvis Discord bot. You can now comunicate with Jarvis through Discord app on various devices. Check out the code and setup your own Jarvis Discord bot right away. See the [documentation](discord_bot/README.md) for the details.
-
+We have set up a Discord chat group for Jarvis, where you can directly experience its capabilities if you don't want to start building it from scratch. Click [this link](https://discord.gg/HncP3wt5) to enter.
 
 ## Intro video - What is OpenDAN?
 Click the image below for a demo:
