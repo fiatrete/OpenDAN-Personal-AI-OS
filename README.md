@@ -1,4 +1,4 @@
-# OpenDAN: Personal AI OS
+# **OpenDAN: Personal AI OS**
 [![Official Website](https://img.shields.io/badge/Official%20Website-opendan.ai-blue?style=flat&logo=world&logoColor=white)](https://opendan.ai)
 [![GitHub Repo stars](https://img.shields.io/github/stars/fiatrete/OpenDAN-Personal-AI-OS?style=social)](https://github.com/fiatrete/OpenDAN-Personal-AI-OS/stargazers)
 [![Twitter Follow](https://img.shields.io/twitter/follow/openDAN_AI?style=social)](https://twitter.com/openDAN_AI)
@@ -15,12 +15,12 @@ This project is still in its very early stages, and there may be significant cha
 
 We have set up a Discord chat group for Jarvis, where you can directly experience its capabilities if you don't want to start building it from scratch. Click [this link](https://discord.gg/HncP3wt5) to enter.
 
-## Intro video - What is OpenDAN?
+## **Intro video - What is OpenDAN?**
 Click the image below for a demo:
 
 [![Intro Video](https://github-production-user-asset-6210df.s3.amazonaws.com/126534313/243310994-4d1ece51-b06d-413d-a2ac-ea5099bb6e94.png)](https://www.youtube.com/watch?v=OH-gvomIQIQ "Intro Video")
 
-## Demo video - What can OpenDAN do?
+## **Demo video - What can OpenDAN do?**
 Click the image below for a demo:
 
 [![Demo Video](https://github-production-user-asset-6210df.s3.amazonaws.com/126534313/243309993-cf6abfd5-0a56-420b-ac56-99b18dbd3c5f.png)](https://youtu.be/13wdyoT0VHQ "Demo Video")
@@ -32,7 +32,9 @@ Click the image below for a demo:
 </center>
 
 
-## Subscribe to updates here: https://twitter.com/openDAN_AI
+## **Subscribe to updates here**
+
+https://twitter.com/openDAN_AI
 
 ## **Core Features of OpenDAN**
 
@@ -70,7 +72,7 @@ We welcome community members to contribute to the project, including but not lim
 - Submit a Pull Request to the repository
 - Participate in discussions and development
 
-## ⭐Star History
+## **⭐Star History**
 
 
 [![Star History Chart](https://api.star-history.com/svg?repos=fiatrete/OpenDAN-Personal-AI-Server-OS&type=Date)](https://star-history.com/#fiatrete/OpenDAN-Personal-AI-Server-OS&Date)
