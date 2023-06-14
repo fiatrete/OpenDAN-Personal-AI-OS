@@ -38,6 +38,8 @@ Using Jarvis Discord Bot you can interact with Jarvis through Discord app on var
   - Copy and paste the previously obtained `Token` and `CLIENT ID` into the `.env.local` file.
   - run `npm install`.
 - run `npm run start:bot`.
+
+NOTE: You need to set `JARVIS_SERVER_MODE=false` and `JARVIS_BOT_SERVER_URL="http://localhost:10000"` in the Jarvis's `.env` file
 ### Running the bot in docker
 ```
 # build docker image
