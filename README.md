@@ -18,7 +18,7 @@ We have released the Jarvis Discord bot. You can now comunicate with Jarvis thro
 ## **Intro video - What is OpenDAN?**
 Click the image below for a demo:
 
-[![Intro Video](https://github-production-user-asset-6210df.s3.amazonaws.com/126534313/243310994-4d1ece51-b06d-413d-a2ac-ea5099bb6e94.png)](https://www.youtube.com/watch?v=OH-gvomIQIQ "Intro Video")
+[![Intro Video](https://github-production-user-asset-6210df.s3.amazonaws.com/126534313/243310994-4d1ece51-b06d-413d-a2ac-ea5099bb6e94.png)](https://www.youtube.com/watch?v=l2QmsIOXhdQ "Intro Video")
 
 ## **Demo video - What can OpenDAN do?**
 Click the image below for a demo:
