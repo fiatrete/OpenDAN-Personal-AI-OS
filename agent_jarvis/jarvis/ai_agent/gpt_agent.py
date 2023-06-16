@@ -55,7 +55,7 @@ class GptAgent(BaseAgent):
                 "speak": assistant_reply,
             }
         elif reply_type == "function_call":
-            arguments = fix_json_using_multiple_techniques(assistant_reply["arguments"])
+            arguments = await fix_json_using_multiple_techniques(assistant_reply["arguments"])
             return {
                 "function": assistant_reply["name"],
                 "arguments": arguments
