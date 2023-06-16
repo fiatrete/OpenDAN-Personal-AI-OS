@@ -55,10 +55,10 @@ class GptAgent(BaseAgent):
                 "speak": assistant_reply,
             }
         elif reply_type == "function_call":
-            # TODO: Check arguments
+            arguments = fix_json_using_multiple_techniques(assistant_reply["arguments"])
             return {
                 "function": assistant_reply["name"],
-                "arguments": json.loads(assistant_reply["arguments"])
+                "arguments": arguments
             }
 
     async def feed_prompt(self, prompt):
@@ -86,7 +86,6 @@ class GptAgent(BaseAgent):
         function_name: str = reply.get("function")
         if function_name is None:
             await self._caller_context.reply_text(reply["speak"])
-            pass
         else:
             arguments: Dict = reply["arguments"]
 
