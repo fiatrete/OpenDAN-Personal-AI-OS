@@ -157,6 +157,12 @@ class GptAgent(BaseAgent):
                     [{"role": "user", "content": user_input}], model
                 )  # Account for user input (appended later)
 
+                # TODO: OpenAI does not say how to count function tokens, we use this method to roughly get the tokens count
+                #   It's result looks much larger than OpenAI's result
+                current_tokens_used += await token_counter.count_message_tokens(
+                    [{"role": "user", "content": json.dumps(moduleRegistry.to_json_schema())}], model
+                )
+
                 while next_message_to_add_index >= 0:
                     # print (f"CURRENT TOKENS USED: {current_tokens_used}")
                     tokens_to_add = await self._get_history_message_tokens(next_message_to_add_index, model)
