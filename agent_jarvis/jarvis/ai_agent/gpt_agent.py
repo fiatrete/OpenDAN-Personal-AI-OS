@@ -65,9 +65,6 @@ class GptAgent(BaseAgent):
         # Send message to AI, get response
         logger.debug(f"Trigger: {prompt}")
         reply: Dict = None
-        # It seems that after the message is wrapped in JSON format, 
-        # the probability that GPT will reply to the message in JSON format is much higher
-        prompt = json.dumps({"message": prompt})
         for i in range(3):
             try:
                 if i == 0:
