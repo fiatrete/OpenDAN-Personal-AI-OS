@@ -22,7 +22,7 @@ def reg_or_not():
         })
     async def youtube_video_brief(context: CallerContext, url: str):
         await context.push_notification(f"One second... I'm watching this video: {url}")
-        if not url.startswith('https://www.youtube.com/watch?'):
+        if not url.startswith('https://www.youtube.com/watch?') and not url.startswith("https://youtu.be/"):
             await context.reply_text("Sorry, failed to determine which video to watch.")
             return "Failed"
         response = await do_get(youtube_service_address + "/videos/summary",
