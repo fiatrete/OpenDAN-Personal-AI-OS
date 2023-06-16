@@ -5,11 +5,9 @@ from typing import List
 
 import tiktoken_async
 
-from jarvis.gpt.message import Message
-
 
 async def count_message_tokens(
-        messages: List[Message], model: str = "gpt-3.5-turbo-0301"
+        messages: List[dict], model: str = "gpt-3.5-turbo-0301"
 ) -> int:
     """
     Returns the number of tokens used by a list of messages.

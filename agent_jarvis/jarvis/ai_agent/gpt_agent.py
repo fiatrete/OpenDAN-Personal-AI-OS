@@ -7,12 +7,10 @@ from typing import Dict, List
 from openai.error import RateLimitError
 
 from jarvis import CFG
-from jarvis.ai_agent.agent_utils import must_not_be_valid_json, get_thoughts, get_function, execute_function, \
-    create_chat_message
+from jarvis.ai_agent.agent_utils import must_not_be_valid_json, get_thoughts, get_function, execute_function
 from jarvis.ai_agent.base_agent import BaseAgent
 from jarvis.functional_modules.functional_module import CallerContext, moduleRegistry
 from jarvis.gpt import token_counter, gpt
-from jarvis.gpt.message import Message
 from jarvis.json_utils.json_fix_llm import fix_json_using_multiple_techniques
 from jarvis.json_utils.utilities import validate_json
 from jarvis.logger import logger
@@ -74,7 +72,7 @@ you: {
 
 class GptAgent(BaseAgent):
     _system_prompt: str
-    _full_message_history: List[Message] = []
+    _full_message_history: List[dict] = []
     _message_tokens: List[int] = []
 
     def __init__(self, caller_context: CallerContext):

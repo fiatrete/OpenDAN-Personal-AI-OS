@@ -4,7 +4,6 @@ import openai
 from openai.error import RateLimitError, APIError, Timeout
 
 from jarvis import CFG
-from jarvis.gpt.message import Message
 from jarvis.logger import logger
 from typing import Callable
 
@@ -60,7 +59,7 @@ async def acreate_chat_completion_once(
 # Overly simple abstraction until we create something better
 # simple retry mechanism when getting a rate error or a bad gateway
 async def acreate_chat_completion(
-        messages: list[Message],  # type: ignore
+        messages: list[dict],
         model: str = None,
         temperature: float = CFG.temperature,
         max_tokens: int = None,

@@ -2,7 +2,6 @@ from typing import List
 
 from jarvis import CFG
 from jarvis.gpt import gpt
-from jarvis.gpt.message import Message
 from jarvis.logger import logger
 
 
@@ -27,7 +26,7 @@ async def acall_ai_function(function: str, args: list, description: str, model: 
     args = [str(arg) if arg is not None else "None" for arg in args]
     # parse args to comma separated string
     args: str = ", ".join(args)
-    messages: List[Message] = [
+    messages: List[dict] = [
         {
             "role": "system",
             "content": f"You are now the following python function: ```# {description}"

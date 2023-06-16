@@ -2,7 +2,6 @@ import json
 from typing import Dict
 
 from jarvis.functional_modules.functional_module import CallerContext, moduleRegistry
-from jarvis.gpt.message import Message
 from jarvis.logger import logger
 
 
@@ -15,21 +14,6 @@ def must_not_be_valid_json(s: str):
     if s.count('{') < 1 and s.count("{") < 1:
         return True
     return False
-
-
-def create_chat_message(role, content) -> Message:
-    """
-    Create a chat message with the given role and content.
-
-    Args:
-    role (str): The role of the message sender, e.g., "system", "user", or "assistant".
-    content (str): The content of the message.
-
-    Returns:
-    dict: A dictionary containing the role and content of the message.
-    """
-    return {"role": role, "content": content}
-
 
 def get_thoughts(reply: Dict, assistant_reply_json_valid: dict):
     assistant_thoughts_reasoning = None
