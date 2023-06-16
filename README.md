@@ -13,7 +13,7 @@ This project is still in its very early stages, and there may be significant cha
 
 ## **Updates**
 
-We have released the Jarvis Discord bot. You can now comunicate with Jarvis through Discord app on various devices. Check out the code and setup your own Jarvis Discord bot right away. See the [documentation](discord_bot/README.md) for the details.
+I've just refactored Jarvis's code, leveraging the `functions` support from ChatGPT. As a result, Jarvis now responds much faster and has more stable selection for the functional module. I encourage you to checkout the updated code to experience these improvements firsthand.
 
 ## **Intro video - What is OpenDAN?**
 Click the image below for a demo:
