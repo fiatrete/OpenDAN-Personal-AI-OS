@@ -12,7 +12,7 @@ class FunctionalModule:
     name: str
     description: str
     method: Callable[..., Any]
-    signature: dict[str, str]
+    signature: dict[str, dict]
 
     def __init__(self, name, description, method, signature):
         self.name = name
@@ -39,8 +39,8 @@ class FunctionalModuleRegistry:
             }))
 
     @staticmethod
-    def _signature_to_string(signature: dict[str, str]):
-        return ", ".join([f"{k}: <{v}>" for k, v in signature.items()])
+    def _signature_to_string(signature: dict[str, dict]):
+        return ", ".join([f"{k}: <{v['description']}>" for k, v in signature.items()])
 
     def to_prompt(self):
         text = ""
@@ -56,6 +56,26 @@ class FunctionalModuleRegistry:
 
         return text
 
+    def to_json_schema(self):
+        return [
+            {
+                "name": module.name,
+                "description": module.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        key: {
+                            k: v for k, v in value.items() if k != "required"
+                        }
+                        for key, value in module.signature.items()
+                    },
+                    "required": [key for key, value in module.signature.items() if value.get("required") != False]
+                }
+
+            }
+            for module in sorted(self._modules.values(), key=lambda cmd: cmd.name)
+        ]
+
     async def execute_function(self, context: CallerContext, function_name: str, **kwargs):
         cmd = self._modules.get(function_name)
         if cmd is not None:
@@ -68,7 +88,7 @@ moduleRegistry = FunctionalModuleRegistry()
 
 def functional_module(name: str,
                       description: str,
-                      signature=None):
+                      signature: dict[str, dict] = None):
     if signature is None:
         signature = {}
 

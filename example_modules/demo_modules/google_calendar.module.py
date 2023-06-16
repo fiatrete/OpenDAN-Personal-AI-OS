@@ -18,7 +18,18 @@ def reg_or_not():
     @functional_module(
         name="add_alarm",
         description="Create an alarm",
-        signature={"date": "The alarm date, 'YYYY-mm-dd HH:MM:SS format'", "desc": "The event description"})
+        signature={
+            "date": {
+                "description": "The alarm date, 'YYYY-mm-dd HH:MM:SS format'",
+                "type": "string",
+                "required": True
+            },
+            "desc": {
+                "description": "The event description",
+                "type": "string",
+                "required": True
+            }
+        })
     async def add_alarm(context: CallerContext, date, desc):
         # date = "2023-05-10 14:56:59"
         now = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S").timestamp()
@@ -43,7 +54,14 @@ def reg_or_not():
     @functional_module(
         name="delete_alarm",
         description="delete all alarms whose ID is in the list",
-        signature={"IDs": "A list of alarm IDs to"})
+        signature={
+            "IDs": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "A list of alarm IDs to delete",
+                "required": True
+            }
+        })
     async def delete_alarm(context: CallerContext, IDs: List[str]):
         # get all tasks
         result = await do_get(google_calendar_service_address + "/tasks")

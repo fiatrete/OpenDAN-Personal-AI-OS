@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import List
+import json
 
 import tiktoken_async
 
@@ -33,7 +34,8 @@ async def count_message_tokens(
     elif model == "gpt-4":
         # !Note: gpt-4 may change over time. Returning num tokens assuming gpt-4-0314.")
         return await count_message_tokens(messages, model="gpt-4-0314")
-    elif model == "gpt-3.5-turbo-0301":
+    # TODO: OpenAI has not mention how to count tokens for 0613, thus, we use the former method
+    elif model == "gpt-3.5-turbo-0301" or model == "gpt-3.5-turbo-0613" or model == "gpt-3.5-turbo-16k-0613":
         tokens_per_message = (
             4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
         )
@@ -51,6 +53,11 @@ async def count_message_tokens(
     for message in messages:
         num_tokens += tokens_per_message
         for key, value in message.items():
+            if not isinstance(value, str):
+                # TODO: Since openai does not mentioned how to count tokens of 'funciton_call',
+                #   and only string is countable, thus, if the value is not a `str` (`function_call`
+                #   field of a message), we convert it into json
+                value = json.dumps(value)
             num_tokens += len(encoding.encode(value))
             if key == "name":
                 num_tokens += tokens_per_name

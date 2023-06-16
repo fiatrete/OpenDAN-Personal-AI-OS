@@ -113,7 +113,7 @@ Sometimes you maybe asked to generate a pic of myself. That means you MUST add '
 - Add unique touches to each output, making it lengthy, detailed, and stylized.
 - Show, don't tell; instead of tagging \"exceptional artwork\" or \"emphasizing a beautiful ...\" provide - precise details.
 - Ensure the output is placed inside a beautiful and stylized markdown.
-- The prompt you return  MUST be English. The lenth of prompt MUST less than 150.
+- The prompt you return  MUST be English. The tokens of prompt MUST less than 70.
 """
 
     OTHER_SD_PARAMS_NAME = "other"
@@ -153,7 +153,7 @@ NOTE: Just reply using these information, don't ask me anything.
         sys_prompt = {'role': 'system', 'content': gpt_system_prompt}
         messages = [sys_prompt, {'role': 'user', 'content': prompt}]
         model = CFG.small_llm_model
-        resp = await acreate_chat_completion(
+        _, resp = await acreate_chat_completion(
             messages,
             model,
             temperature=0,
@@ -207,7 +207,7 @@ NOTE: Just reply using these information, don't ask me anything.
         messages = [sys_prompt, {'role': 'user', 'content': "Generation " + origin_str}]
         model = CFG.small_llm_model
         try:
-            resp = await acreate_chat_completion(
+            _, resp = await acreate_chat_completion(
                 messages,
                 model,
                 temperature=0,
@@ -239,7 +239,12 @@ NOTE: Just reply using these information, don't ask me anything.
     @functional_module(
         name="stable_diffusion",
         description="Generate a picture.",
-        signature={'prompt': 'the description I told you'})
+        signature={
+            'prompt': {
+                "type": "string",
+                "description": 'the description I told you'
+            }
+        })
     async def stable_diffusion(context: CallerContext, prompt: str):
         await context.reply_text("I'm generating the image, this may take a while.")
         style = await determine_style(prompt)

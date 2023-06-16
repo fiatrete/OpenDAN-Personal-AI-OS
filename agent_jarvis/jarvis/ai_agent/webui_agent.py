@@ -182,10 +182,10 @@ class WebuiAgent(BaseAgent):
 
         if function_name is not None:
             if result is not None:
-                self._caller_context.append_history_message("system", result)
+                self.append_history_message("system", result)
                 logger.debug(f"SYSTEM: {result}")
             else:
-                self._caller_context.append_history_message("system", "Unable to execute function")
+                self.append_history_message("system", "Unable to execute function")
                 logger.debug("SYSTEM: Unable to execute function")
 
         if execute_error is not None:

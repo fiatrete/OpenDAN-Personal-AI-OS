@@ -17,27 +17,10 @@ from jarvis.logger import logger
 
 
 def _generate_first_prompt():
-    return """Since now, every your response should satisfy the following JSON format, a 'function' must be chosen:
-```
-{
-    "thoughts": {
-        "text": "<Your thought>",
-        "reasoning": "<Your reasoning>",
-        "speak": "<what you want to say to me>"
-    },
-    "function": {
-        "name": "<mandatory, one of listed functions>",
-        "args": {
-            "arg name": "<value>"
-        }
-    }
-}
-```
-
-I will ask you questions or ask you to do something. You should:
-First, you should determine if you know the answer of the question or you can accomplish the task directly. 
-If so, you should response directly. 
-If not, you should try to complete the task by calling the functions below.
+    return """I will ask you questions or ask you to do something. You should:
+First, determine if you know the answer of the question or you can accomplish the task directly. 
+If so, response directly. 
+If not, try to complete the task by calling the functions below.
 If you can't accomplish the task by yourself and no function is able to accomplish the task, say "Dear master, sorry, I'm not able to do that."
 
 Your setup:
@@ -45,27 +28,6 @@ Your setup:
 {
     "author": "OpenDAN",
     "name": "Jarvis",
-}
-```
-Available functions:
-```
-""" + moduleRegistry.to_prompt() + """
-```
-Example:
-```
-me: generate a picture of me.
-you: {
-    "thoughts": {
-        "text": "You need a picture of 'me'",
-        "reasoning": "stable_diffusion is able to generate pictures",
-        "speak": "Ok, I will do that"
-    },
-    "function": {
-        "name": "stable_diffusion",
-        "args": {
-            "prompt": "me"
-        }
-    }
 }
 ```"""
 
@@ -79,47 +41,25 @@ class GptAgent(BaseAgent):
         super().__init__(caller_context)
         self._system_prompt = _generate_first_prompt()
         logger.debug(f"Using GptAgent, system prompt is: {self._system_prompt}")
+        logger.debug(f"{json.dumps(moduleRegistry.to_json_schema())}")
 
     async def _feed_prompt_to_get_response(self, prompt):
-        assistant_reply = await self._chat_with_ai(
+        reply_type, assistant_reply = await self._chat_with_ai(
             self._system_prompt,
             prompt,
             CFG.token_limit,
         )
 
-        reply = {
-            "thoughts": None,
-            "reasoning": None,
-            "speak": None,
-            "function": None,
-            "arguments": None,
-        }
-
-        if must_not_be_valid_json(assistant_reply):
-            raise Exception(f"AI replied an invalid response: {assistant_reply}!")
-        else:
-            assistant_reply_json = await fix_json_using_multiple_techniques(assistant_reply)
-
-        # Print Assistant thoughts
-        if assistant_reply_json != {}:
-            validate_json(assistant_reply_json, "llm_response_format_1")
-            try:
-                get_thoughts(reply, assistant_reply_json)
-                get_function(reply, assistant_reply_json)
-            except Exception as e:
-                logger.error(f"AI replied an invalid response: {assistant_reply}. Error: {str(e)}")
-                raise e
-        else:
-            raise Exception(f"AI replied an invalid response: {assistant_reply}!")
-
-        function_name = reply["function"]
-        if function_name is None or function_name == '':
-            raise Exception(f"Missing a function")
-        arguments = reply["arguments"]
-
-        if not isinstance(arguments, dict):
-            raise Exception(f"Invalid arguments, it MUST be a dict")
-        return reply
+        if reply_type == "content":
+            return {
+                "speak": assistant_reply,
+            }
+        elif reply_type == "function_call":
+            # TODO: Check arguments
+            return {
+                "function": assistant_reply["name"],
+                "arguments": json.loads(assistant_reply["arguments"])
+            }
 
     async def feed_prompt(self, prompt):
         # Send message to AI, get response
@@ -146,33 +86,34 @@ class GptAgent(BaseAgent):
             return
 
         # Execute function
-        function_name: str = reply["function"]
-        arguments: Dict = reply["arguments"]
+        function_name: str = reply.get("function")
+        if function_name is None:
+            await self._caller_context.reply_text(reply["speak"])
+            pass
+        else:
+            arguments: Dict = reply["arguments"]
 
-        await self._caller_context.reply_text(reply["speak"])
-        execute_error = None
-        try:
-            function_result = await execute_function(self._caller_context, function_name, **arguments)
-        except Exception as e:
             function_result = "Failed"
-            execute_error = e
-        result = f"Function {function_name} returned: " f"{function_result}"
+            try:
+                function_result = await execute_function(self._caller_context, function_name, **arguments)
+            finally:
+                result = f"{function_result}"
 
-        if function_name is not None:
-            # Check if there's a result from the function append it to the message
-            # history
-            if result is not None:
-                self._caller_context.append_history_message("system", result)
-                logger.debug(f"SYSTEM: {result}")
-            else:
-                self._caller_context.append_history_message("system", "Unable to execute function")
-                logger.debug("SYSTEM: Unable to execute function")
-
-        if execute_error is not None:
-            raise execute_error
+                # Check if there's a result from the function append it to the message
+                # history
+                if result is not None:
+                    self.append_history_message_raw({"role": "function", "name": function_name, "content": result})
+                    logger.debug(f"function: {result}")
+                else:
+                    self.append_history_message_raw({"role": "function", "name": function_name, "content": "Unable to execute function"})
+                    logger.debug("function: Unable to execute function")
 
     def append_history_message(self, role: str, content: str):
         self._full_message_history.append({'role': role, 'content': content})
+        self._message_tokens.append(-1)
+
+    def append_history_message_raw(self, msg: dict):
+        self._full_message_history.append(msg)
         self._message_tokens.append(-1)
 
     def clear_history_messages(self):
@@ -216,7 +157,7 @@ class GptAgent(BaseAgent):
                 ) = await self._generate_context(prompt, model)
 
                 current_tokens_used += await token_counter.count_message_tokens(
-                    [create_chat_message("user", user_input)], model
+                    [{"role": "user", "content": user_input}], model
                 )  # Account for user input (appended later)
 
                 while next_message_to_add_index >= 0:
@@ -237,7 +178,7 @@ class GptAgent(BaseAgent):
                     next_message_to_add_index -= 1
 
                 # Append user input, the length of this is accounted for above
-                current_context.extend([create_chat_message("user", user_input)])
+                current_context.extend([{"role": "user", "content": user_input}])
 
                 # Calculate remaining tokens
                 tokens_remaining = token_limit - current_tokens_used
@@ -248,19 +189,29 @@ class GptAgent(BaseAgent):
                     await self._caller_context.push_notification(
                         f'Thinking timeout{", retry" if will_retry else ", give up"}.')
 
-                assistant_reply = await gpt.acreate_chat_completion(
+
+                reply_type, assistant_reply = await gpt.acreate_chat_completion(
                     model=model,
                     messages=current_context,
                     temperature=CFG.temperature,
                     max_tokens=tokens_remaining,
-                    on_single_request_timeout=on_single_chat_timeout
+                    on_single_request_timeout=on_single_chat_timeout,
+                    functions=moduleRegistry.to_json_schema()
                 )
 
                 # Update full message history
-                self._caller_context.append_history_message("user", user_input)
-                self._caller_context.append_history_message("assistant", assistant_reply)
+                if reply_type == "content":
+                    self.append_history_message("user", user_input)
+                    self.append_history_message("assistant", assistant_reply)
+                    pass
+                elif reply_type == "function_call":
+                    self.append_history_message("user", user_input)
+                    self.append_history_message_raw({"role": "assistant", "function_call": assistant_reply, "content": None})
+                    pass
+                else:
+                    assert False, "Unexpected reply type"
 
-                return assistant_reply
+                return reply_type, assistant_reply
             except RateLimitError:
                 # TODO: When we switch to langchain, or something else this is built in
                 print("Error: ", "API Rate Limit Reached. Waiting 10 seconds...")
@@ -271,10 +222,8 @@ class GptAgent(BaseAgent):
         timestamp = time.time() + time.timezone + self._caller_context.get_tz_offset() * 3600
         time_str = time.strftime('%c', time.localtime(timestamp))
         current_context = [
-            create_chat_message("system", prompt),
-            create_chat_message(
-                "system", f"The current time and date is {time_str}"
-            )
+            {"role": "system", "content": prompt},
+            {"role": "system", "content": f"The current time and date is {time_str}"},
         ]
 
         # Add messages from the full message history until we reach the token limit

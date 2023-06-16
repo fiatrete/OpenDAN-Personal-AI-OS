@@ -37,4 +37,7 @@ async def acall_ai_function(function: str, args: list, description: str, model: 
 
     logger.debug(str(messages))
 
-    return await gpt.acreate_chat_completion(model=model, messages=messages, temperature=0)
+    msg_type, msg_content = await gpt.acreate_chat_completion(model=model, messages=messages, temperature=0)
+    if msg_type == "content":
+        return msg_content
+    return 'failed'

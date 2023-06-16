@@ -14,7 +14,12 @@ def reg_or_not():
     @functional_module(
         name="youtube_video_brief",
         description="Get the brief content of a youtube video",
-        signature={"url": "The address of the video"})
+        signature={
+            "url": {
+                "type": "string",
+                "description": "The address of the video" 
+            }
+        })
     async def youtube_video_brief(context: CallerContext, url: str):
         await context.push_notification(f"One second... I'm watching this video: {url}")
         if not url.startswith('https://www.youtube.com/watch?'):
@@ -38,7 +43,12 @@ def reg_or_not():
     @functional_module(
         name="youtube_video_brief_vid",
         description="Get the brief content of a youtube video identified by video id",
-        signature={"video_id": "The video id of the video"})
+        signature={
+            "video_id": {
+                "type": "string",
+                "description": "The video id of the video"
+            }
+        })
     async def youtube_video_brief_vid(context: CallerContext, video_id: str):
         url = f'https://www.youtube.com/watch?v={video_id}'
         await context.push_notification(f"One second... I'm watching this video: {url}")
@@ -70,7 +80,12 @@ def reg_or_not():
     @functional_module(
         name="youtube_x_video_info",
         description="Get the basic information of a youtube user's newest videos, when the summary of videos are not required, you should use this function",
-        signature={"username": "The username"})
+        signature={
+            "username": {
+                "type": "string",
+                "description": "The username"
+            }
+        })
     async def youtube_x_video_info(context: CallerContext, username: str):
         response = await youtube_latest_video_info_of(context, username, False)
         result = f'The brief content of the latest videos of {username} are:\n'
@@ -86,7 +101,12 @@ def reg_or_not():
     @functional_module(
         name="youtube_notify_new",
         description="Watching an Youtuber, push an notification when the youtuber published a new video",
-        signature={"username": "The username"})
+        signature={
+            "username": {
+                "type": "string",
+                "description": "The username"
+            }
+        })
     async def youtube_notify_new(context: CallerContext, username: str):
         if username.startswith('@'):
             username = username[1:]

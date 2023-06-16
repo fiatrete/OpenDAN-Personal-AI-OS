@@ -4,7 +4,16 @@ from jarvis.functional_modules.functional_module import functional_module, Calle
 @functional_module(
     name="toggle_light",
     description="Turn on/off the light.",
-    signature={"room": "The room name", "on": "Turn on or off, bool type>"})
+    signature={
+        "room": {
+            "type": "string",
+            "description": "The room name"
+        },
+        "on": {
+            "type": "boolean",
+            "description": "Turn on or off"
+        }
+    })
 async def light_switch(context: CallerContext, room: str, on: bool):
     # Do the actual control here, something like this
     # room_id = convert_room_name_to_id(room)

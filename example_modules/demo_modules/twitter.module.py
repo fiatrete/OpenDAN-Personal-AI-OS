@@ -14,8 +14,12 @@ def reg_or_not():
     @functional_module(
         name="post_tweet",
         description="post a tweet",
-        signature={"content": "the content of the tweet"}
-    )
+        signature={
+            "content": {
+                "type": "string",
+                "description": "the content of the tweet"
+            }
+        })
     async def post_tweet(context: CallerContext, content: str):
         response = await do_post(twitter_service_address + "/twitter/tweet_post", '', {"content": content})
         logger.info(f"response: {response}")
