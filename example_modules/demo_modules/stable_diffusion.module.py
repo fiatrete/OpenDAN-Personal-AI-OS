@@ -196,7 +196,9 @@ NOTE: Just reply using these information, don't ask me anything.
         if params is None:
             # TODO: Say something to comfort our users here?
             # await context.reply_text("")
-            params = await get_default_sd_params(original_prompt)
+            # Seems that only require English in system prompt does not work in new GPT version,
+            # GPT will reply in the language of the input, thus emphasize it in our prompt, to make it return English
+            params = await get_default_sd_params(original_prompt + "(You MUST reply in English)")
         else:
             params = params.copy()
             params.update({'prompt': original_prompt + ", " + params['prompt']})
