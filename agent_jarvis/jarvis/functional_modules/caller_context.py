@@ -18,6 +18,12 @@ class CallerContext:
             return f"{of}"
         return ""
 
+    def get_last_image(self) -> str:
+        raise NotImplementedError("Function not implemented")
+    
+    def set_last_image(self, img: str):
+        raise NotImplementedError("Function not implemented")
+
     async def reply_text(self, msg):
         raise NotImplementedError("Function not implemented")
 

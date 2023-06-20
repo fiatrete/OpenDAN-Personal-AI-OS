@@ -109,6 +109,8 @@ def run_server_mode():
             session.set_tz_offset(offset)
         elif msg.message_type == 'text':
             await session.on_chat_message(msg)
+        elif msg.message_type == 'image':
+            session.set_last_image(msg.message_content)
 
     app.router.add_static('/js', './TestPage/js')
     app.router.add_static('/css', './TestPage/css')
@@ -156,6 +158,8 @@ async def run_client_mode(session_map: dict[str, Session]):
             session.set_tz_offset(offset)
         elif msg.message_type == 'text':
             await session.on_chat_message(msg)
+        elif msg.message_type == 'image':
+            session.set_last_image(msg.message_content)
 
     await sio.connect(CFG.bot_server_url)
     try:

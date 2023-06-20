@@ -65,6 +65,7 @@ class Session(CallerContext):
     _sio: SioConnection = None
     _session_id: str = None
     _tz_offset: int = 0  # timezone offset, in hours. = local_time - UTC0
+    _last_image: str = None
 
     _history_dir: str = None
 
@@ -162,6 +163,12 @@ class Session(CallerContext):
 
     def get_tz_offset(self):
         return self._tz_offset
+
+    def get_last_image(self) -> str:
+        return self._last_image
+    
+    def set_last_image(self, img: str):
+        self._last_image = img
 
     async def reply_text(self, msg):
         if self._message_id_ is None:

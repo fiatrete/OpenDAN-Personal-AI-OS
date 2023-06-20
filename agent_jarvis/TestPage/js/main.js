@@ -187,5 +187,36 @@
     if (e.key === 'Enter') {
       submitMessage();
     }
-  })
+  });
+
+  input.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const files = e.dataTransfer.files;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const file = e.currentTarget.result;
+        if (file.startsWith('data:image')) {
+          const base64Index = file.indexOf('base64,');
+          const base64Content = file.substring(base64Index + 7)
+          // Send to jarvis
+          socket.emit(
+            "chat_message",
+            makeChatMessage(base64Content, 'image')
+          );
+
+          // display on the page
+          var item = document.createElement("li");
+          item.innerHTML = `<img src="${file}" alt="Image" class="replied-img">`;
+          item.classList.add("align_right");
+          messages.appendChild(item);
+          scrollElementToEnd(messages);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
 })();

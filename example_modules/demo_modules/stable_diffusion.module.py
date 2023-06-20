@@ -260,6 +260,7 @@ NOTE: Just reply using these information, don't ask me anything.
         logger.debug("Start calling stable_diffusion")
         img = await call_sd(sd_params)
         logger.debug("End calling stable_diffusion")
+        context.set_last_image(img)
         await context.reply_image_base64(img)
         return "Success"
 

@@ -31,6 +31,7 @@ RUN echo "openai==0.27.6" >> requirements.txt \
     && echo "llama-index==0.6.7" >> requirements.txt \
     && echo "youtube-transcript-api==0.6.0" >> requirements.txt \
     && echo "tweepy==4.14.0" >> requirements.txt \
+    && echo "rembg==2.0.45" >> requirements.txt \
     && echo "google-api-python-client==2.86.0" >> requirements.txt \
     && echo "google-auth-httplib2==0.1.0" >> requirements.txt \
     && echo "google-auth-oauthlib==1.0.0" >> requirements.txt

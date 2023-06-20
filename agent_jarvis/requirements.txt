@@ -9,6 +9,7 @@ python-dotenv==1.0.0
 llama-index==0.6.7
 youtube-transcript-api==0.6.0
 tweepy==4.14.0
+rembg==2.0.45
 
 google-api-python-client==2.86.0
 google-auth-httplib2==0.1.0
