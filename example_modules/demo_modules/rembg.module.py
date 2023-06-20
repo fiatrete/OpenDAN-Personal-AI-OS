@@ -2,10 +2,6 @@ import io
 import base64
 from typing import List
 
-from jarvis.functional_modules.caller_context import CallerContext
-from jarvis.functional_modules.functional_module import functional_module
-from jarvis.logger import logger
-
 
 def reg_or_not():
     try:
@@ -16,7 +12,13 @@ def reg_or_not():
         return
 
     session = new_session(model_name="u2net")
+    if __name__ == "__main__":
+        # If we run this script directly, download the model and exit
+        return
 
+    from jarvis.functional_modules.caller_context import CallerContext
+    from jarvis.functional_modules.functional_module import functional_module
+    from jarvis.logger import logger
     @functional_module(
         name="remove_bg",
         description="Remove the background of last image",
@@ -37,5 +39,6 @@ def reg_or_not():
         context.set_last_image(result)
         await context.reply_image_base64(result)
         return "Success"
+
 
 reg_or_not()
