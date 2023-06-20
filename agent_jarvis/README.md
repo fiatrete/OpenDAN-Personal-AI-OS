@@ -50,7 +50,9 @@ You will see a simple chat window, and you can chat with Jarvis with it. This is
  
  <img src="images/jarvis.png" width="50%"/>
 
-At this moment, Jarvis is most likely a copy of ChatGPT, except that we provide a joke telling ability as an example.
+ <img src="images/remove_bg.png" width="50%"/>
+
+At this moment, Jarvis is most likely a copy of ChatGPT, except that we provide some simple abilities such as telling joke and removing images background as shown above.
 
 ## 3. Enable Jarvis with drawing capabilities
 
