@@ -46,6 +46,7 @@ COPY ./example_modules /root/example_modules
 COPY ./example_services /root/example_services
 
 # Download the u2net model
-RUN cd /root/example_modules/demo_modules/ && python rembg.module.py
+RUN source /root/miniconda3/etc/profile.d/conda.sh && conda activate jarvis \
+    && cd /root/example_modules/demo_modules/ && python rembg.module.py
 
 CMD ["bash", "/root/jarvis/supervisor.d/entrypoint.sh"]
