@@ -1,0 +1,15 @@
+
+[authors]
+"buckyos.org" = {public="aaaa",name="BuckyOS Core Dev Team"}
+[authors."cyfs.com"]  
+public="bbbb"
+name="CYFS Core Dev Team"
+
+[env]
+is_strict = false
+prefixs = ["default","../m/s","abc"]
+obj2 = {k1="bb",k2=300}
+[env.obj]
+k1="aa"
+k2=200
+

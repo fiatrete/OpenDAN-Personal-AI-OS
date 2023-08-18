@@ -1,0 +1,1 @@
+from .cid import content_id
