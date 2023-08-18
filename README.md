@@ -13,7 +13,14 @@ This project is still in its very early stages, and there may be significant cha
 
 ## **Updates**
 
-I've just refactored Jarvis's code, leveraging the `functions` support from ChatGPT. As a result, Jarvis now responds much faster and has more stable selection for the functional module. I encourage you to checkout the updated code to experience these improvements firsthand.
+### 1. Adding Knowledge Base Infrastructure
+We're currently working on implementing the infrastructure for the Knowledge Base, aiming to enhance AI agent's access to Personal Data stored on Personal Servers. Leveraging these new features, we want to empower everyone to build their own personal homepage in the AI era using OpenDAN.
+
+### 2. Development Based on SourceDAO Contract
+We are in the process of developing the OpenDAN's DAO page, which is based on the SourceDAO contract. The future of OpenDAN should be determined by the community.
+
+### 3. Welcoming waterflier as a Core Contributor
+We're excited to officially invite waterflier to join as a core contributor to our community. We recognize and appreciate his innovative ideas and deep insights in the realm of Personal AI OS. Waterflier will be spearheading the development of the MVP version. As a key contributor to the CYFS CoreDev Team, he brings extensive experience in the domain of Personal Servers.
 
 ## **Intro video - What is OpenDAN?**
 Click the image below for a demo:
