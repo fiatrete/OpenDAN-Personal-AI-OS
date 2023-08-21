@@ -9,12 +9,13 @@ class pkg_info:
         self.target_media_type = "dir"
         self.source_media_type = "7z"
 
-        
-    
-    def parse_pkg_name(pkg_name:str) -> Tuple[str, str, str]:
-        #return pkg_id,version_str,cid
+    @classmethod
+    def parse_pkg_name(cls,pkg_name:str) -> Tuple[str, str, str]:
+        """parse pkg name like test-pkg#nightly#>0.2.31#sha1:323423423 to test-pkg,nightly#>0.2.31,sha1:323423423"""
         pass
     
+
+
     @property
     def cid(self) -> str:
         return self.cid
