@@ -4,6 +4,7 @@ import asyncio
 import aiohttp
 import aiofiles
 import os
+from typing import Tuple
 
 from ndn_client import ContentId,NDN_Client
 from .pkg import PackageInfo,PackageMediaInfo

@@ -1,4 +1,4 @@
-class media_reader:
+class MediaReader:
     def __init__(self):
         pass
 

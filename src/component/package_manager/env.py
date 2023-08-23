@@ -2,8 +2,9 @@
 import logging
 import toml
 
-from .pkg import PackageInfo,PackageMediaInfo 
-from .installer import PackageInstaller
+from .pkg import PackageInfo,PackageMediaInfo,
+from .env import PackageEnv
+from .installer import PackageInstaller,PackageInstallTask
 
 logger = logging.getLogger(__name__)
 
