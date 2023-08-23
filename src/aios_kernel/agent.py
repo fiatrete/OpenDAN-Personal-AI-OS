@@ -1,58 +1,88 @@
 from typing import Optional
+
 import logging
-import llm_kernel,llm_work_task
 
 logger = logging.getLogger(__name__)
 
-
-
 class agent_msg:
     def __init__(self) -> None:
+        self.sender = None
+        self.target = None
+        self.body = None
+
+    def get_msg_id(self) -> str:
+        pass
+
+    def get_sender(self) -> str:
+        return self.sender
+
+    def get_target(self) -> str:
+        return self.target
+
+    # return workflow_name, role_name, session_id
+    def parser_target(self,target:str) -> None:
         pass
 
 class agent_prompt:
     def __init__(self) -> None:
         pass
 
-    def as_str()->str:
+    def as_str(self)->str:
         pass
 
-class agent_chat_session:
+    def append(self,prompt) -> None:
+        pass
+
+# chat session store the chat history between owner and agent
+# chat session might be large, so can read / write at stream mode.
+class ai_chat_session:
     def __init__(self) -> None:
-        self.llm_model_name = None
-        self.llm_instance = None
-        self.max_token_size = 0
-        self.chat_msg_list = None
-        self.enable_function = True
-
         pass
 
-    def chat(self,message:str) -> None:
+    def get_owner_id(self) -> str:
         pass
-    # Key functions, let the AI Agent try to run.
-    def completion(self)->llm_work_task:
-        if self.llm_instance is None:
-            self.llm_instance = llm_kernel.craete(self.llm_model_name)
-            if self.llm_instance is None:
-                logger.fatal(f"cann't get llm_kerenel : {self.llm_model_name}")
-                return 
-        
-        llm_work_task = self.llm_instance.completion(self._get_prompt(),self.max_token_size)
-        return llm_work_task
 
-    def _get_prompt(str) -> str:
+    def append_post(self,msg:agent_msg) -> None:
+        """append msg to session, msg is post from session (owner => msg.target)"""
+        pass
+
+    def append_recv(self,msg:agent_msg) -> None:
+        """append msg to session, msg is recv from msg'sender (msg.sender => owner)"""
         pass    
 
+    def attach_event_handler(self,handler) -> None:
+        """chat session changed event handler"""
+        pass
+
+    #TODO : add iterator interface for read chat history 
+
+class ai_agent_templete:
+    def __init__(self) -> None:
+        pass
+    
 class ai_agent:
     def __init__(self) -> None:
-        pass    
+        self.chat_sessions = None    
+        self.llm_model_name = None
+        self.max_token_size = 0
+        self.instance_id = None
+        self.template_id = None
 
-    def get_chat_session(self,chat_user_name:str,session_id:Optional[str]) -> agent_chat_session:
+    def get_id(self) -> str:
+        return self.instance_id
+
+    def get_template_id(self) -> str:
+        return self.template_id
+
+    def get_chat_session_for_msg(self,msg:agent_msg) -> ai_chat_session:
         pass
 
+    def get_chat_session(self,sender:str,session_id:str) -> ai_chat_session:
+        pass
 
+    def get_llm_model_name(self) -> str:
+        return self.llm_model_name
+    
+    def get_max_token_size(self) -> int:
+        return self.max_token_size
 
-    #chat_session = agent.get_default_chat_session("master");
-    #chat_session.chat("给我讲一个英文笑话!");
-    #chat_session.completion();
-    #print(chat_session.last_msg());

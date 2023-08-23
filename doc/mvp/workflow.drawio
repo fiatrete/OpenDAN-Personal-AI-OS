@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2023-08-20T20:08:22.343Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="SQBT5p79u9TgTP61At6q" version="21.6.8" type="device" pages="3">
+<mxfile host="Electron" modified="2023-08-21T08:17:59.615Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="B6guG2NTWSku4GvC0ygf" version="21.6.8" type="device" pages="3">
   <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
-    <mxGraphModel dx="1421" dy="816" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="981" dy="563" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-0" />
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-1" parent="WIyWlLk6GJQsqaUBKTNV-0" />
@@ -211,7 +211,7 @@
           <mxGeometry x="510" y="180" width="165" height="30" as="geometry" />
         </mxCell>
         <mxCell id="q_eHDVuD3DBh6_VEKgap-5" value="如果一个工作流有3个role参与，每个人都需要调用函数并分析结果，那么要进行至少6次推理" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-          <mxGeometry x="500" y="640" width="174" height="40" as="geometry" />
+          <mxGeometry x="483" y="640" width="174" height="40" as="geometry" />
         </mxCell>
         <mxCell id="q_eHDVuD3DBh6_VEKgap-6" value="这里是基于规则的合并，给另一个Role合并是多输入Agent流程" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
           <mxGeometry x="635" y="570" width="160" height="30" as="geometry" />
@@ -251,7 +251,7 @@
         <mxCell id="8StUH8aFnwlRlHm0zShF-6" value="Workflow Rules助记词" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.25;" vertex="1" parent="1">
           <mxGeometry x="40" y="235.5" width="120" height="52.5" as="geometry" />
         </mxCell>
-        <mxCell id="8StUH8aFnwlRlHm0zShF-7" value="访问Knowlegegou构造助记词" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.25;" vertex="1" parent="1">
+        <mxCell id="8StUH8aFnwlRlHm0zShF-7" value="访问Knowlege构造助记词" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.25;" vertex="1" parent="1">
           <mxGeometry x="40" y="378" width="120" height="50" as="geometry" />
         </mxCell>
         <mxCell id="Tz-ThZOieDqqDBRXvXnh-1" value="Invoke the function and wait for the necessary response." style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fontSize=11;" vertex="1" parent="1">
