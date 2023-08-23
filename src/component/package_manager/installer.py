@@ -19,7 +19,7 @@ INSTALL_TASK_STATE_DOWNLOADING = 3
 INSTALL_TASK_STATE_INSTALLING = 4
 INSTALL_TAKS_STATE_ERROR = 5
 
-class install_task:
+class pkg_install_task:
     def __init__(self,owner:pkg_env) -> None:
         self.owner = owner
         self.state = INSTALL_TASK_STATE_CHECK_DEPENDENCY
@@ -35,7 +35,7 @@ class pkg_installer:
         self.owner_env = owner_env
     
     def install(self,pkg_name:str,
-                install_from_dependency = False, can_upgrade = True,skip_depends = False,options = None)->Tuple[install_task,str]:
+                install_from_dependency = False, can_upgrade = True,skip_depends = False,options = None)->Tuple[pkg_install_task,str]:
 
         the_pkg_info : pkg_info = None
         is_upgrade : bool = False
@@ -74,7 +74,7 @@ class pkg_installer:
             return result_task,"already installing"
         
         logger.info(f"start download&install {pkg_name},install_from_dependency={install_from_dependency},upgrade={is_upgrade},backup={need_backup},target_pkg_info={the_pkg_info}")
-        result_task = install_task()
+        result_task = pkg_install_task()
         self.all_tasks[the_pkg_info.cid] = result_task
         async def download_and_install_pkg()->int:
             # check dependency
@@ -149,7 +149,7 @@ class pkg_installer:
             if depend_task is not None:
                 logger.debug(f"{pkg.name}'s depend pkg {depend_pkg_name} already in task list")
                 continue
-            depend_task = install_task()
+            depend_task = pkg_install_task()
             task_list[depend_pkg_name] = depend_task
             
             depend_pkg_info = self.owner_env.lookup(depend_pkg_name)

@@ -23,8 +23,9 @@ def test_agent():
         agent = am.create(agent_templete,"Tracy","Wang","Tracy Wang is my english teacher")
     
     print("Agent Tracy Wang load success!");
+    print(agent.get_introduce());
 
-    #print(agent.get_introduce());
+      
 
     #chat_session = agent.get_default_chat_session("master");
     #chat_session.chat("给我讲一个英文笑话!");
