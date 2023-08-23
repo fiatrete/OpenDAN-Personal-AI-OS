@@ -1,5 +1,7 @@
+from typing import Tuple
 
-class pkg_info:
+
+class PackageInfo:
     def __init__(self) -> None:
         self.name = ""
         self.cid = None
@@ -20,7 +22,7 @@ class pkg_info:
     def cid(self) -> str:
         return self.cid
 
-class pkg_media_info:
+class PackageMediaInfo:
     def __init__(self) -> None:
         pass
 

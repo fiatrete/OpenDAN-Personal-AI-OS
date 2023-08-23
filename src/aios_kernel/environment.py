@@ -4,14 +4,14 @@
 from abc import ABC, abstractmethod
 from typing import Callable
 
-from .agent import agent_msg
+from .agent import AgentMsg
 
-class environment_event(ABC):
+class EnvironmentEvent(ABC):
     @abstractmethod
     def display(self) -> str:
         pass    
 
-class environment:
+class Environment:
     def __init__(self) -> None:
         pass
 

@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class agent_msg:
+class AgentMsg:
     def __init__(self) -> None:
         self.sender = None
         self.target = None
@@ -23,7 +23,7 @@ class agent_msg:
     def parser_target(self,target:str) -> None:
         pass
 
-class agent_prompt:
+class AgentPrompt:
     def __init__(self) -> None:
         pass
 
@@ -35,18 +35,18 @@ class agent_prompt:
 
 # chat session store the chat history between owner and agent
 # chat session might be large, so can read / write at stream mode.
-class ai_chat_session:
+class AIChatSession:
     def __init__(self) -> None:
         pass
 
     def get_owner_id(self) -> str:
         pass
 
-    def append_post(self,msg:agent_msg) -> None:
+    def append_post(self,msg:AgentMsg) -> None:
         """append msg to session, msg is post from session (owner => msg.target)"""
         pass
 
-    def append_recv(self,msg:agent_msg) -> None:
+    def append_recv(self,msg:AgentMsg) -> None:
         """append msg to session, msg is recv from msg'sender (msg.sender => owner)"""
         pass    
 
@@ -56,11 +56,11 @@ class ai_chat_session:
 
     #TODO : add iterator interface for read chat history 
 
-class ai_agent_templete:
+class AIAgentTemplete:
     def __init__(self) -> None:
         pass
     
-class ai_agent:
+class AIAgent:
     def __init__(self) -> None:
         self.chat_sessions = None    
         self.llm_model_name = None
@@ -74,10 +74,10 @@ class ai_agent:
     def get_template_id(self) -> str:
         return self.template_id
 
-    def get_chat_session_for_msg(self,msg:agent_msg) -> ai_chat_session:
+    def get_chat_session_for_msg(self,msg:AgentMsg) -> AIChatSession:
         pass
 
-    def get_chat_session(self,sender:str,session_id:str) -> ai_chat_session:
+    def get_chat_session(self,sender:str,session_id:str) -> AIChatSession:
         pass
 
     def get_llm_model_name(self) -> str:

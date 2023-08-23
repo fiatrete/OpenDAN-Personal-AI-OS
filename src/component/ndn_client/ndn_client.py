@@ -1,13 +1,13 @@
 
-from .cid import content_id 
+from .cid import ContentId 
 
-class ndn_get_task:
+class NDN_GetTask:
     def __init__(self) -> None:
         pass
 
-class ndn_client:
+class NDN_Client:
     def __init__(self):
         pass
 
-    def get_file(cid:content_id,target_path:str,urls:{}=None,options:{}=None):
+    def get_file(self,cid:ContentId,target_path:str,urls:{}=None,options:{}=None):
         pass

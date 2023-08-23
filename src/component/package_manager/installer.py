@@ -5,10 +5,9 @@ import aiohttp
 import aiofiles
 import os
 
-from ndn_client import content_id,ndn_client
-from .pkg import pkg_info,pkg_media_info
-from .env import pkg_env
-
+from ndn_client import ContentId,NDN_Client
+from .pkg import PackageInfo,PackageMediaInfo
+from .env import PackageEnv
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +18,8 @@ INSTALL_TASK_STATE_DOWNLOADING = 3
 INSTALL_TASK_STATE_INSTALLING = 4
 INSTALL_TAKS_STATE_ERROR = 5
 
-class pkg_install_task:
-    def __init__(self,owner:pkg_env) -> None:
+class PackageInstallTask:
+    def __init__(self,owner:PackageEnv) -> None:
         self.owner = owner
         self.state = INSTALL_TASK_STATE_CHECK_DEPENDENCY
 
@@ -29,20 +28,20 @@ class pkg_install_task:
         self.dependency_tasks = None
         self.error_str = None
 
-class pkg_installer:
-    def __init__(self,owner_env:pkg_env) -> None:
+class PackageInstaller:
+    def __init__(self,owner_env:PackageEnv) -> None:
         self.all_tasks = {}
         self.owner_env = owner_env
     
     def install(self,pkg_name:str,
-                install_from_dependency = False, can_upgrade = True,skip_depends = False,options = None)->Tuple[pkg_install_task,str]:
+                install_from_dependency = False, can_upgrade = True,skip_depends = False,options = None)->Tuple[PackageInstallTask,str]:
 
-        the_pkg_info : pkg_info = None
+        the_pkg_info : PackageInfo = None
         is_upgrade : bool = False
         need_backup : bool = False
         
-        pkg_id,version_str,cid = pkg_info.parse_pkg_name(pkg_name)
-        media_info : pkg_media_info = self.owner_env.get_media_info(pkg_name) # must use index-db?
+        pkg_id,version_str,cid = PackageInfo.parse_pkg_name(pkg_name)
+        media_info : PackageMediaInfo = self.owner_env.get_media_info(pkg_name) # must use index-db?
         if media_info is not None:
             if cid is not None:
                 if can_upgrade:
@@ -74,7 +73,7 @@ class pkg_installer:
             return result_task,"already installing"
         
         logger.info(f"start download&install {pkg_name},install_from_dependency={install_from_dependency},upgrade={is_upgrade},backup={need_backup},target_pkg_info={the_pkg_info}")
-        result_task = pkg_install_task()
+        result_task = PackageInstallTask(self.owner_env)
         self.all_tasks[the_pkg_info.cid] = result_task
         async def download_and_install_pkg()->int:
             # check dependency
@@ -104,7 +103,7 @@ class pkg_installer:
 
             urls = self.owner_env.get_pkg_urls(the_pkg_info)
             #download
-            client = ndn_client() # set watch
+            client = NDN_Client() # set watch
             download_result = await client.get_file(the_pkg_info.cid,urls,target_full_path,options) 
             if download_result !=0:
                 result_task.state = INSTALL_TAKS_STATE_ERROR
@@ -140,16 +139,16 @@ class pkg_installer:
     def uninstall(self):
         pass
     
-    def get_dependency_tasks(self,pkg:pkg_info,dependency_tasks):
+    def get_dependency_tasks(self,pkg:PackageInfo,dependency_tasks):
         pass
 
-    async def check_dependency(self,pkg:pkg_info,task_list:{}) -> bool:
+    async def check_dependency(self,pkg:PackageInfo,task_list:{}) -> bool:
         for depend_pkg_name in pkg.depends:
             depend_task = task_list.get(depend_pkg_name)
             if depend_task is not None:
                 logger.debug(f"{pkg.name}'s depend pkg {depend_pkg_name} already in task list")
                 continue
-            depend_task = pkg_install_task()
+            depend_task = PackageInstallTask(self.owner_env)
             task_list[depend_pkg_name] = depend_task
             
             depend_pkg_info = self.owner_env.lookup(depend_pkg_name)

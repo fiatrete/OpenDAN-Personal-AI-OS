@@ -1,4 +1,4 @@
-class ai_function:
+class AIFunction:
     def __init__(self) -> None:
         self.intro : str = None
     
@@ -21,7 +21,7 @@ class ai_function:
         pass
 
 # call chain is a combination of ai_function,group of ai_function.
-class call_chain:
+class CallChain:
     def __init__(self) -> None:
         pass
 

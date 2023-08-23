@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from .compute_kernel import compute_task
+from .compute_kernel import ComputeTask
 
-class compute_node(ABC):
+class ComputeNode(ABC):
     @abstractmethod
-    async def push_task(self,task:compute_task,proiority:int = 0):
+    async def push_task(self,task:ComputeTask,proiority:int = 0):
         pass
     
     async def remove_task(self,task_id:str):
@@ -38,7 +38,7 @@ class compute_node(ABC):
     
     
 
-class local_compute_node(compute_node):
+class LocalComputeNode(ComputeNode):
     def display(self) -> str:
         return super().display()
     
