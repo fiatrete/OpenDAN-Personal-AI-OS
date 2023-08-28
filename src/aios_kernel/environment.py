@@ -4,8 +4,6 @@
 from abc import ABC, abstractmethod
 from typing import Callable
 
-from .agent import AgentMsg
-
 class EnvironmentEvent(ABC):
     @abstractmethod
     def display(self) -> str:

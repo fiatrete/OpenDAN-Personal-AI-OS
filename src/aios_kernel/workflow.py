@@ -1,7 +1,9 @@
 
 import logging
 import asyncio
+from asyncio import Queue
 from typing import Optional,Tuple
+from abc import ABC, abstractmethod
 
 from .environment import Environment,EnvironmentEvent
 from .agent import AgentPrompt,AgentMsg,AIChatSession
@@ -17,13 +19,14 @@ class MessageFilter:
     def select(self,msg:AgentMsg) -> AIRole:
         pass
 
+
 class Workflow:
     def __init__(self) -> None:
         self.rule_prompt : AgentPrompt = None
         self.workflow_config = None
         self.role_group = None
         self.input_filter : MessageFilter= None
-        self.msg_queue = []
+        self.msg_queue = Queue()
         self.connected_environment = {}
         
     def load_from_disk(self,config_path:str,context_dir_path) -> int:
@@ -34,7 +37,7 @@ class Workflow:
     # chatsession is synchronous, it has to wait for the previous message to finish processing before it can process the next message. 
     # Therefore, post a message needs to specify the session_id explicitly, if not specified it will be automatically created by workflow.
     def post_msg(self,msg:AgentMsg) -> None:
-        self.msg_queue.append(msg)
+        self.msg_queue.put_nowait(msg)
         return
     
     async def send_msg(self,msg:AgentMsg) -> str:
@@ -180,7 +183,7 @@ class Workflow:
     def _parse_to_msg(self,llm_resp_str) -> AgentMsg:
         pass
     
-    def get_workflow(self,workflow_name:str) -> Workflow:
+    def get_workflow(self,workflow_name:str):
         """get workflow from known workflow list or sub workflow list"""
         pass
 

@@ -1,11 +1,17 @@
 from abc import ABC, abstractmethod
-from .compute_kernel import ComputeTask
+from .compute_task import ComputeTask
+
 
 class ComputeNode(ABC):
+    def __init__(self) -> None:
+        self.node_id = "default"
+        self.enable = True
+
     @abstractmethod
     async def push_task(self,task:ComputeTask,proiority:int = 0):
         pass
     
+    @abstractmethod
     async def remove_task(self,task_id:str):
         pass
 
@@ -29,7 +35,6 @@ class ComputeNode(ABC):
     def is_local(self) -> bool:
         pass
 
-    @abstractmethod
     def is_trusted(self) -> bool:
         return True
     

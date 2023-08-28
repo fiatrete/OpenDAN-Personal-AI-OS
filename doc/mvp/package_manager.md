@@ -15,7 +15,7 @@ Let's start by introducing the two important processes.
 ## Install Package
 [![](./install_package.png)](pkg_procedure.drawio)
 
-注意安装的依赖检测流程，按照流程允许将确实的package安装到当前env
+Note that the dependency check during installation allows for the missing packages to be installed into the current environment.
 
 # Some Basic Concepts
 - ***env***:A target environment consisting of a series of configuration files, where packages can be loaded/installed.
