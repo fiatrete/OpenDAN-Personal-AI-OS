@@ -10,10 +10,6 @@ logger = logging.getLogger(__name__)
 
 class AgentManager:
     _instance = None
-
-    def __init__(self) -> None:
-        self.loaded_agent_instance = {}
-        pass
    
     def __new__(cls):
         if cls._instance is None:
@@ -22,8 +18,10 @@ class AgentManager:
     
 
     def initial(self,root_dir:str) -> None:
-        self.agent_templete_env : PackageEnv = PackageEnvManager().get_env(f"{root_dir}templetes/templetes.cfg")
-        self.agent_env : PackageEnv = PackageEnvManager().get_env(f"{root_dir}agents/agents.cfg")
+        self.agent_templete_env : PackageEnv = PackageEnvManager().get_env(f"{root_dir}/templetes/templetes.cfg")
+        self.agent_env : PackageEnv = PackageEnvManager().get_env(f"{root_dir}/agents/agents.cfg")
+        self.db_path = f"{root_dir}/agents_chat.db"
+        self.loaded_agent_instance = {}
         if self.agent_templete_env is None:
             raise Exception("agent_manager initial failed")
         
@@ -41,8 +39,8 @@ class AgentManager:
         the_agent : AIAgent = await self._load_agent_from_media(agent_media_info)
         if the_agent is None:
             logger.warn(f"load agent {agent_id} from media failed!")
-        else:
-            the_agent.start()    
+            
+        the_agent.chat_db = self.db_path
         return the_agent
 
     def remove(self,agent_id:str)->int:

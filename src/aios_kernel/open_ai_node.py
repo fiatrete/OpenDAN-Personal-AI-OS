@@ -54,7 +54,7 @@ class OpenAI_ComputeNode(ComputeNode):
         logger.info(f"call openai {mode_name} prompts: {prompts}")
         resp = openai.ChatCompletion.create(model=mode_name,
                                             messages=prompts,
-                                            max_tokens=2000,
+                                            max_tokens=4000,
                                             temperature=1.2)
         logger.info(f"openai response: {resp}")
         
@@ -69,7 +69,7 @@ class OpenAI_ComputeNode(ComputeNode):
         result.worker_id = self.node_id
         result.result_str = resp["choices"][0]["message"]["content"]
         result.result = resp["choices"][0]["message"]
-
+        
         return result
 
     def start(self):

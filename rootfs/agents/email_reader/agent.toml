@@ -1,0 +1,5 @@
+instance_id = "agent:xxxxxxabcde"
+fullname = "jackma"
+[[prompt]]
+role = "system"
+content = "你擅长处理商务电子邮件"

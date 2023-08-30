@@ -17,23 +17,42 @@ from prompt_toolkit.completion import WordCompleter
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
-from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgState,ComputeKernel,OpenAI_ComputeNode
+from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgState,ComputeKernel,OpenAI_ComputeNode,AIBus
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
 
+
 class AIOS_Shell:
     def __init__(self,username:str) -> None:
         self.username = username
+        
         self.user_chatsession = {}
 
+    async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
+        agent : AIAgent = await AgentManager().get(msg.target)
+        if agent is not None:
+            bus.register_message_handler(msg.target,agent._process_msg)
+            return True
+        
+        a_workflow = await WorkflowManager().get_workflow(msg.target)
+        if a_workflow is not None:
+            bus.register_message_handler(msg.target,a_workflow._process_msg)
+            for subflow in a_workflow.sub_workflows.values():
+                bus.register_message_handler(subflow.workflow_name,subflow._process_msg)
+            return True
+        
+        return False
+    
+
     async def initial(self) -> bool:
-        AgentManager().initial(directory + "/../../../rootfs/")
-        WorkflowManager().initial(directory + "/../../../../rootfs/workflows/workflows.cfg")
+        AgentManager().initial(os.path.abspath(   directory + "/../../../rootfs/"))
+        WorkflowManager().initial(os.path.abspath(directory + "/../../../rootfs/workflows/"))
         open_ai_node = OpenAI_ComputeNode()
         open_ai_node.start()
         ComputeKernel().add_compute_node(open_ai_node)
+        AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         return True 
         
 
@@ -43,38 +62,12 @@ class AIOS_Shell:
     async def send_msg(self,msg:str,target_id:str,sender:str = None) -> str:
         agent_msg = AgentMsg()
         agent_msg.set(sender,target_id,msg)
-
-        agent : AIAgent = await AgentManager().get(target_id)
-        if agent is not None:
-           agent.post_msg(agent_msg)
-        
-        a_workflow = WorkflowManager().get_workflow(target_id)
-        if a_workflow is not None:
-            a_workflow.post_msg(agent_msg)
-
-
-        async def check_timer():
-            check_times = 0
-            while True:
-                if agent_msg.state == AgentMsgState.RESPONSED:
-                    break
-
-                if agent_msg.state == AgentMsgState.ERROR:
-                    break
-
-                if check_times >=  20:
-                    agent_msg.state = AgentMsgState.ERROR
-                    break
-
-                await asyncio.sleep(0.5)
-                check_times += 1
-            
-        await asyncio.create_task(check_timer())
-        if agent_msg.state == AgentMsgState.RESPONSED:
-            return agent_msg.resp_msg.body
-        
-        return "error!"
-
+        agent_msg.topic = "default"
+        resp = await AIBus().get_default_bus().send_message(target_id,agent_msg)
+        if resp is not None:
+            return resp.body
+        else:
+            return "error!"
 
     async def install_workflow(self,workflow_id:Workflow) -> None:
         pass
@@ -87,21 +80,20 @@ def proc_input_by_agent():
 def show_help():
     print("this is help")
 
+history = FileHistory('history.txt')
+session = PromptSession(history=history) 
 
 async def main():
     print("aios shell prepareing...")
-    logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(name)s %(levelname)s %(message)s')
-    
+    logging.basicConfig(level=logging.INFO,format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
     shell = AIOS_Shell("user")
     await shell.initial()
     print(f"aios shell {shell.get_version()} ready.")
 
-
     completer = WordCompleter(['list agent', 'list workflow', 'exit', 'help'], ignore_case=True)
     #history = FileHistory('history.txt')
     while True:
-        user_input = await PromptSession().prompt_async('>>> ',completer=completer)
+        user_input = await session.prompt_async('>>> ',completer=completer)
         match user_input:
             case "list agent":
                 print(AgentManager().list_agent())
@@ -121,8 +113,8 @@ async def main():
             target_id = args[1]
             msg_content = args[2]
             resp = await shell.send_msg(msg_content,target_id,shell.username)
-            print(f"<<< {resp}")
+            print(f"<<<{target_id} : {resp}")
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     asyncio.run(main())
 

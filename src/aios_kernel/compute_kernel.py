@@ -19,16 +19,13 @@ class ComputeKernel:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance.is_start = False
-        else:
-            print("ComputeKernel is already created!")
+
         return cls._instance
 
     def __init__(self) -> None:
         if self.is_start is True:
-            print("ComputeKernel is already start!")
             return
         
-        print("init ComputeKernel!!!")
         self.is_start = True
         self.task_queue = Queue()
         self.is_start = False
