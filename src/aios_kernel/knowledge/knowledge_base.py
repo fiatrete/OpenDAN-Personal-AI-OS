@@ -8,3 +8,5 @@ class KnowledgeBase:
 
     async def query(self, prompt: AgentPrompt) -> AgentPrompt:
         pass
+
+    
