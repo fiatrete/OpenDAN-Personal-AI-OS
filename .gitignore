@@ -1,6 +1,5 @@
 .vscode/
 *.pyc
-rootfs/data
 *.log
 rootfs/email/config.local.toml
 rootfs/data
@@ -10,4 +9,5 @@ history.txt
 aios_shell_history.txt
 math_school_env.db
 workflows.db
+
 
