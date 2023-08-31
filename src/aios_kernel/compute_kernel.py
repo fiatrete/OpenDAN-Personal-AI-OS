@@ -119,3 +119,33 @@ class ComputeKernel:
               
         return "error!"
     
+    def text_embedding(self,input:str,model_name:Optional[str] = None):
+        task_req = ComputeTask()
+        task_req.set_text_embeding_params(input,model_name)
+        self.run(task_req)
+        return task_req
+    
+    async def do_text_embedding(self,input:str,model_name:Optional[str] = None) -> [float]
+        task_req = self.text_embedding(input,model_name)
+        async def check_timer():
+            check_times = 0
+            while True:
+                if task_req.state == ComputeTaskState.DONE:
+                    break
+
+                if task_req.state == ComputeTaskState.ERROR:
+                    break
+
+                if check_times >=  20:
+                    task_req.state = ComputeTaskState.ERROR
+                    break
+
+                await asyncio.sleep(0.5)
+                check_times += 1
+            
+        await asyncio.create_task(check_timer())
+        if task_req.state == ComputeTaskState.DONE:
+            return task_req.result.result
+              
+        return "error!"
+    

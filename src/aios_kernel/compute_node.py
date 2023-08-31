@@ -28,7 +28,7 @@ class ComputeNode(ABC):
         pass
 
     @abstractmethod
-    def is_support(self,task_type:str) -> bool:
+    def is_support(self, task: ComputeTask) -> bool:
         pass
 
     @abstractmethod
