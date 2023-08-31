@@ -125,7 +125,7 @@ class ComputeKernel:
         self.run(task_req)
         return task_req
     
-    async def do_text_embedding(self,input:str,model_name:Optional[str] = None) -> [float]
+    async def do_text_embedding(self,input:str,model_name:Optional[str] = None) -> [float]:
         task_req = self.text_embedding(input,model_name)
         async def check_timer():
             check_times = 0

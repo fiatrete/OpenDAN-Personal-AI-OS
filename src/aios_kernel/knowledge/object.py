@@ -21,7 +21,7 @@ class ObjectID: # pylint: disable=too-few-public-methods
 
 # define a object class
 class KnowledgeObject(ABC): # pylint: disable=too-few-public-methods
-    def __init__(self, object_type):
+    def __init__(self, object_type: ObjectType):
         self.object_type = object_type
 
     @abstractmethod
@@ -41,7 +41,7 @@ class KnowledgeObject(ABC): # pylint: disable=too-few-public-methods
 
 # define a text chunk class
 class TextChunkObject(KnowledgeObject): # pylint: disable=too-few-public-methods
-    def __init__(self, text):
+    def __init__(self, text: str):
         super().__init__(ObjectType.TextChunk)
         self.text = text
 
@@ -59,7 +59,7 @@ class EmailObject(KnowledgeObject): # pylint: disable=too-few-public-methods
     def __init__(self, meta):
         super().__init__(ObjectType.Email)
         self.meta = meta
-        self.text = []
-        self.images = []
+        self.text = [ObjectID]
+        self.images = [ObjectID]
 
     
