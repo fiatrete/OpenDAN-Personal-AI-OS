@@ -3,32 +3,42 @@ import asyncio
 import sys
 import os
 import logging
+import re
 
 from typing import Any, Optional, TypeVar, Tuple, Sequence
 import argparse
 
-from prompt_toolkit.formatted_text.base import AnyFormattedText
-from prompt_toolkit import Application, PromptSession, prompt
+
+from prompt_toolkit import HTML, PromptSession, prompt,print_formatted_text
+from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.selection import SelectionState
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.styles import Style
+
+shell_style = Style.from_dict({
+    'title': '#87d7ff bold', #RGB
+    'content': '#007f00 bold',
+    'prompt': '#00FF00',
+})
 
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
-from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgState,ComputeKernel,OpenAI_ComputeNode,AIBus
+from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgState,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
 
 
+
 class AIOS_Shell:
     def __init__(self,username:str) -> None:
         self.username = username
-        
-        self.user_chatsession = {}
+        self.current_target = "_"
+        self.current_topic = "default"
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
         agent : AIAgent = await AgentManager().get(msg.target)
@@ -45,9 +55,15 @@ class AIOS_Shell:
         
         return False
     
+    async def is_agent(self,target_id:str) -> bool:
+        agent : AIAgent = await AgentManager().get(target_id)
+        if agent is not None:
+            return True
+        else:
+            return False
 
     async def initial(self) -> bool:
-        AgentManager().initial(os.path.abspath(   directory + "/../../../rootfs/"))
+        AgentManager().initial(os.path.abspath(directory + "/../../../rootfs/"))
         WorkflowManager().initial(os.path.abspath(directory + "/../../../rootfs/workflows/"))
         open_ai_node = OpenAI_ComputeNode()
         open_ai_node.start()
@@ -59,10 +75,10 @@ class AIOS_Shell:
     def get_version(self) -> str:
         return "0.0.1"
 
-    async def send_msg(self,msg:str,target_id:str,sender:str = None) -> str:
+    async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None) -> str:
         agent_msg = AgentMsg()
         agent_msg.set(sender,target_id,msg)
-        agent_msg.topic = "default"
+        agent_msg.topic = topic
         resp = await AIBus().get_default_bus().send_message(target_id,agent_msg)
         if resp is not None:
             return resp.body
@@ -71,49 +87,119 @@ class AIOS_Shell:
 
     async def install_workflow(self,workflow_id:Workflow) -> None:
         pass
-    
+
+    async def call_func(self,func_name, args):
+        match func_name:
+            case 'send':
+                target_id = args[0]
+                msg_content = args[1]
+                topic = args[2]
+                resp = await self.send_msg(msg_content,target_id,topic,self.username)
+                show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
+                                           ("class:content", resp)])
+                return show_text
+            case 'open':
+                if len(args) >= 1:
+                    target_id = args[0]
+                if len(args) >= 2:
+                    topic = args[1]
+
+                self.current_target = target_id
+                self.current_topic = topic
+                show_text = FormattedText([("class:title", f"current session switch to {topic}@{target_id}")])
+                return show_text
+            case 'history':
+                num = 10
+                offset = 0
+                if len(args) >= 1:
+                    num = args[0]
+                if len(args) >= 2:
+                    offset = args[1]
+
+                db_path = ""
+                if await self.is_agent(self.current_target):
+                    db_path = AgentManager().db_path
+                else:
+                    db_path = WorkflowManager().db_file
+                chatsession:AIChatSession = AIChatSession.get_session(self.current_target,f"{self.username}#{self.current_topic}",db_path,False)
+                if chatsession is not None:
+                    msgs = chatsession.read_history(num,offset)
+                    format_texts = []
+                    for msg in reversed(msgs):
+                        format_texts.append(("class:content",f"{msg.sender} >>> {msg.body}"))
+                        format_texts.append(("",f"\n-------------------\n"))
+                    return FormattedText(format_texts)
+                return FormattedText([("class:title", f"chatsession not found")])
+            case 'exit':
+                os._exit(0)
+            case 'help':
+                return FormattedText([("class:title", f"help~~~")])
+
 
 #######################################################################################    
-def proc_input_by_agent():
-    pass
-
-def show_help():
-    print("this is help")
-
 history = FileHistory('history.txt')
 session = PromptSession(history=history) 
 
+def parse_function_call(s):
+    match = re.match(r'(\w+)\((.*)\)$', s)
+    if match:
+        func_name = match.group(1)
+        args_str = match.group(2)
+        
+        args = []
+        buffer = ''
+        quote_count = 0  # Count of single or double quotes
+        for char in args_str:
+
+            if char in ['"', "'"]:
+                quote_count += 1
+            if char == ',' and quote_count % 2 == 0:  # ',' is outside of quotes
+                args.append(buffer.strip())
+                buffer = ''
+            else:
+                buffer += char
+        if buffer:
+            args.append(buffer.strip())
+        
+        return func_name, args
+    else:
+        return None
+    
+
 async def main():
     print("aios shell prepareing...")
-    logging.basicConfig(level=logging.INFO,format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
+    logging.basicConfig(filename="aios_shell.log",filemode="w",level=logging.INFO,format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
     shell = AIOS_Shell("user")
     await shell.initial()
     print(f"aios shell {shell.get_version()} ready.")
 
-    completer = WordCompleter(['list agent', 'list workflow', 'exit', 'help'], ignore_case=True)
-    #history = FileHistory('history.txt')
+    completer = WordCompleter(['send($target,$msg,$topic)', 
+                               'open($target,$topic)', 
+                               'history($num,$offset)',
+                               'show()',
+                               'exit()', 
+                               'help()'], ignore_case=True)
+  
     while True:
-        user_input = await session.prompt_async('>>> ',completer=completer)
-        match user_input:
-            case "list agent":
-                print(AgentManager().list_agent())
-            case "list workflow":
-                print(WorkflowManager().list_workflow())
-            case "help":
-                show_help()
-            case "exit":
-                break
-        
+        user_input = await session.prompt_async(f"{shell.username}<->{shell.current_topic}@{shell.current_target}$",completer=completer,style=shell_style)
+        if len(user_input) <= 1:
+            continue
 
-        if user_input.startswith("send"):
-            args = user_input.split(" ")
-            if len(args) < 3:
-                print("send msg failed, usage: send target_id msg_content")
-                continue
-            target_id = args[1]
-            msg_content = args[2]
-            resp = await shell.send_msg(msg_content,target_id,shell.username)
-            print(f"<<<{target_id} : {resp}")
+        func_call = parse_function_call(user_input)
+        show_text = None
+        if func_call:
+            show_text = await shell.call_func(func_call[0], func_call[1])
+        else:
+            resp = await shell.send_msg(user_input,shell.current_target,shell.current_topic,shell.username)
+            show_text = FormattedText([
+                ("class:title", f"{shell.current_topic}@{shell.current_target} >>> "),
+                ("class:content", resp)
+            ])
+
+        print_formatted_text(show_text,style=shell_style)
+        #print_formatted_text(f"{shell.username}<->{shell.current_topic}@{shell.current_target} >>> {resp}",style=shell_style)
+
+    
 
 if __name__ == "__main__":    
     asyncio.run(main())

@@ -180,7 +180,7 @@ class Workflow:
                 resp = await callchain.exec()
                 if callchain.have_result():
                     # generator proc resp prompt with WAITING state
-                    proc_resp_prompt:AgentPrompt = self._get_resp_prompt(resp,msg,the_role,prompt,chatsession)
+                    #proc_resp_prompt:AgentPrompt = self._get_resp_prompt(resp,msg,the_role,prompt,chatsession)
                     final_result = await ComputeKernel().do_llm_completion(proc_resp_prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
                     return final_result
 
