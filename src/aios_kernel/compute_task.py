@@ -63,6 +63,7 @@ class ComputeTask:
             self.params["model_name"] = model_name
         else:
             self.params["model_name"] = "text-embedding-ada-002"
+
         self.params["input"] = input
 
     def display(self) -> str:
