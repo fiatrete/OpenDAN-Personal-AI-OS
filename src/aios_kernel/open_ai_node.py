@@ -47,31 +47,39 @@ class OpenAI_ComputeNode(ComputeNode):
     
     def _run_task(self,task:ComputeTask):
         task.state = ComputeTaskState.RUNNING
-        mode_name = task.params["model_name"]
-        # max_token_size = task.params["max_token_size"]
-        prompts = task.params["prompts"]
+        # switch tsak type
+        if task.task_type == "llm_completion":
+            mode_name = task.params["model_name"]
+            # max_token_size = task.params["max_token_size"]
+            prompts = task.params["prompts"]
 
-        logger.info(f"call openai {mode_name} prompts: {prompts}")
-        resp = openai.ChatCompletion.create(model=mode_name,
-                                            messages=prompts,
-                                            max_tokens=4000,
-                                            temperature=1.2)
-        logger.info(f"openai response: {resp}")
-        
-        status_code = resp["choices"][0]["finish_reason"]
-        if status_code != "stop":
-            task.state = ComputeTaskState.ERROR
-            task.error_str =f"The status code was {status_code}."
-            return None
-        
-        result = ComputeTaskResult()    
-        result.set_from_task(task)
-        result.worker_id = self.node_id
-        result.result_str = resp["choices"][0]["message"]["content"]
-        result.result = resp["choices"][0]["message"]
-        
-        return result
+	        mode_name = task.params["model_name"]
+	        # max_token_size = task.params["max_token_size"]
+	        prompts = task.params["prompts"]
 
+	        logger.info(f"call openai {mode_name} prompts: {prompts}")
+	        resp = openai.ChatCompletion.create(model=mode_name,
+	                                            messages=prompts,
+	                                            max_tokens=4000,
+	                                            temperature=1.2)
+	        logger.info(f"openai response: {resp}")
+	        
+	        status_code = resp["choices"][0]["finish_reason"]
+	        if status_code != "stop":
+	            task.state = ComputeTaskState.ERROR
+	            task.error_str =f"The status code was {status_code}."
+	            return None
+	        
+	        result = ComputeTaskResult()    
+	        result.set_from_task(task)
+	        result.worker_id = self.node_id
+	        result.result_str = resp["choices"][0]["message"]["content"]
+	        result.result = resp["choices"][0]["message"]
+	        
+	        return result
+ 		if task.task_type == "embeding":
+            pass
+            
     def start(self):
         async def _run_task_loop():
             while True:
