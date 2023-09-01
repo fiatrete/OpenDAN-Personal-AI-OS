@@ -52,6 +52,7 @@ class WorkflowManager:
         the_workflow = await self._load_workflow_from_media(workflow_media_info)
         if the_workflow is None:
             logger.warn(f"load workflow {workflow_id} from media failed!")
+            return None
 
         if await self._load_workflow_agents(the_workflow) is False:
             return None

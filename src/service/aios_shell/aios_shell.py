@@ -107,6 +107,10 @@ class AIOS_Shell:
                 self.current_topic = topic
                 show_text = FormattedText([("class:title", f"current session switch to {topic}@{target_id}")])
                 return show_text
+            case 'login':
+                if len(args) >= 1:
+                    self.username = args[0]
+                return self.username + " login success!"    
             case 'history':
                 num = 10
                 offset = 0
@@ -157,31 +161,17 @@ def parse_function_call(func_string):
 
 async def main():
     print("aios shell prepareing...")
-    logging.basicConfig(filename="aios_shell.log",filemode="w",encoding='utf-8',
+    logging.basicConfig(filename="aios_shell.log",filemode="w",encoding='utf-8',force=True,
                         level=logging.INFO,
                         format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
     shell = AIOS_Shell("user")
     await shell.initial()
-
-    s = """了解。首先，我们需要进行方案讨论，定出一致的活动策略。我将任务分解如下：
-财务组： 分析可见的预算，提供一份合理并被执行的财务方案。
-行程预订组： 硅谷自然迷人的地方众多，寻找适合11人秋游的地点，以及一个可行的周末日期。策划一个一天或两天的安排，包括选择有南瓜园的地方，采摘苹果，参观当地的酗酒作坊等秋游活动。
-嘉宾对接组： 把个人的食品饮料或过敏食物的需求事先了解并计入行程内。
-酒店预订组：根据行程预订组的日期安排，活动时间在1天还是2天，在这个之内找一个合适的住宿，试着保持让住宿在预算边界以内。
-活动摄像组： 准备活动拍摄与剪辑方案。\n\n然后，我将把这些拆分后的任务发来小组。 
-sendmsg(财务组,分析预算并提供一份财务方案.) 
-sendmsg(行程预订组,找出适合秋游的地方和日期.) 
-sendmsg(嘉宾对接组,了解个人的饮食需求.) 
-sendmsg(酒店预订组,查询并预订住宿.) 
-sendmsg(活动摄像组,提供活动拍摄方案.)  
-经过一两天的准备，一切就绪之后，我将向工作人员发送最后的行程计划，
-    """
-    r = Workflow.prase_llm_result(s)
     print(f"aios shell {shell.get_version()} ready.")
 
     completer = WordCompleter(['send($target,$msg,$topic)', 
                                'open($target,$topic)', 
                                'history($num,$offset)',
+                               'login($username)'
                                'show()',
                                'exit()', 
                                'help()'], ignore_case=True)

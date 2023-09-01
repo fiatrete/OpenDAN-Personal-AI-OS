@@ -1,6 +1,7 @@
 
 import logging
 import asyncio
+import json
 from asyncio import Queue
 from typing import Optional,Tuple
 from abc import ABC, abstractmethod
@@ -79,13 +80,12 @@ class Workflow:
             self.workflow_id = self.owner_workflow.workflow_id + "." + self.workflow_name
             self.db_file = self.owner_workflow.db_file
 
-        #if config.get("rule_prompt") is None:
-        #    logger.error("workflow config must have rule_prompt")
-        #    return False
-        #self.rule_prompt = AgentPrompt()
-        #if self.rule_prompt.load_from_config(config.get("rule_prompt")) is False:
-        #    logger.error("Workflow load rule_prompt failed")
-        #    return False
+        if config.get("prompt") is not None:
+            self.rule_prompt = AgentPrompt()
+            if self.rule_prompt.load_from_config(config.get("prompt")) is False:
+                logger.error("Workflow load prompt failed")
+                return False
+            
         if config.get("roles") is None:
             logger.error("workflow config must have roles")
             return False
@@ -225,8 +225,8 @@ class Workflow:
                             logger.error(f"parse postmsg failed! {func_call}")
                             continue
                         new_msg = AgentMsg()
-                        target_id = func_args[1]
-                        msg_content = func_args[2]
+                        target_id = func_args[0]
+                        msg_content = func_args[1]
                         new_msg.set("_",target_id,msg_content)
                         r.post_msgs.append(new_msg)
                         continue
@@ -307,9 +307,8 @@ class Workflow:
    
         prompt = AgentPrompt()
         prompt.append(the_role.agent.prompt)
+        prompt.append(self.get_workflow_rule_prompt())
         prompt.append(the_role.get_prompt())
-
-        # prompt.append(self.get_workflow_rule_prompt())
         # prompt.append(self._get_function_prompt(the_role.get_name()))
         # prompt.append(self._get_knowlege_prompt(the_role.get_name()))
         prompt.append(await self._get_prompt_from_session(chatsession))
@@ -323,16 +322,14 @@ class Workflow:
             #TODO: send msg to agent might be better?
             result_str = await ComputeKernel().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
             result = Workflow.prase_llm_result(result_str)
-            
-            
+            logger.info(f"{the_role.role_id} process {msg.sender}:{msg.body},llm str is :{result_str}")
             for postmsg in result.post_msgs:
                 postmsg.topic = msg.topic
-                await self.role_post_msg(the_role,postmsg)
+                await self.role_post_msg(postmsg,the_role)
                 
             for post_call in result.post_calls:
                 await self.role_post_call(post_call,the_role)
                 
-
             result_prompt_str = ""
             match result.state:
                 case "ignore":
@@ -367,82 +364,6 @@ class Workflow:
         
         return await _do_process_msg()
 
-        
-    #obsolete
-    async def _role_process_msg(self,msg:AgentMsg,the_role:AIRole) -> None:
-        # TODO : we just record role's chatsession, but in future, we would record workflow's chatsession(like a groupo chat)
-        session_topic = f"{the_role.get_name()}#{msg.sender}#{msg.topic}"
-        chatsession = AIChatSession.get_session(self.workflow_name,session_topic,self.db_file)
-        if chatsession is None:
-            logger.error(f"get session {session_topic}@{self.workflow_name} failed!")
-            return None
-        
-        # prompt generat progress is most important part of workflow(app) develope
-        prompt = AgentPrompt()
-        prompt.append(the_role.agent.prompt)
-        prompt.append(the_role.get_prompt())
-
-        # prompt.append(self.get_workflow_rule_prompt())
-        # prompt.append(self._get_function_prompt(the_role.get_name()))
-        # prompt.append(self._get_knowlege_prompt(the_role.get_name()))
-        
-        prompt.append(await self._get_prompt_from_session(chatsession))
-
-        msg_prompt = AgentPrompt()
-        msg_prompt.messages = [{"role":"user","content":msg.body}]
-        prompt.append(msg_prompt)
-        
-        result = await ComputeKernel().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
-        chatsession.append_recv(msg)
-        final_result = result        
-      
-        result_type : str = self._get_llm_result_type(result)
-        is_ignore = False
-        match result_type:
-            case "function":
-                callchain:CallChain = self._parse_function_call_chain(result)
-                resp = await callchain.exec()
-                if callchain.have_result():
-                    # generator proc resp prompt with WAITING state
-                    proc_resp_prompt:AgentPrompt = self._get_resp_prompt(resp,msg,the_role,prompt,chatsession)
-                    final_result = await ComputeKernel().do_llm_completion(proc_resp_prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
-                    return final_result
-
-            
-            case "send_message":
-                # send message to other / sub workflow
-                next_msg:AgentMsg = self._parse_to_msg(result)
-                if next_msg is not None:
-                    next_msg.sender = self.workflow_name
-                    logger.info(f"W#{self.workflow_name} send message to {next_msg.get_target()}")
-                    resp_msg = await self.get_bus().send_message(next_msg.get_target(),next_msg)
-                    if resp_msg is not None:
-                        msg_prompt = AgentPrompt()
-                        msg_prompt.messages = [{"role":"assistant","content":result},{"role":"user","content":f"{next_msg.get_target()}:{resp_msg.body}"}]
-                                               
-                        final_result = await ComputeKernel().do_llm_completion(proc_resp_prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
-                
-                
-            case "post_message":
-                # post message to other / sub workflow
-                next_msg:AgentMsg = self._parse_to_msg(result)
-                if next_msg is not None:
-                    next_msg.sender = self.workflow_name
-                    logger.info(f"W#{self.workflow_name} post message to {next_msg.get_target()}")
-                    self.get_bus().post_message(next_msg.get_target(),next_msg)
-
-            case "ignore":
-                is_ignore = True
-                
-        if is_ignore:
-            return None
-        
-        resp_msg = AgentMsg()
-        resp_msg.set(self.workflow_name,msg.sender,final_result)
-        chatsession.append_post(resp_msg)
-        return resp_msg
-
-
     async def _get_prompt_from_session(self,chatsession:AIChatSession) -> AgentPrompt:
         messages = chatsession.read_history() # read last 10 message
         result_prompt = AgentPrompt()
@@ -464,12 +385,6 @@ class Workflow:
 
     def get_workflow_rule_prompt(self) -> AgentPrompt:
         return self.rule_prompt
-
-    
-    def get_workflow(self,workflow_name:str):
-        """get workflow from known workflow list or sub workflow list"""
-        pass
-
 
     def _env_event_to_msg(self,env_event:EnvironmentEvent) -> AgentMsg:
         pass
