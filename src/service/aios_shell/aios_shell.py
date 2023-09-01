@@ -41,16 +41,15 @@ class AIOS_Shell:
         self.current_topic = "default"
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
-        agent : AIAgent = await AgentManager().get(msg.target)
+        target_id = msg.target.split(".")[0]
+        agent : AIAgent = await AgentManager().get(target_id)
         if agent is not None:
-            bus.register_message_handler(msg.target,agent._process_msg)
+            bus.register_message_handler(target_id,agent._process_msg)
             return True
         
-        a_workflow = await WorkflowManager().get_workflow(msg.target)
+        a_workflow = await WorkflowManager().get_workflow(target_id)
         if a_workflow is not None:
-            bus.register_message_handler(msg.target,a_workflow._process_msg)
-            for subflow in a_workflow.sub_workflows.values():
-                bus.register_message_handler(subflow.workflow_name,subflow._process_msg)
+            bus.register_message_handler(target_id,a_workflow._process_msg)
             return True
         
         return False
@@ -79,7 +78,7 @@ class AIOS_Shell:
         agent_msg = AgentMsg()
         agent_msg.set(sender,target_id,msg)
         agent_msg.topic = topic
-        resp = await AIBus().get_default_bus().send_message(target_id,agent_msg)
+        resp = await AIBus.get_default_bus().send_message(target_id,agent_msg)
         if resp is not None:
             return resp.body
         else:
@@ -111,10 +110,11 @@ class AIOS_Shell:
             case 'history':
                 num = 10
                 offset = 0
-                if len(args) >= 1:
-                    num = args[0]
-                if len(args) >= 2:
-                    offset = args[1]
+                if args is not None:
+                    if len(args) >= 1:
+                        num = args[0]
+                    if len(args) >= 2:
+                        offset = args[1]
 
                 db_path = ""
                 if await self.is_agent(self.current_target):
@@ -140,37 +140,43 @@ class AIOS_Shell:
 history = FileHistory('history.txt')
 session = PromptSession(history=history) 
 
-def parse_function_call(s):
-    match = re.match(r'(\w+)\((.*)\)$', s)
-    if match:
-        func_name = match.group(1)
-        args_str = match.group(2)
-        
-        args = []
-        buffer = ''
-        quote_count = 0  # Count of single or double quotes
-        for char in args_str:
-
-            if char in ['"', "'"]:
-                quote_count += 1
-            if char == ',' and quote_count % 2 == 0:  # ',' is outside of quotes
-                args.append(buffer.strip())
-                buffer = ''
-            else:
-                buffer += char
-        if buffer:
-            args.append(buffer.strip())
-        
-        return func_name, args
-    else:
+def parse_function_call(func_string):
+    match = re.search(r'\s*(\w+)\s*\(\s*(.*)\s*\)\s*', func_string)
+    if not match:
         return None
+
+    func_name = match.group(1)
+    params_string = match.group(2).strip()    
+    params = re.split(r'\s*,\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', params_string)
+    params = [param.strip('"') for param in params]
+    if len(params[0]) == 0:
+        params = None
+
+    return func_name, params
     
 
 async def main():
     print("aios shell prepareing...")
-    logging.basicConfig(filename="aios_shell.log",filemode="w",level=logging.INFO,format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
+    logging.basicConfig(filename="aios_shell.log",filemode="w",encoding='utf-8',
+                        level=logging.INFO,
+                        format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
     shell = AIOS_Shell("user")
     await shell.initial()
+
+    s = """了解。首先，我们需要进行方案讨论，定出一致的活动策略。我将任务分解如下：
+财务组： 分析可见的预算，提供一份合理并被执行的财务方案。
+行程预订组： 硅谷自然迷人的地方众多，寻找适合11人秋游的地点，以及一个可行的周末日期。策划一个一天或两天的安排，包括选择有南瓜园的地方，采摘苹果，参观当地的酗酒作坊等秋游活动。
+嘉宾对接组： 把个人的食品饮料或过敏食物的需求事先了解并计入行程内。
+酒店预订组：根据行程预订组的日期安排，活动时间在1天还是2天，在这个之内找一个合适的住宿，试着保持让住宿在预算边界以内。
+活动摄像组： 准备活动拍摄与剪辑方案。\n\n然后，我将把这些拆分后的任务发来小组。 
+sendmsg(财务组,分析预算并提供一份财务方案.) 
+sendmsg(行程预订组,找出适合秋游的地方和日期.) 
+sendmsg(嘉宾对接组,了解个人的饮食需求.) 
+sendmsg(酒店预订组,查询并预订住宿.) 
+sendmsg(活动摄像组,提供活动拍摄方案.)  
+经过一两天的准备，一切就绪之后，我将向工作人员发送最后的行程计划，
+    """
+    r = Workflow.prase_llm_result(s)
     print(f"aios shell {shell.get_version()} ready.")
 
     completer = WordCompleter(['send($target,$msg,$topic)', 

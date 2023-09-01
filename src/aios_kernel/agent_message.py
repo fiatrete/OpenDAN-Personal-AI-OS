@@ -1,6 +1,7 @@
 from enum import Enum
 import uuid
 import time 
+import re
 
 class AgentMsgState(Enum):
     RESPONSED = 0
@@ -37,3 +38,22 @@ class AgentMsg:
 
     def get_target(self) -> str:
         return self.target
+    
+    @classmethod
+    def parse_function_call(cls,func_string:str):
+        match = re.search(r'\s*(\w+)\s*\(\s*(.*)\s*\)\s*', func_string)
+        if not match:
+            return None
+
+        func_name = match.group(1)
+        if func_name is None:
+            return None
+        if len(func_name) < 2:
+            return None
+        
+        params_string = match.group(2).strip()    
+        params = re.split(r'\s*,\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', params_string)
+        params = [param.strip('"') for param in params]
+
+        return func_name, params
+        

@@ -34,6 +34,7 @@ class AIBus:
         self.unhandle_handler = None
         
     async def post_message(self,target_id,msg:AgentMsg,use_unhandle=True) -> bool:
+        target_id = target_id.split(".")[0]
         handler = self.handlers.get(target_id)
         if handler:
             handler.queue.put_nowait(msg)
@@ -62,6 +63,7 @@ class AIBus:
         return handler.results.get(msg_id)
 
     async def send_message(self,target_id:str,msg:AgentMsg) -> AgentMsg:
+        target_id = target_id.split(".")[0]
         post_result = await self.post_message(target_id,msg)
         if post_result is False:
             return None
@@ -127,3 +129,11 @@ class AIBus:
         handler.working_task = asyncio.create_task(self.process_queue(handler))
 
     
+
+#send message to target logic:
+# find target handler:
+#   process_message(msg):
+#       session = get_session(msg.sender,msg.target)
+
+
+# history: open(sender,target,topic)

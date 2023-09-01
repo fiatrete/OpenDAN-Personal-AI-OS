@@ -237,13 +237,13 @@ class AIChatSession:
 
     def append_post(self,msg:AgentMsg) -> None:
         """append msg to session, msg is post from session (owner => msg.target)"""
-        assert msg.sender == self.owner_id,"post message means msg.sender == self.owner_id"
+        #assert msg.sender == self.owner_id,"post message means msg.sender == self.owner_id"
         self.append(msg)
         
 
     def append_recv(self,msg:AgentMsg) -> None:
         """append msg to session, msg is recv from msg'sender (msg.sender => owner)"""
-        assert msg.target == self.owner_id,"recv message means msg.target == self.owner_id"
+        #assert msg.target == self.owner_id,"recv message means msg.target == self.owner_id"
         self.append(msg)        
 
     #def attach_event_handler(self,handler) -> None:
