@@ -2,6 +2,7 @@
 import logging
 import asyncio
 import json
+import os
 from asyncio import Queue
 from typing import Optional,Tuple
 from abc import ABC, abstractmethod
@@ -14,6 +15,7 @@ from .role import AIRole,AIRoleGroup
 from .ai_function import CallChain
 from .compute_kernel import ComputeKernel
 from .bus import AIBus
+from .workflow_env import WorkflowEnvironment
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,8 @@ class Workflow:
         self.sub_workflows = {}
         self.owner_workflow = None
         self.db_file = None
+        self.env_db_file = None
+        self.workflow_env:WorkflowEnvironment = None
 
         self.is_start = False
         self.msg_queue = Queue()
@@ -100,6 +104,27 @@ class Workflow:
             if self.input_filter.load_from_config(config.get("filter")) is False:
                 logger.error("Workflow load input_filter failed")
                 return False
+
+        if self.owner_workflow is None:
+            self.env_db_file = os.path.dirname(self.db_file) + "/" + self.workflow_id + "_env.db"
+        else:
+            self.env_db_file = self.owner_workflow.env_db_file
+        self.workflow_env = WorkflowEnvironment(self.workflow_id,self.env_db_file)
+
+        env_ndoe = config.get("enviroment") 
+        if  env_ndoe is not None:
+            if self._load_env_from_config(env_ndoe) is False:
+                logger.error("Workflow load env failed")
+                return False
+
+        connected_env_ndoe = config.get("connected_env") 
+        if  connected_env_ndoe is not None:
+           for _node in connected_env_ndoe:
+                remote_env = Environment.get_env_by_id(_node.get("env_id"))
+                if remote_env is None:
+                     logger.error(f"Workflow load connected_env failed, env {env_id} not found!")
+                     return False
+                self.connect_to_environment(remote_env,_node.get("event2msg"))
             
         sub_workflows = config.get("sub_workflows")
         if sub_workflows is not None:
@@ -107,9 +132,11 @@ class Workflow:
                 logger.error("Workflow load sub workflows failed")
                 return False
             
-        #TODO: load env
-        
         return True
+
+    def _load_env_from_config(self,config:dict) -> bool:
+        for k,v in config.items():
+            self.workflow_env.set_value(k,v,False)
 
     def _load_sub_workflows(self,config:dict) -> bool:
         for k,v in config.items():
@@ -296,6 +323,13 @@ class Workflow:
         logger.info(f"{the_role.role_id} post call {call[0]} with args {call[1]}")
         return
 
+    def _format_msg_by_env_value(self,prompt:AgentPrompt):
+        if self.workflow_env is None:
+            return
+        
+        for msg in prompt.messages:
+            old_content = msg.get("content")
+            msg["content"] = old_content.format_map(self.workflow_env)
 
     async def role_process_msg(self,msg:AgentMsg,the_role:AIRole):
         session_topic = f"{msg.sender}#{msg.topic}"
@@ -316,8 +350,9 @@ class Workflow:
         msg_prompt = AgentPrompt()
         msg_prompt.messages = [{"role":"user","content":msg.body}]
         prompt.append(msg_prompt)
-        
-        
+
+        self._format_msg_by_env_value(prompt)
+  
         async def _do_process_msg():
             #TODO: send msg to agent might be better?
             result_str = await ComputeKernel().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
@@ -392,16 +427,22 @@ class Workflow:
     def get_inner_environment(self,env_id:str) -> Environment:
         pass
 
-    def connect_to_environment(self,env:Environment) -> None:
-        the_env = self.connected_environment.get(env.get_id())
-        if the_env is None:
-            self.connected_environment[env.get_id()] = env
-            def _env_msg_handler(env_event:EnvironmentEvent) -> None:
-                the_msg:AgentMsg= self._env_event_to_msg(env_event)
-                self.post_msg(the_msg)
-            
-            # register all event handler
-            the_env.attach_event_handler(None,_env_msg_handler)
+    def connect_to_environment(self,the_env:Environment,conn_info:dict) -> None:
+        if the_env is not None:
+            self.workflow_env.add_owner_env(the_env)
+
+            #for event2msg in conn_info:
+            #    for k,v in event2msg:
+            #        if k == "role":
+            #            continue
+            #        else:
+            #            
+            #            def _env_msg_handler(env_event:EnvironmentEvent) -> None:
+            #                the_msg:AgentMsg= self._env_event_to_msg(env_event)
+            #                self.role_post_msg
+
+            #            the_env.attach_event_handler(k,_env_msg_handler)
+            #            break
         else:
             logger.warn(f"environment {env.get_id()} already connected!")
 

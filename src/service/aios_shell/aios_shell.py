@@ -31,7 +31,7 @@ from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgState,ComputeKernel,Op
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
-
+from aios_kernel import CalenderEnvironment,Environment
 
 
 class AIOS_Shell:
@@ -62,6 +62,10 @@ class AIOS_Shell:
             return False
 
     async def initial(self) -> bool:
+        cal_env = CalenderEnvironment("calender")
+        cal_env.start()
+        Environment.set_env_by_id("calender",cal_env)
+        
         AgentManager().initial(os.path.abspath(directory + "/../../../rootfs/"))
         WorkflowManager().initial(os.path.abspath(directory + "/../../../rootfs/workflows/"))
         open_ai_node = OpenAI_ComputeNode()

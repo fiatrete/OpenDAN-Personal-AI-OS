@@ -8,3 +8,4 @@ from .open_ai_node import OpenAI_ComputeNode
 from .role import AIRole,AIRoleGroup
 from .workflow import Workflow
 from .bus import AIBus
+from .workflow_env import WorkflowEnvironment,CalenderEnvironment,CalenderEvent
