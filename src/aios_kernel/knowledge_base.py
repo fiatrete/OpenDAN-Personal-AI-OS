@@ -1,9 +1,8 @@
 # define a knowledge base class
-from ..agent import AgentPrompt
-from ..compute_kernel import ComputeKernel
-from .object import KnowledgeObject, ObjectType, EmailObject, TextChunkObject, ImageObject
-from .object_storage import ObjectStorage
-from .vector_base import VectorBase
+from . import AgentPrompt, ComputeKernel
+from ..knowledge.object import KnowledgeObject, ObjectType, EmailObject, TextChunkObject, ImageObject
+from ..knowledge.object_storage import ObjectStorage
+from ..knowledge.vector.vector_base import VectorBase
 
 class KnowledgeBase:
     def __init__(self) -> None:
@@ -38,12 +37,11 @@ class KnowledgeBase:
                 object_ids = self.vector_base.query(vector, 10)
                 for object_id in object_ids:
                     if object_id.object_type == ObjectType.Email:
-                    
-                    [object, email] = self.object_store.get(object_id)
-                    if object.object_type == ObjectType.Email:
-                        email: EmailObject = object
-                        prompt.append(AgentPrompt())
-                        prompt
+                        [object, email] = self.object_store.get(object_id)
+                        if object.object_type == ObjectType.Email:
+                            email: EmailObject = object
+                            prompt.append(AgentPrompt())
+                            prompt
                     
                 
 

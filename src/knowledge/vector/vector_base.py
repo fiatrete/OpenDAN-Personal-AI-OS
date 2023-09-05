@@ -1,5 +1,5 @@
 # import the ObjectID class
-from .object import ObjectID
+from ..object import ObjectID
 
 # define a vector base class
 class VectorBase:
@@ -11,4 +11,7 @@ class VectorBase:
         pass
 
     async def query(self, vector: [float], top_k: int) -> [ObjectID]:
+        pass
+    
+    async def delete(self, id: ObjectID):
         pass

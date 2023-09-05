@@ -1,7 +1,7 @@
 
 # define a object type enum
-from abc import ABC
-
+from abc import ABC, abstractmethod
+from enum import Enum
 
 class ObjectType(Enum):
     TextChunk = 1
