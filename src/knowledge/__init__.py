@@ -1,2 +1,3 @@
-from .object import EmailObject, ImageObject, TextChunkObject, ObjectID
+from .object import *
 from .vector import *
+from .data import *
