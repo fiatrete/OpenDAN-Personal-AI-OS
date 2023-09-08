@@ -2,31 +2,17 @@ import sqlite3
 import time
 import logging
 import os
-from .chunk import  ChunkID, PositionType, PositionFileRange
+from .chunk import ChunkID, PositionType, PositionFileRange
 
 
 class ChunkTracker:
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            directory = os.path.join(
-                os.path.dirname(__file__), "../../../rootfs/data/chunk/"
-            )
-            
-            if not os.path.exists(directory):
-                os.mkdir(directory)
-            file = os.path.join(directory, "chunk_tracker.db")
-            logging.info(f"will init chunk tracker, db={file}")
-            cls._instance.__singleton_init__(file)
-            
-        return cls._instance
+    def __init__(self, root_dir: str):
+        if not os.path.exists(root_dir):
+            os.makedirs(root_dir)
+        file = os.path.join(root_dir, "chunk_tracker.db")
+        logging.info(f"will init chunk tracker, db={file}")
 
-    def __singleton_init__(self, db_path: str):
-        logging.info(f"will init chunk tracker, db={db_path}")
-
-        self.conn = sqlite3.connect(db_path)
+        self.conn = sqlite3.connect(file)
         self.cursor = self.conn.cursor()
         self.cursor.execute(
             """
@@ -43,7 +29,9 @@ class ChunkTracker:
         )
         self.conn.commit()
 
-    def add_position(self, chunk_id: ChunkID, position: str, position_type: PositionType):
+    def add_position(
+        self, chunk_id: ChunkID, position: str, position_type: PositionType
+    ):
         logging.debug(f"add chunk position: {chunk_id}, {position}, {position_type}")
 
         insert_time = update_time = int(time.time())
@@ -52,7 +40,13 @@ class ChunkTracker:
             INSERT OR REPLACE INTO chunks (id, pos, pos_type, insert_time, update_time)
             VALUES (?, ?, ?, ?, ?)
         """,
-            (str(chunk_id), position, position_type.value, insert_time, update_time,),
+            (
+                str(chunk_id),
+                position,
+                position_type.value,
+                insert_time,
+                update_time,
+            ),
         )
         self.conn.commit()
 

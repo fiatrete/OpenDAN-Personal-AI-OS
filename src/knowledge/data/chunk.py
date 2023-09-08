@@ -8,7 +8,7 @@ class PositionType(Enum):
     Device = 2
     File = 3
     FileRange = 4
-    ChunkManager = 5
+    ChunkStore = 5
 
 
 class PositionFileRange:
