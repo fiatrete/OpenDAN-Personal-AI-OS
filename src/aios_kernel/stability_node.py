@@ -31,21 +31,17 @@ class Stability_ComputeNode(ComputeNode):
 
         self.is_start = True
         self.node_id = "stability_node"
-        self.api_key = ""  # "sk-RQDlJtBFQg6I3IueeGCGZTPhWPYAl3bgRdvFDMkcEXsKbUc0"
-        self.engine = ""  # stable-diffusion-512-v2-0
+        self.api_key = ""
+        self.engine = "stable-diffusion-512-v2-1"
 
         self.task_queue = Queue()
 
         if os.getenv("STABILITY_API_KEY") is not None:
             self.api_key = os.getenv("STABILITY_API_KEY")
-        else:
-            self.api_key = "sk-RQDlJtBFQg6I3IueeGCGZTPhWPYAl3bgRdvFDMkcEXsKbUc0"
 
         # Check out the following link for a list of available engines: https://platform.stability.ai/docs/features/api-parameters#engine
         if os.getenv("STABILITY_ENGINE") is not None:
             self.engine = os.getenv("STABILITY_ENGINE")
-        else:
-            self.engine = "stable-diffusion-512-v2-1"
 
         self.client = client.StabilityInference(
             key=self.api_key,

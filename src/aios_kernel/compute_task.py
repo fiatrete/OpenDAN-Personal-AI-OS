@@ -23,7 +23,7 @@ class ComputeTaskType(Enum):
 
 class ComputeTask:
     def __init__(self) -> None:
-        self.task_type = "llm_completion"
+        self.task_type = ComputeTaskType.NONE
         self.create_time = None
 
         self.task_id: str = None
@@ -37,7 +37,7 @@ class ComputeTask:
         self.error_str = None
 
     def set_llm_params(self, prompts, model_name, max_token_size, callchain_id=None):
-        self.task_type = "llm_completion"
+        self.task_type = ComputeTaskType.LLM_COMPLETION
         self.create_time = time.time()
         self.task_id = uuid.uuid4().hex
         self.callchain_id = callchain_id
