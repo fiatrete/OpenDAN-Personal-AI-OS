@@ -1,0 +1,8 @@
+aiofiles==23.2.1
+aiohttp==3.8.5
+openai==0.28.0
+Pillow==10.0.0
+Pillow==10.0.0
+prompt_toolkit==3.0.39
+stability_sdk==0.8.4
+toml==0.10.2
