@@ -48,6 +48,12 @@ class Environment:
     def _do_get_value(self,key:str) -> Optional[str]:
         pass
 
+    def get_functions(self):
+        # system functions
+        # env functions
+        # user install functions
+        pass
+
     def register_get_handler(self,key:str,handler:Callable) -> None:
         h = self.get_handlers.get(key)
         if h is not None:
@@ -78,7 +84,7 @@ class Environment:
             for handler in handler_list:
                 await handler(self.env_id,event)
         else:
-            logger.warn(f"fire event {event_id} in env {self.env_id}:handler not found")
+            logger.debug(f"fire event {event_id} in env {self.env_id}:handler not found")
         return
     
     def __getitem__(self, key):

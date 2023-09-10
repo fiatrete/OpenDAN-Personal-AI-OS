@@ -134,3 +134,6 @@ class WorkflowEnvironment(Environment):
         except Error as e:
             logging.error(f"Error occurred while update env{self.env_id}.{key} ,error:{e}")
 
+    def get_functions(self):
+        pass
+

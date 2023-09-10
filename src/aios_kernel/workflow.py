@@ -1,4 +1,3 @@
-
 import logging
 import asyncio
 import json
@@ -412,7 +411,10 @@ class Workflow:
 
 
     def _get_function_prompt(self,role_name:str) -> AgentPrompt:
-        pass
+        # system functions
+        # env functions
+        # user install functions
+        pass    
     
     def _get_knowlege_prompt(self,role_name:str) -> AgentPrompt:
         pass
