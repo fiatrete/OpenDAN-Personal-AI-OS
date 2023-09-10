@@ -1,0 +1,5 @@
+chromadb==0.4
+openai==0.28
+toml==0.10
+Pillow==10.0
+moviepy==1.0

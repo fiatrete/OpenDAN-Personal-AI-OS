@@ -1,2 +1,4 @@
 .vscode/
 *.pyc
+rootfs/data
+*.log
