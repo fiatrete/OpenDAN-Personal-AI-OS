@@ -1,4 +1,4 @@
-from .object import EmailObject, ImageObject, TextChunkObject, ObjectID
+from .object import KnowledgeObject
 from .blob import FileBlobStorage
 from .hash import HashValue, hash_data
 from .object_store import ObjectStore

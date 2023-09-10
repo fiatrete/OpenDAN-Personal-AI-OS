@@ -10,7 +10,10 @@ class ObjectType(Enum):
     Chunk = 7
     TextChunk = 100
     Image = 101
-    Email = 102
+    Video = 102
+    Document = 103
+    RichText = 104
+    Email = 105
 
 
 # define a object ID class to identify a object

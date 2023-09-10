@@ -4,7 +4,7 @@ from .data import ChunkStore, ChunkTracker
 import logging
 
 
-# KnowledgeStore class, 聚合ChunkStore，ChunkTracker， ObjectStore，并且是一个全局单例，可以方便的使用这三个内置的store示例
+# KnowledgeStore class, which aggregates ChunkStore, ChunkTracker, and ObjectStore, and is a global singleton that makes it easy to use these three built-in store examples
 class KnowledgeStore:
     _instance = None
 

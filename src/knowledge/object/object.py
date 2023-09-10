@@ -2,18 +2,18 @@
 # define a object type enum
 from abc import ABC, abstractmethod
 from enum import Enum
-from .object_id import ObjectID
+from .object_id import ObjectID, ObjectType
 import hashlib
 import json
 import pickle
 
 class KnowledgeObject(ABC):
-    def __init__(self, object_type: int, desc: dict = {}, body: dict = {}):
+    def __init__(self, object_type: ObjectType, desc: dict = {}, body: dict = {}):
         self.desc = desc
         self.body = body
         self.object_type = object_type
 
-    def get_object_type(self):
+    def get_object_type(self) -> ObjectType:
         return self.object_type
 
     def object_id(self) -> ObjectID:
@@ -50,30 +50,5 @@ class KnowledgeObject(ABC):
     @staticmethod
     def decode(data: bytes):
         return pickle.loads(data)
-    
-
-        
-# define a text chunk class
-class TextChunkObject(KnowledgeObject): # pylint: disable=too-few-public-methods
-    def __init__(self, text: str):
-        super().__init__(ObjectType.TextChunk)
-        self.text = text
-
-
-# define a image class
-class ImageObject(KnowledgeObject): # pylint: disable=too-few-public-methods
-    def __init__(self, meta, path):
-        super().__init__(ObjectType.Image)
-        self.meta = meta
-        self.path = path
-
-
-# define a email class
-class EmailObject(KnowledgeObject): # pylint: disable=too-few-public-methods
-    def __init__(self, meta):
-        super().__init__(ObjectType.Email)
-        self.meta = meta
-        self.text = [ObjectID]
-        self.images = [ObjectID]
 
     
