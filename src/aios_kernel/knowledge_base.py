@@ -1,7 +1,7 @@
 # define a knowledge base class
 from . import AgentPrompt, ComputeKernel
 from ..knowledge.object import KnowledgeObject, ObjectType, EmailObject, TextChunkObject, ImageObject
-from ..knowledge.object_storage import ObjectStorage
+from ..knowledge.store import ObjectStorage
 from ..knowledge.vector.vector_base import VectorBase
 
 class KnowledgeBase:
