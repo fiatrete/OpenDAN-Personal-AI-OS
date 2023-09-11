@@ -3,7 +3,7 @@ import time
 import logging
 import os
 from .chunk import ChunkID, PositionType, PositionFileRange
-from typing import List
+from typing import List, Tuple
 
 class ChunkTracker:
     def __init__(self, root_dir: str):
@@ -61,7 +61,7 @@ class ChunkTracker:
         )
         self.conn.commit()
 
-    def get_position(self, chunk_id: ChunkID) -> List[(str, PositionType)]:
+    def get_position(self, chunk_id: ChunkID) -> List[Tuple[str, PositionType]]:
         self.cursor.execute(
             """
             SELECT pos, pos_type FROM chunks WHERE id = ?

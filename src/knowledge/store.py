@@ -1,6 +1,6 @@
 import os
 from .object import ObjectStore
-from .data import ChunkStore, ChunkTracker
+from .data import ChunkStore, ChunkTracker, ChunkListWriter, ChunkReader
 import logging
 
 
@@ -35,6 +35,9 @@ class KnowledgeStore:
         chunk_store_dir = os.path.join(root_dir, "chunk")
         self.chunk_store = ChunkStore(chunk_store_dir)
         self.chunk_tracker = ChunkTracker(chunk_store_dir)
+        self.chunk_list_writer = ChunkListWriter(self.chunk_store, self.chunk_tracker)
+        self.chunk_reader = ChunkReader(self.chunk_store, self.chunk_tracker)
+        
 
     def get_object_store(self) -> ObjectStore:
         return self.object_store
@@ -44,3 +47,9 @@ class KnowledgeStore:
 
     def get_chunk_tracker(self) -> ChunkTracker:
         return self.chunk_tracker
+    
+    def get_chunk_list_writer(self) -> ChunkListWriter:
+        return self.chunk_list_writer
+    
+    def get_chunk_reader(self) -> ChunkReader:
+        return self.chunk_reader

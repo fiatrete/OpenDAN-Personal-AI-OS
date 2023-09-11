@@ -42,7 +42,7 @@ class ChunkListWriter:
                         file_path, file.tell() - chunk_size, chunk_size
                     )
                     self.chunk_tracker.add_position(
-                        chunk_id, file_range, PositionType.FileRange
+                        chunk_id, str(file_range), PositionType.FileRange
                     )
 
         file_hash = HashValue(hash_obj.digest())

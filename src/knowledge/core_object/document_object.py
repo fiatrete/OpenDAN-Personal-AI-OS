@@ -1,7 +1,7 @@
 from ..object import KnowledgeObject
 from ..data import ChunkList, ChunkListWriter
 from ..object import ObjectType
-
+from .. import KnowledgeStore
 
 # desc
 #   meta
@@ -50,7 +50,7 @@ class DocumentObjectBuilder:
         return self
 
     def build(self) -> DocumentObject:
-        chunk_list = ChunkListWriter.create_chunk_list_from_text(
+        chunk_list = KnowledgeStore().get_chunk_list_writer().create_chunk_list_from_text(
             self.text,
             1024 * 4,
         )
