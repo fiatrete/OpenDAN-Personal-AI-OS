@@ -3,3 +3,4 @@ from .tracker import ChunkTracker
 from .chunk_store import ChunkStore
 from .writer import ChunkListWriter
 from .chunk_list import ChunkList
+from .reader import ChunkReader, Chunk
