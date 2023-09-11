@@ -77,6 +77,29 @@ def check_email_saved(client: imaplib.IMAP4_SSL, uid: str):
     return False
 
 
+def save_email_attachment(mail: mailparser.MailParser, email_dir: str):
+    # Traverse all attachments in the email
+    for attachment in mail.attachments:
+        if attachment['mail_content_type'] in ['image/png', 'image/jpeg', 'image/gif']:
+            print('current mail have image attachment')
+            img_dir = f"{email_dir}/image"
+            if not os.path.exists(img_dir):
+                os.makedirs(img_dir)
+            # get original image name
+            filename = attachment['filename']
+            filefullname = f"{img_dir}/{filename}"
+            # image bytes data
+            image_data = attachment['payload']
+            try:
+                # decode base64 image data
+                image_data = base64.b64decode(image_data)
+            except base64.binascii.Error:
+                image_data = image_data.encode()
+            with open(filefullname, 'wb') as f:
+                f.write(image_data)
+                logger.info(f"save email image {filename} success")
+
+
 # save email to local file by each folder
 def save_email(mail: mailparser.MailParser):
     # create email account dir
@@ -98,6 +121,8 @@ def save_email(mail: mailparser.MailParser):
             del mail_dict['body']
         json.dump(mail_dict, f, ensure_ascii=False, indent=4)
         logger.info(f"save email meta info {f.name}")
+    # save email attachment( like image)
+    save_email_attachment(mail, email_dir)
 
 
 
