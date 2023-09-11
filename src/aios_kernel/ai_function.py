@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict,Coroutine,Callable
 
 class AIFunction:
     def __init__(self) -> None:
-        self.intro : str = None
+        self.description : str = None
     
     @abstractmethod
     def get_name(self) -> str:
@@ -17,7 +17,7 @@ class AIFunction:
         """
         return a detailed description of what the function does
         """
-        pass
+        return self.description
 
     @abstractmethod
     def get_parameters(self) -> Dict:
@@ -25,11 +25,23 @@ class AIFunction:
         Return the list of parameters to execute this function in the form of
         JSON schema as specified in the OpenAI documentation:
         https://platform.openai.com/docs/api-reference/chat/create#chat/create-parameters
+
+        str = run_code(code:str)
+        parameters = {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Python code which needs to be executed"
+                }
+            }
+        }
+
         """
         pass
     
     @abstractmethod
-    def execute(self, **kwargs) -> Dict:
+    async def execute(self, **kwargs) -> str:
         """
         Execute the function and return a JSON serializable dict.
         The parameters are passed in the form of kwargs
@@ -67,3 +79,34 @@ class CallChain:
 
     async def execute(self):
         pass
+
+class SimpleAIFunction(AIFunction):
+    def __init__(self,func_id:str,description:str,func_handler:Coroutine,parameters:Dict = None) -> None:
+        self.func_id = func_id
+        self.description = description
+        self.func_handler = func_handler
+        self.parameters = parameters
+
+    def get_name(self) -> str: 
+        return self.func_id
+    
+    def get_parameters(self) -> Dict:
+        if self.parameters is not None:
+            return self.parameters
+        return {"type": "object", "properties": {}}
+
+    async def execute(self,**kwargs) -> str:
+        if self.func_handler is None:
+            return "error: function not implemented"
+        
+        return await self.func_handler(**kwargs)
+
+    def is_local(self) -> bool:
+        return True
+
+    def is_in_zone(self) -> bool:
+        return True
+    
+    def is_ready_only(self) -> bool:
+        return False
+

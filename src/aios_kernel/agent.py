@@ -5,9 +5,13 @@ import asyncio
 import logging
 import uuid
 import time
+import json
 
 from .agent_message import AgentMsg
 from .chatsession import AIChatSession
+from .compute_task import ComputeTaskResult
+from .ai_function import AIFunction
+from .environment import Environment
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +81,7 @@ class AIAgent:
 
         self.chat_db = None
         self.unread_msg = Queue() # msg from other agent
+        self.owner_env : Environment = None
         
     @classmethod
     def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
@@ -123,25 +128,70 @@ class AIAgent:
             return "ignore"
         
         return "text"
+    
+    def _get_inner_functions(self) -> dict:
+        if self.owner_env is None:
+            return None
+        
+        all_inner_function = self.owner_env.get_all_ai_functions()
+        if all_inner_function is None:
+            return None
+        
+        result_func = []
+        for inner_func in all_inner_function:
+            this_func = {}
+            this_func["name"] = inner_func.get_name()
+            this_func["description"] = inner_func.get_description()
+            this_func["parameters"] = inner_func.get_parameters()
+            result_func.append(this_func)
+
+        return result_func 
+
+    async def _execute_func(self,inenr_func_call_node:dict,msg_prompt:AgentPrompt) -> str:
+        from .compute_kernel import ComputeKernel
+
+        func_name = inenr_func_call_node.get("name")
+        arguments = json.loads(inenr_func_call_node.get("arguments"))
+
+        func_node : AIFunction = self.owner_env.get_ai_function(func_name)
+        if func_node is None:
+            return "execute failed,function not found"
+        
+        result_str:str = await func_node.execute(**arguments)
+        inner_functions = self._get_inner_functions()
+        msg_prompt.messages.append({"role":"function","content":result_str,"name":func_name})
+        task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(msg_prompt,self.llm_model_name,self.max_token_size,inner_functions)
+        
+        inner_func_call_node = task_result.result_message.get("function_call")
+        if inner_func_call_node:
+            return await self._execute_func(inner_func_call_node,msg_prompt)       
+        else:
+            return task_result.result_str
 
     async def _process_msg(self,msg:AgentMsg) -> AgentMsg:
             from .compute_kernel import ComputeKernel
+
             session_topic = msg.get_sender() + "#" + msg.topic
             chatsession = AIChatSession.get_session(self.instance_id,session_topic,self.chat_db)
             prompt = AgentPrompt()
             prompt.append(self.prompt)
- 
-            # prompt.append(self._get_function_prompt(the_role.get_name()))
             # prompt.append(self._get_knowlege_prompt(the_role.get_name()))
             prompt.append(await self._get_prompt_from_session(chatsession)) # chat context
             
             msg_prompt = AgentPrompt()
             msg_prompt.messages = [{"role":"user","content":msg.body}]
             prompt.append(msg_prompt)
-    
-            result = await ComputeKernel().do_llm_completion(prompt,self.llm_model_name,self.max_token_size)
-            final_result = result
-            result_type : str = self._get_llm_result_type(result)
+
+            inner_functions = self._get_inner_functions()
+
+            task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
+            final_result = task_result.result_str
+
+            inner_func_call_node = task_result.result_message.get("function_call")
+            if inner_func_call_node:
+                final_result = await self._execute_func(inner_func_call_node,msg_prompt)
+            
+            result_type : str = self._get_llm_result_type(final_result)
             is_ignore = False
 
             match result_type:

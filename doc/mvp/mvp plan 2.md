@@ -46,7 +46,7 @@ The previous plan, please see here: [MVP Plan](./mvp%20plan.md)
         - [ ] MPT-7B, S2
         - [ ] Vicuna, S2
     - [ ] Embeding,@photosssa,@lurenpluto , A4
-    - [ ] Txt2img,@glen0125,A4
+    - [x] Txt2img,@glen0125,A4
     - [ ] Img2txt(0.5.2),A3
     - [ ] Txt2voice,A3
     - [ ] Voice2txt, @wugren,A3
@@ -70,7 +70,7 @@ The previous plan, please see here: [MVP Plan](./mvp%20plan.md)
         - [ ] Telegram Tunnel,S2
         - [ ] Discord Tunnel,S2
     - [ ] Home IoT Environment (0.5.2), A4
-        - [] Compatible Home Assistant (0.5.2), A4
+        - [ ] Compatible Home Assistant (0.5.2), A4
 - [ ] Build-in Agents/Apps
     - [ ] Agent: Personal Information Assistant,@photosssa,@lurenpluto , A2
     - [ ] Agent: Bulter Jarvis,@waterflier, A2

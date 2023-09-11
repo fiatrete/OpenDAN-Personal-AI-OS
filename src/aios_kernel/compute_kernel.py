@@ -54,7 +54,6 @@ class ComputeKernel:
 
         async def _run_task_loop():
             while True:
-                logger.info("compute_kernel is waiting for task...")
                 task = await self.task_queue.get()
                 logger.info(f"compute_kernel get task: {task.display()}")
                 c_node: ComputeNode = self._schedule(task)
@@ -91,16 +90,16 @@ class ComputeKernel:
         return True
 
     # friendly interface for use:
-    def llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0):
+    def llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0,inner_functions = None):
         # craete a llm_work_task ,push on queue's end
         # then task_schedule would run this task.(might schedule some work_task to another host)
         task_req = ComputeTask()
-        task_req.set_llm_params(prompt, mode_name, max_token)
+        task_req.set_llm_params(prompt, mode_name, max_token,inner_functions)
         self.run(task_req)
         return task_req
 
-    async def do_llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0) -> str:
-        task_req = self.llm_completion(prompt, mode_name, max_token)
+    async def do_llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0, inner_functions = None) -> str:
+        task_req = self.llm_completion(prompt, mode_name, max_token,inner_functions)
 
         async def check_timer():
             check_times = 0
@@ -120,6 +119,6 @@ class ComputeKernel:
 
         await asyncio.create_task(check_timer())
         if task_req.state == ComputeTaskState.DONE:
-            return task_req.result.result_str
+            return task_req.result
 
         return "error!"

@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional,Dict,Awaitable,List
 import logging
 
+from .ai_function import AIFunction
+
 logger = logging.getLogger(__name__)
 
 class EnvironmentEvent(ABC):
@@ -33,6 +35,8 @@ class Environment:
         # self.valid_keys:Dict[str,bool] = None
         self.event_handlers:Dict[str,List[EnvironmentEventHandler]]= {}
 
+        self.functions : Dict[str,AIFunction] = {}
+
     def get_id(self) -> str:
         return self.env_id
     
@@ -43,6 +47,24 @@ class Environment:
     #TODO: how to use env? different env has different prompt
     #def get_env_prompt(self) -> str:
     #    pass
+
+    def add_ai_function(self,func:AIFunction) -> None:
+        if self.functions.get(func.get_name()) is not None:
+            logger.warn(f"add ai_function {func.get_name()} in env {self.env_id}:function already exist")
+            
+        self.functions[func.get_name()] = func
+
+    def get_ai_function(self,func_name:str) -> AIFunction:
+        return self.functions.get(func_name)
+
+    #def enable_ai_function(self,func_name:str) -> None:
+    #    pass
+
+    #def disable_ai_function(self,func_name:str) -> None:
+    #    pass
+
+    def get_all_ai_functions(self) -> List[AIFunction]:
+        return self.functions.values()
 
     @abstractmethod
     def _do_get_value(self,key:str) -> Optional[str]:

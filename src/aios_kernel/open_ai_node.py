@@ -56,28 +56,35 @@ class OpenAI_ComputeNode(ComputeNode):
         logger.info(f"call openai {mode_name} prompts: {prompts}")
         resp = openai.ChatCompletion.create(model=mode_name,
                                             messages=prompts,
-                                            max_tokens=4000,
-                                            temperature=1.2)
+                                            functions=task.params["inner_functions"],
+                                            max_tokens=task.params["max_token_size"],
+                                            temperature=0.7) # TODO: add temperature to task params?
+        
         logger.info(f"openai response: {resp}")
-
-        status_code = resp["choices"][0]["finish_reason"]
-        if status_code != "stop":
-            task.state = ComputeTaskState.ERROR
-            task.error_str = f"The status code was {status_code}."
-            return None
-
+        
         result = ComputeTaskResult()
         result.set_from_task(task)
+
+        status_code = resp["choices"][0]["finish_reason"]
+        match status_code:
+            case "function_call":
+                task.state = ComputeTaskState.DONE
+            case "stop":
+                task.state = ComputeTaskState.DONE
+            case _:
+                task.state = ComputeTaskState.ERROR
+                task.error_str = f"The status code was {status_code}."
+                return None
+
         result.worker_id = self.node_id
         result.result_str = resp["choices"][0]["message"]["content"]
-        result.result = resp["choices"][0]["message"]
+        result.result_message = resp["choices"][0]["message"]
 
         return result
 
     def start(self):
         async def _run_task_loop():
             while True:
-                logger.info("openai_node is waiting for task...")
                 task = await self.task_queue.get()
                 logger.info(f"openai_node get task: {task.display()}")
                 result = self._run_task(task)

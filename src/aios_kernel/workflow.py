@@ -13,6 +13,7 @@ from .chatsession import AIChatSession
 from .role import AIRole,AIRoleGroup
 from .ai_function import CallChain
 from .compute_kernel import ComputeKernel
+from .compute_task import ComputeTask,ComputeTaskResult,ComputeTaskState
 from .bus import AIBus
 from .workflow_env import WorkflowEnvironment
 
@@ -354,7 +355,8 @@ class Workflow:
   
         async def _do_process_msg():
             #TODO: send msg to agent might be better?
-            result_str = await ComputeKernel().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
+            task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
+            result_str = task_result.result_str
             result = Workflow.prase_llm_result(result_str)
             logger.info(f"{the_role.role_id} process {msg.sender}:{msg.body},llm str is :{result_str}")
             for postmsg in result.post_msgs:

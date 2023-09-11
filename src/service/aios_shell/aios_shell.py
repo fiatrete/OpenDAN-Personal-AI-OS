@@ -44,6 +44,7 @@ class AIOS_Shell:
         target_id = msg.target.split(".")[0]
         agent : AIAgent = await AgentManager().get(target_id)
         if agent is not None:
+            agent.owner_env = Environment.get_env_by_id("calender") 
             bus.register_message_handler(target_id,agent._process_msg)
             return True
         
