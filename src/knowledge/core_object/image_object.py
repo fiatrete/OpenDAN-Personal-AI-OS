@@ -18,7 +18,7 @@ class ImageObject(KnowledgeObject):
         body = dict()
         desc["meta"] = meta
         desc["exif"] = exif
-        desc
+        desc["tags"] = tags
         desc["hash"] = chunk_list.hash.to_base58()
         body["chunk_list"] = chunk_list.chunk_list
 

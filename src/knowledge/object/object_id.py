@@ -8,7 +8,6 @@ import base36
 
 class ObjectType(Enum):
     Chunk = 7
-    TextChunk = 100
     Image = 101
     Video = 102
     Document = 103

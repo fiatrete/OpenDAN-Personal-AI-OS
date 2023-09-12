@@ -6,11 +6,11 @@ import os
 
 
 class ChromaVectorStore(VectorBase):
-    def __init__(self, db_url, model_name: str) -> None:
-        super().__init__(db_url, model_name)
+    def __init__(self, model_name: str) -> None:
+        super().__init__(model_name)
 
         logging.info(
-            "will init chroma vector store, db={}, model={}".format(db_url, model_name)
+            "will init chroma vector store, model={}".format(model_name)
         )
 
         directory = os.path.join(

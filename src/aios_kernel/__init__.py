@@ -4,7 +4,8 @@ from .chatsession import AIChatSession
 from .agent import AIAgent,AIAgentTemplete,AgentPrompt
 from .compute_kernel import ComputeKernel,ComputeTask
 from .compute_node import ComputeNode,LocalComputeNode
-from .open_ai_node import OpenAI_ComputeNode 
+from .open_ai_node import OpenAI_ComputeNode
+from .knowledge_base import KnowledgeBase 
 from .role import AIRole,AIRoleGroup
 from .workflow import Workflow
 from .bus import AIBus

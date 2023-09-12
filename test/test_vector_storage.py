@@ -14,8 +14,8 @@ import asyncio
 import unittest
 
 
-async def test_vector():
-    storage = ChromaVectorStore("", "test")
+async def test_embedding_email():
+    storage = ChromaVectorStore("test")
     await storage.insert([1, 2, 3], "test")
     ids = await storage.query([1, 2, 3], 10)
     print(ids)

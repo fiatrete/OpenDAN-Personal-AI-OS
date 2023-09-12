@@ -1,6 +1,7 @@
 import os
 from .object import ObjectStore
 from .data import ChunkStore, ChunkTracker, ChunkListWriter, ChunkReader
+from .vector import ChromaVectorStore, VectorBase
 import logging
 
 
@@ -37,6 +38,7 @@ class KnowledgeStore:
         self.chunk_tracker = ChunkTracker(chunk_store_dir)
         self.chunk_list_writer = ChunkListWriter(self.chunk_store, self.chunk_tracker)
         self.chunk_reader = ChunkReader(self.chunk_store, self.chunk_tracker)
+        self.vector_store = {}
         
 
     def get_object_store(self) -> ObjectStore:
@@ -53,3 +55,8 @@ class KnowledgeStore:
     
     def get_chunk_reader(self) -> ChunkReader:
         return self.chunk_reader
+    
+    def get_vector_store(self, model_name: str) -> VectorBase:
+        if model_name not in self.vector_store:
+            self.vector_store[model_name] = ChromaVectorStore(model_name)
+        return self.vector_store[model_name]
