@@ -2,3 +2,4 @@
 *.pyc
 rootfs/email/config.local.toml
 rootfs/data
+venv
