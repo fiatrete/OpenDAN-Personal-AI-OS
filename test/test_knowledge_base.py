@@ -45,7 +45,7 @@ async def test_query_email():
        
     KnowledgeBase().query(msg_prompt)
 
-class TestVectorSTorage(unittest.TestCase):
+class TestKnowledgeBase(unittest.TestCase):
     def test_embedding(self):
         asyncio.run(test_embedding_email())
 

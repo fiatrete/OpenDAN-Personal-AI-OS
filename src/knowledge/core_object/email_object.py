@@ -28,7 +28,7 @@ class EmailObject(KnowledgeObject):
         return self.desc["tags"]
 
     def get_rich_text(self):
-        return self.body["rich_text"]
+        return self.body["content"]
 
 
 """

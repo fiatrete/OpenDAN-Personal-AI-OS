@@ -14,13 +14,13 @@ import asyncio
 import unittest
 
 
-async def test_embedding_email():
+async def test_vector():
     storage = ChromaVectorStore("test")
     await storage.insert([1, 2, 3], "test")
     ids = await storage.query([1, 2, 3], 10)
     print(ids)
 
-class TestVectorSTorage(unittest.TestCase):
+class TestVectorStorage(unittest.TestCase):
     def test_run(self):
         asyncio.run(test_vector())
 

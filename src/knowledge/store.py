@@ -1,5 +1,6 @@
 import os
-from .object import ObjectStore
+
+from .object import ObjectStore, ObjectRelationStore
 from .data import ChunkStore, ChunkTracker, ChunkListWriter, ChunkReader
 from .vector import ChromaVectorStore, VectorBase
 import logging
@@ -30,6 +31,9 @@ class KnowledgeStore:
 
         self.root = root_dir
 
+        relation_store_dir = os.path.join(root_dir, "relation")
+        self.relation_store = ObjectRelationStore(relation_store_dir)
+
         object_store_dir = os.path.join(root_dir, "object")
         self.object_store = ObjectStore(object_store_dir)
 
@@ -39,7 +43,9 @@ class KnowledgeStore:
         self.chunk_list_writer = ChunkListWriter(self.chunk_store, self.chunk_tracker)
         self.chunk_reader = ChunkReader(self.chunk_store, self.chunk_tracker)
         self.vector_store = {}
-        
+    
+    def get_relation_store(self) -> ObjectRelationStore:
+        return self.relation_store
 
     def get_object_store(self) -> ObjectStore:
         return self.object_store
