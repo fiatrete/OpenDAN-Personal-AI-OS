@@ -31,22 +31,22 @@ class KnowledgeBase:
 
     async def __embedding_image(self, image: ImageObject):
         desc = {}
-        if not image.get_meta():
+        if not not image.get_meta():
             desc["meta"] = image.get_meta()
-        if not image.get_exif():
+        if not not image.get_exif():
             desc["exif"] = image.get_exif()
-        if not image.get_tags():
+        if not not image.get_tags():
             desc["tags"] = image.get_tags()
         vector = await self.compute_kernel.do_text_embedding(json.dumps(desc))
         self.store.get_vector_store("default").insert(vector, image.calculate_id())
 
     async def __embedding_video(self, vedio: VideoObject):
         desc = {}
-        if not vedio.get_meta():
+        if not not vedio.get_meta():
             desc["meta"] = vedio.get_meta()
-        if not vedio.get_info():
+        if not not vedio.get_info():
             desc["info"] = vedio.get_info()
-        if not vedio.get_tags():
+        if not not vedio.get_tags():
             desc["tags"] = vedio.get_tags()
         vector = await self.compute_kernel.do_text_embedding(json.dumps(desc))
         self.store.get_vector_store("default").insert(vector, vedio.calculate_id())
@@ -97,43 +97,43 @@ class KnowledgeBase:
 
     def __save_rich_text(self, rich_text: RichTextObject):
         rich_text_id = rich_text.calculate_id()
-        rich_text_enc = dict()
-        rich_text_enc["desc"] = rich_text.desc
-        rich_text_enc["body"] = {"documents": {}, "images": {}, "videos": {}, "rich_texts": {}}
+        # rich_text_enc = dict()
+        # rich_text_enc["desc"] = rich_text.desc
+        # rich_text_enc["body"] = {"documents": {}, "images": {}, "videos": {}, "rich_texts": {}}
         for key, document in rich_text.get_documents().items():
             self.__save_document(document)
             doc_id = document.calculate_id()
             self.store.get_relation_store().add_relation(doc_id, rich_text_id)
-            rich_text_enc["body"]["documents"][key] = doc_id
+            # rich_text_enc["body"]["documents"][key] = doc_id
         for key, image in rich_text.get_images().items():
             self.__save_image(image)
             image_id = image.calculate_id()
             self.store.get_relation_store().add_relation(image_id, rich_text_id)
-            rich_text_enc["body"]["images"][key] = image_id
+            # rich_text_enc["body"]["images"][key] = image_id
         for key, video in rich_text.get_videos().items():
             self.__save_video(video)
             video_id = video.calculate_id()
             self.store.get_relation_store().add_relation(video_id, rich_text_id)
-            rich_text_enc["body"]["videos"][key] = video_id
+            # rich_text_enc["body"]["videos"][key] = video_id
         for key, rich_text in rich_text.get_rich_texts().items():
             self.__save_rich_text(rich_text)
             rich_text_id = rich_text.calculate_id()
             self.store.get_relation_store().add_relation(rich_text_id, rich_text_id)
-            rich_text_enc["body"]["rich_texts"][key] = rich_text_id
+            # rich_text_enc["body"]["rich_texts"][key] = rich_text_id
 
 
-        self.store.get_object_store().put_object(rich_text_id, pickle.dumps(rich_text_enc))
+        self.store.get_object_store().put_object(rich_text_id, rich_text.encode())
 
     def __save_email(self, email: EmailObject):
         email_id = email.calculate_id()
-        email_enc = dict()
-        email_enc["desc"] = email.desc
-        email_enc["body"] = {"content": None}
+        # email_enc = dict()
+        # email_enc["desc"] = email.desc
+        # email_enc["body"] = {"content": None}
         self.__save_rich_text(email.get_rich_text())
         rich_text_id = email.get_rich_text().calculate_id()
         self.store.get_relation_store().add_relation(rich_text_id, email_id)
-        email_enc["body"]["content"] = rich_text_id
-        self.store.get_object_store().put_object(email_id, pickle.dumps(email_enc))
+        # email_enc["body"]["content"] = rich_text_id
+        self.store.get_object_store().put_object(email_id, email.encode())
 
     
     def __save_object(self, object: KnowledgeObject):
@@ -163,6 +163,11 @@ class KnowledgeBase:
                 results.append(object_ids)
         return results
 
+    async def __load_object(self, object_id: ObjectID) -> KnowledgeObject:
+        if object_id.get_object_type() == ObjectType.Document:
+            return DocumentObject.decode(self.store.get_object_store().get_object(object_id))
+        object = self.store.get_object_store().get_object(object_id)
+        
 
     async def __prompt_from_objects(self, object_ids: [ObjectID]) -> AgentPrompt:
         prompt = AgentPrompt()
