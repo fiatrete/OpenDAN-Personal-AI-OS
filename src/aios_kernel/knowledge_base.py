@@ -1,6 +1,5 @@
 # define a knowledge base class
 import json
-import pickle
 from . import AgentPrompt, ComputeKernel
 from ..knowledge import *
 
