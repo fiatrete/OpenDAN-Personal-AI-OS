@@ -103,8 +103,8 @@ class OpenAI_ComputeNode(ComputeNode):
     def get_capacity(self):
         pass
 
-    def is_support(self, task_type: ComputeTaskType) -> bool:
-        return task_type == ComputeTaskType.LLM_COMPLETION
+    def is_support(self, task: ComputeTask) -> bool:
+        return task.task_type == ComputeTaskType.LLM_COMPLETION and (not task.params["model_name"] or task.params["model_name"] == "gpt-4-0613")
 
     def is_local(self) -> bool:
         return False
