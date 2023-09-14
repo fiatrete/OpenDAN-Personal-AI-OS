@@ -1,3 +1,21 @@
+"""
+Capture your email locally, and parse out the pictures in the email body and the pictures, videos and other files in the attachment. Subsequently, it supports vectorized analysis of your personal data and serves as a knowledge base to enable large language model answers. Better results.
+
+An example of a local file is as follows:
+├── data
+│ └── alex0072@gmail.com
+│   └── 5de3e52f3a6b90cabe6cbdd4ae3a5c5b
+│     ├── email.txt
+│     ├── meta.json
+│     ├── image
+│     │   ├── 0648B869@99C03070.DB94B354.jpg
+│     └── body_image
+│         ├── 11044884873.jpg
+│         ├── 282985198265470.gif
+│         └── dd-login-service-min.png
+
+"""
+
 import imaplib
 import os
 import toml
@@ -6,6 +24,8 @@ import mailparser
 import hashlib
 import json
 import base64
+from bs4 import BeautifulSoup
+import requests
 
 class EmailSpider:
     def __init__(self):
@@ -46,6 +66,7 @@ class EmailSpider:
         # get email uid list
         email_list = data[0].split()
         self.logger.info(f"got {len(email_list)} emails")
+        email_list.reverse()
         for uid in email_list:
             if self.check_email_saved(uid):
                 self.logger.info(f"email uid {uid} already saved")
@@ -97,6 +118,31 @@ class EmailSpider:
                     f.write(image_data)
                     self.logger.info(f"save email image {filename} success")
 
+    # save email body images(html content)
+    def save_body_images(self, html_content: str, email_dir: str):
+        # get all image urls
+        soup = BeautifulSoup(html_content, 'html.parser')
+        img_tags = soup.find_all('img')
+        img_urls = [img['src'] for img in img_tags if 'src' in img.attrs]
+        self.logger.info(f'Found {len(img_urls)} images in email body')
+
+        if not os.path.exists(email_dir):
+            os.makedirs(email_dir)
+
+        for img_url in img_urls:
+            # keep the original image filename(last of url)
+            img_filename = os.path.join(email_dir, img_url.split('/')[-1])
+            # download image 
+            response = requests.get(img_url, stream=True)
+            if response.status_code == 200:
+                with open(img_filename, 'wb') as img_file:
+                    for chunk in response.iter_content(1024):
+                        img_file.write(chunk)
+                self.logger.info(f'Downloaded {img_url} to {img_filename}')
+            else:
+                self.logger.info(f'Failed to download {img_url}')
+
+    # save email content to local dir
     def save_email(self, mail: mailparser.MailParser):
         dir = f"{self.config.get('LOCAL_DIR')}/{self.config.get('EMAIL_ADDRESS')}"
         if not os.path.exists(dir):
@@ -113,7 +159,10 @@ class EmailSpider:
                 del mail_dict['body']
             json.dump(mail_dict, f, ensure_ascii=False, indent=4)
             self.logger.info(f"save email meta info {f.name}")
+        
         self.save_email_attachment(mail, email_dir)
+        self.save_body_images(mail.body, f"{email_dir}/body_image")
+
 
 if __name__ == "__main__":
     spider = EmailSpider()
