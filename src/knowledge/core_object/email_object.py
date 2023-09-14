@@ -1,9 +1,9 @@
+from .. import KnowledgeStore
 from .rich_text_object import RichTextObject, RichTextObjectBuilder
 from ..object import ObjectID, ObjectType, KnowledgeObject
 from .document_object import DocumentObjectBuilder
 from .image_object import ImageObjectBuilder
 from .video_object import VideoObjectBuilder
-from .rich_text_object import RichTextObjectBuilder
 import os
 import json
 import logging
@@ -69,6 +69,11 @@ class EmailObjectBuilder:
         return self
 
     def build(self) -> EmailObject:
+        
+        # Just get the object store and relation store from global KnowledgeStore
+        store = KnowledgeStore().get_object_store()
+        relation = KnowledgeStore().get_relation_store()
+        
         # Read meta.json
         meta = {}
         meta_file = os.path.join(self.folder, "meta.json")
@@ -89,8 +94,10 @@ class EmailObjectBuilder:
                 with open(content_file, "r", encoding="utf-8") as f:
                     text = f.read()
 
-                document = DocumentObjectBuilder({}, {}, text).build()
-                documents = {"email.txt": document}
+                document = DocumentObjectBuilder({}, {}, text).build(relation_store=relation)
+                document_id = document.calculate_id()
+                store.put_object(document_id, document.encode())
+                documents = {"email.txt": document_id}
             except Exception as e:
                 logging.error(f"Failed to read email.txt {content_file} {e}")
         else:
@@ -106,7 +113,9 @@ class EmailObjectBuilder:
 
                 try:
                     image = ImageObjectBuilder({}, {}, image_path).build()
-                    images[image_file] = image
+                    image_id = image.calculate_id()
+                    store.put_object(image_id, image.encode())
+                    images[image_file] = image_id
                 except Exception as e:
                     logging.error(f"Failed to read image file {image_path} {e}")
                     continue
@@ -121,13 +130,31 @@ class EmailObjectBuilder:
 
                 try:
                     video = VideoObjectBuilder({}, {}, video_path).build()
-                    videos[video_file] = video
+                    video_id = video.calculate_id()
+                    store.put_object(video_id, video.encode())
+                    videos[video_file] = video_id
                 except Exception as e:
                     logging.error(f"Failed to read video file {video_path} {e}")
                     continue
 
         # Create RichTextObject
         rich_text = RichTextObject(images, videos, documents)
-
+        rich_text_id = rich_text.calculate_id()
+        
+        # build relations with rich_text
+        for image_id in images.values():
+            relation.add_relation(image_id, rich_text_id)
+        for video_id in videos.values():
+            relation.add_relation(video_id, rich_text_id)
+        for document_id in documents.values():
+            relation.add_relation(document_id, rich_text_id)
+            
         # Create EmailObject
-        return EmailObject(meta, {}, rich_text)
+        email_object = EmailObject(meta, {}, rich_text)
+        email_object_id = email_object.calculate_id()
+        store.put_object(email_object_id, email_object.encode())
+        
+        # build relations with email_object
+        relation.add_relation(rich_text_id, email_object_id)
+        
+        return email_object

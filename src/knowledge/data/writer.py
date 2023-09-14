@@ -52,7 +52,7 @@ class ChunkListWriter:
 
     def create_chunk_list_from_text(
         self, text: str, chunk_max_words: int, separator_chars: str = ".,"
-    ) -> Tuple[List[ChunkID], HashValue]:
+    ) -> ChunkList:
         text_list = self._split_text_list(text, chunk_max_words, separator_chars)
         chunk_list = []
         hash_obj = hashlib.sha256()
