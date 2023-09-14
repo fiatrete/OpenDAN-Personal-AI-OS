@@ -165,32 +165,68 @@ class KnowledgeBase:
     async def __load_object(self, object_id: ObjectID) -> KnowledgeObject:
         if object_id.get_object_type() == ObjectType.Document:
             return DocumentObject.decode(self.store.get_object_store().get_object(object_id))
-        object = self.store.get_object_store().get_object(object_id)
+        if object_id.get_object_type() == ObjectType.Image:
+            return ImageObject.decode(self.store.get_object_store().get_object(object_id))
+        if object_id.get_object_type() == ObjectType.Video:
+            return VideoObject.decode(self.store.get_object_store().get_object(object_id))
+        if object_id.get_object_type() == ObjectType.RichText:
+            return RichTextObject.decode(self.store.get_object_store().get_object(object_id))
+        if object_id.get_object_type() == ObjectType.Email:
+            return EmailObject.decode(self.store.get_object_store().get_object(object_id))
+        else:
+            pass
         
 
-    async def __prompt_from_objects(self, object_ids: [ObjectID]) -> AgentPrompt:
-        prompt = AgentPrompt()
+    async def prompt_from_objects(self, object_ids: [ObjectID]) -> AgentPrompt:
+        results = dict()
         for object_id in object_ids:
-            object = self.store.get_object_reader().get_object(object_id)
-            if object is None:
-                raise ValueError(f"object not found: {object_id}")
-            if object.get_object_type() == ObjectType.Document:
-                document = object
-                prompt.messages.append({"role": "agent", "content": document.get_body()})
-            if object.get_object_type() == ObjectType.Image:
-                image = object
-                prompt.messages.append({"role": "agent", "content": json.dumps(image.get_desc())})
-            if object.get_object_type() == ObjectType.Video:
-                video = object
-                prompt.messages.append({"role": "agent", "content": json.dumps(video.get_desc())})
-            if object.get_object_type() == ObjectType.RichText:
-                rich_text = object
-                prompt.messages.append({"role": "agent", "content": json.dumps(rich_text.get_desc())})
-            if object.get_object_type() == ObjectType.Email:
-                email = object
-                prompt.messages.append({"role": "agent", "content": json.dumps(email.get_desc())})
-        return prompt
+            parents = self.store.get_relation_store().get_related_objects(object_id)
+            # last parent is the root object
+            root_object_id = parents[-1]
+            if results[root_object_id] is None:
+                results[root_object_id] = [root_object_id, object_id]
+            else:
+                results[root_object_id].append(object_id)
 
+        content = "I found the following contents described with json format:\n"
+        result_desc = []
+        for result in results.values():
+            # first element in result is the root object
+            root_object = await self.__load_object(result[0])
+            if root_object.get_object_type() == ObjectType.Email:
+                email = await self.__load_object(object_id)
+                desc = email.get_desc()
+                desc["type"] = "email"
+                desc["contents"] = []
+                result_desc.append(desc)
+                upper_list = desc["contents"]
+                result = result[1:]
+            else:
+                upper_list = result_desc
+            
+            for object_id in result:
+                if object_id.get_object_type() == ObjectType.Chunk:
+                    upper_list.append({"type": "text", "content": self.store.get_chunk_reader().get_chunk(object_id).read().decode("utf-8")})
+                if object_id.get_object_type() == ObjectType.Image:
+                    image = await self.__load_object(object_id)
+                    desc = image.get_desc()
+                    desc["type"] = "image"
+                    upper_list.append(desc)
+                if object_id.get_object_type() == ObjectType.Video:
+                    video = await self.__load_object(object_id)
+                    desc = video.get_desc()
+                    desc["type"] = "video"
+                    upper_list.append(desc)
+                else:
+                    pass
+        content += json.dumps(result_desc)
+        content += ".\n"
+
+        prompt = AgentPrompt()
+        prompt.add_message("knowledge", content)
+
+        return prompt
+                    
                         
                     
                 
