@@ -17,16 +17,12 @@ class ObjectType(Enum):
 
 # define a object ID class to identify a object
 class ObjectID:  # pylint: disable=too-few-public-methods
-    def __init__(self, object_type: ObjectType, value: bytes):
+    def __init__(self, value: bytes):
         assert len(value) == 32, "ObjectID must be 32 bytes long"
-        self.object_type = object_type
         self.value = value
 
     def __str__(self):
         return self.to_base58()
-
-    def get_object_type(self):
-        return self.object_type
     
     def to_base58(self):
         return base58.b58encode(self.value).decode()
@@ -48,8 +44,11 @@ class ObjectID:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def new_chunk_id(chunk_hash: HashValue):
-        return ObjectID(ObjectType.Chunk, chunk_hash.value)
+        return ObjectID(chunk_hash.value)
     
     @staticmethod
     def hash_data(data: bytes):
         return ObjectID.new_chunk_id(HashValue.hash_data(data))
+    
+    def __eq__(self, other) -> bool:
+        return self.value == other.value
