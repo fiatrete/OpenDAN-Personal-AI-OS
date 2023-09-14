@@ -11,7 +11,6 @@ class ComputeTaskState(Enum):
     ERROR = 3
     PENDING = 4
 
-
 class ComputeTaskType(Enum):
     NONE = -1
     LLM_COMPLETION = 0
@@ -36,7 +35,7 @@ class ComputeTask:
         self.result = None
         self.error_str = None
 
-    def set_llm_params(self, prompts, model_name, max_token_size, callchain_id=None):
+    def set_llm_params(self, prompts, model_name, max_token_size, inner_functions = None, callchain_id=None):
         self.task_type = ComputeTaskType.LLM_COMPLETION
         self.create_time = time.time()
         self.task_id = uuid.uuid4().hex
@@ -46,7 +45,13 @@ class ComputeTask:
             self.params["model_name"] = model_name
         else:
             self.params["model_name"] = "gpt-4-0613"
-        self.params["max_token_size"] = max_token_size
+        if max_token_size is None:
+            self.params["max_token_size"] = 4000
+        else:
+            self.params["max_token_size"] = max_token_size
+
+        if inner_functions is not None:
+            self.params["inner_functions"] = inner_functions
 
     def display(self) -> str:
         return f"ComputeTask: {self.task_id} {self.task_type} {self.state}"
@@ -59,9 +64,8 @@ class ComputeTaskResult:
         self.callchain_id: str = None
         self.worker_id: str = None
         self.result_code: int = 0
-        self.result_str: str = None
-
-        self.result: dict = {}
+        self.result_str: str = None # easy to use,can read from result
+        self.result_message: dict = {}
         self.result_refers: dict = None
         self.pading_data: bytearray = None
 

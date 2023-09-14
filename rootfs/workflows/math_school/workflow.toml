@@ -7,7 +7,7 @@ GOAL="成为最好的学校"
 [[connected_env]]
 env_id = "calender"
 [[connected_env.event2msg]]
-timer = "现在是{data}"
+timer = "现在是{now}"
 role = "教导处主任"
 
 [filter]

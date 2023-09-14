@@ -1,5 +1,5 @@
 from .environment import Environment,EnvironmentEvent
-from .agent_message import AgentMsg,AgentMsgState
+from .agent_message import AgentMsg,AgentMsgStatus
 from .chatsession import AIChatSession
 from .agent import AIAgent,AIAgentTemplete,AgentPrompt
 from .compute_kernel import ComputeKernel,ComputeTask

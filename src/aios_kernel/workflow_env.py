@@ -7,8 +7,10 @@ import threading
 import logging
 from typing import Optional
 from .environment import Environment,EnvironmentEvent
+from .ai_function import SimpleAIFunction
 
 logger = logging.getLogger(__name__)
+
 
 class CalenderEvent(EnvironmentEvent):
     def __init__(self,data) -> None:
@@ -17,13 +19,17 @@ class CalenderEvent(EnvironmentEvent):
         self.data = data
 
     def display(self) -> str:
-        return f"#event timer:{self.event_data}"    
+        return f"#event timer:{self.data}"    
     
 # AI Calender GOAL: Let user use "create notify after 2 days" to create a timer event
 class CalenderEnvironment(Environment):
     def __init__(self, env_id: str) -> None:
         super().__init__(env_id)
         self.is_run = False
+
+        self.add_ai_function(SimpleAIFunction("get_time",
+                                        "get current time",
+                                        self._get_now))
 
     def _do_get_value(self,key:str) -> Optional[str]:
         return None
@@ -52,7 +58,12 @@ class CalenderEnvironment(Environment):
     def stop(self):
         self.is_run = False
 
-    def get_now(self,key:str) -> str:
+    def get_now(self,key)->str:
+        now = datetime.now()
+        formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
+        return formatted_time    
+    
+    async def _get_now(self) -> str:
         now = datetime.now()
         formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
         return formatted_time
@@ -64,6 +75,7 @@ class WorkflowEnvironment(Environment):
         self.db_file = db_file
         self.local = threading.local()
         self.table_name = "WorkflowEnv_" + env_id
+
 
     def _get_conn(self):
         """ get db connection """

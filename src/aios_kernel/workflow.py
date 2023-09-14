@@ -2,19 +2,22 @@ import logging
 import asyncio
 import json
 import os
+import time 
 from asyncio import Queue
 from typing import Optional,Tuple
 from abc import ABC, abstractmethod
 
 from .environment import Environment,EnvironmentEvent
-from .agent_message import AgentMsg,AgentMsgState
+from .agent_message import AgentMsg,AgentMsgStatus
 from .agent import AgentPrompt,AgentMsg
 from .chatsession import AIChatSession
 from .role import AIRole,AIRoleGroup
-from .ai_function import CallChain
+from .ai_function import AIFunction
 from .compute_kernel import ComputeKernel
+from .compute_task import ComputeTask,ComputeTaskResult,ComputeTaskState
 from .bus import AIBus
 from .workflow_env import WorkflowEnvironment
+
 
 logger = logging.getLogger(__name__)
 
@@ -157,11 +160,12 @@ class Workflow:
         while i < len(inner_obj_id):
             if i == len(inner_obj_id) - 1:
                 the_role : AIRole = current_workflow.role_group.get(inner_obj_id[i])
+                current_workflow_chatsession = AIChatSession.get_session(current_workflow.workflow_id,msg.sender + "#" + msg.topic,current_workflow.db_file)
                 if the_role is not None:
-                    return await current_workflow.role_process_msg(msg,the_role)
+                    return await current_workflow.role_process_msg(msg,the_role,current_workflow_chatsession)
                 sub_workflow = current_workflow.sub_workflows.get(inner_obj_id[i])
                 if sub_workflow is not None:
-                    return await sub_workflow.process_msg(msg)
+                    return await sub_workflow._process_msg(msg)
                 logger.error(f"{msg.target} not found! forword message failed!")
                 return None
             else:
@@ -175,18 +179,50 @@ class Workflow:
         logger.error(f"{msg.target} not found! forword message failed!")
         return None
         
+    def get_workflow_id_from_target(self,target:str) -> str:
+        target_list = target.split(".")
+        if len(target_list) == 0:
+            return target
+        else:
+            result_str = ""
+            p = 0
+            for s in target_list:
+                p = p + 1
+                result_str += s
+                if p < len(target_list)-1:
+                    result_str += "."
+                else:
+                    return result_str
 
     async def _process_msg(self,msg:AgentMsg):
-        # workflow can be a message handler, but never be a message sender
-        # all message forword to roles or sub workflow
-        # workflow no chatsession record, but role have
-        
-        final_result = None
-
+        real_target = msg.target.split(".")[0]
         targets = self._parse_msg_target(msg.target)
         if len(targets) > 1:
             return await self._forword_msg(targets,msg)
-            
+        #0 we don't support workflow join a group right now, this cloud be a feture in future
+        if msg.mentions is not None:
+            logger.warn(f"workflow {self.workflow_id} recv a group chat message,not support ignore!")
+            return None
+
+        #1. workflow start process message
+        final_result = None
+        
+        # this is workflow's group_chat session
+        session_topic = msg.sender + "#" + msg.topic
+        chatsesssion = AIChatSession.get_session(self.workflow_id,session_topic,self.db_file)
+        
+        #2. find role by msg.mentions or workflow's selector logic
+        if msg.mentions is not None:
+            if not self.workflow_id in msg.mentions:
+                chatsesssion.append(msg)
+                logger.info(f"workflow {self.workflow_id} recv a group chat message from {msg.sender},but is not mentioned,ignore!")
+                return None
+
+            for mention in msg.mentions:
+                this_role = self.role_group.get(mention)
+                if this_role is not None:
+                    return await self.role_process_msg(msg,this_role,chatsesssion)
+                
         if self.input_filter is not None:
             select_role_id = self.input_filter.select(msg)
             if select_role_id is not None: 
@@ -194,27 +230,13 @@ class Workflow:
                 if select_role is None:
                     logger.error(f"input_filter return invalid role id:{select_role_id}, role not found in role_group")
                     return None
-
-                result = await self.role_process_msg(msg,select_role)
-                if result is None:
-                    logger.error(f"_process_msg return None for :{msg}")
-                    return
-
-                final_result = result
-            else:
-                logger.error(f"input_filter return None for :{msg}")
-                return
                 
-        else:
-            # no input filter, we would process all message, slowly,not suggest to use 
-            results = {}
-            final_result:AgentMsg  = None 
-            for this_role in self.role_group.roles.values():
-                # TODO : we would do this in parallel
-                a_result = await self.role_process_msg(msg,this_role)
-                results[this_role.get_name()] = a_result
-                final_result = a_result
-        
+                return await self.role_process_msg(msg,select_role,chatsesssion)
+            else:
+                logger.error(f"input_filter return None for :{msg.body}")
+                return None
+                
+        logger.error(f"{self.workflow_id}:no role can process this msg:{msg.body}")
         return final_result
 
     @classmethod
@@ -275,52 +297,59 @@ class Workflow:
 
         return r
 
-    async def role_post_msg(self,msg:AgentMsg,the_role:AIRole):
+    async def role_post_msg(self,msg:AgentMsg,the_role:AIRole,workflow_chat_session:AIChatSession):
         msg.sender = the_role.get_role_id()
         
         target_role = self.role_group.get(msg.target)
         if target_role:
             msg.target = target_role.get_role_id()
-            logger.info(f"{msg.sender} post message {msg.id} to inner role: {msg.target}")
-            asyncio.create_task(self.role_process_msg(msg,target_role))
+            logger.info(f"{msg.sender} post message {msg.msg_id} to inner role: {msg.target}")
+            asyncio.create_task(self.role_process_msg(msg,target_role,workflow_chat_session))
             return
         
         target_workflow = self.sub_workflows.get(msg.target)
         if target_workflow:
             msg.target = target_workflow.workflow_id
-            logger.info(f"{msg.sender} post message {msg.id} to sub workflow: {msg.target}")
+            logger.info(f"{msg.sender} post message {msg.msg_id} to sub workflow: {msg.target}")
             asyncio.create_task(target_workflow._process_msg(msg))
 
-        logger.info(f"{msg.sender} post message {msg.id} to AIBus: {msg.target}")
+        logger.info(f"{msg.sender} post message {msg.msg_id} to AIBus: {msg.target}")
         await self.get_bus().post_message(msg.target,msg)
         return
 
 
-    async def role_send_msg(self,msg:AgentMsg,the_role:AIRole):
+    async def role_send_msg(self,msg:AgentMsg,the_role:AIRole,workflow_chat_session:AIChatSession):
         msg.sender = the_role.get_role_id()
         target_role = self.role_group.get(msg.target)
         if target_role:
             # msg.target = target_role.get_role_id()
-            logger.info(f"{msg.sender} send message {msg.id} to inner role: {msg.target}")
-            return await self.role_process_msg(msg,target_role)
+            logger.info(f"{msg.sender} send message {msg.msg_id} to inner role: {msg.target}")
+            return await self.role_process_msg(msg,target_role,workflow_chat_session)
 
-        
         target_workflow = self.sub_workflows.get(msg.target)
         if target_workflow:
             # msg.target = target_workflow.workflow_id
-            logger.info(f"{msg.sender} send message {msg.id} to sub workflow: {msg.target}")
+            logger.info(f"{msg.sender} send message {msg.msg_id} to sub workflow: {msg.target}")
             return await target_workflow._process_msg(msg)
         
-        logger.info(f"{msg.sender} post message {msg.id} to AIBus: {msg.target}")
-        return await self.get_bus().send_message(msg.target,msg)
+        logger.info(f"{msg.sender} post message {msg.msg_id} to AIBus: {msg.target}")
+        return await self.get_bus().send_message(msg)
 
     async def role_call(self,call:tuple,the_role:AIRole):
         logger.info(f"{the_role.role_id} call {call[0]} with args {call[1]}")
-        return """{result:"timeout"}"""
+        func_name = call[0]
+        arguments = call[1]
+
+        func_node : AIFunction = self.workflow_env.get_ai_function(func_name)
+        if func_node is None:
+            return "execute failed,function not found"
+    
+        result_str:str = await func_node.execute(**arguments)        
+        return result_str
 
     async def role_post_call(self,call:tuple,the_role:AIRole):
         logger.info(f"{the_role.role_id} post call {call[0]} with args {call[1]}")
-        return
+        return await self.role_call(call,the_role)
 
     def _format_msg_by_env_value(self,prompt:AgentPrompt):
         if self.workflow_env is None:
@@ -330,65 +359,148 @@ class Workflow:
             old_content = msg.get("content")
             msg["content"] = old_content.format_map(self.workflow_env)
 
-    async def role_process_msg(self,msg:AgentMsg,the_role:AIRole):
-        session_topic = f"{msg.sender}#{msg.topic}"
-        session_owner = the_role.get_role_id()
-        chatsession : AIChatSession = AIChatSession.get_session(session_owner,session_topic,self.db_file)
-        if chatsession is None:
-            logger.error(f"get session {session_topic}@{session_owner} failed!")
+    def _get_inner_functions(self) -> dict:
+        all_inner_function = self.workflow_env.get_all_ai_functions()
+        if all_inner_function is None:
             return None
-   
+        
+        result_func = []
+        for inner_func in all_inner_function:
+            this_func = {}
+            this_func["name"] = inner_func.get_name()
+            this_func["description"] = inner_func.get_description()
+            this_func["parameters"] = inner_func.get_parameters()
+            result_func.append(this_func)
+        if len(result_func) > 0:
+            return result_func
+        return None 
+    
+    async def _role_execute_func(self,the_role:AIRole,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg) -> str:
+        from .compute_kernel import ComputeKernel
+
+        func_name = inenr_func_call_node.get("name")
+        arguments = json.loads(inenr_func_call_node.get("arguments"))
+
+        func_node : AIFunction = self.workflow_env.get_ai_function(func_name)
+        if func_node is None:
+            return "execute failed,function not found"
+        
+        ineternal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
+
+        result_str:str = await func_node.execute(**arguments)
+        
+        inner_functions = self._get_inner_functions()
+        prompt.messages.append({"role":"function","content":result_str,"name":func_name})
+        task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(prompt,
+                                                                                the_role.agent.llm_model_name,the_role.agent.max_token_size,
+                                                                                inner_functions)
+        
+        ineternal_call_record.result_str = task_result.result_str
+        ineternal_call_record.done_time = time.time()
+        org_msg.inner_call_chain.append(ineternal_call_record)
+
+        inner_func_call_node = task_result.result_message.get("function_call")
+        if inner_func_call_node:
+            return await self._role_execute_func(the_role,inner_func_call_node,prompt,org_msg)      
+        else:
+            return task_result.result_str
+    
+    def _is_in_same_workflow(self,msg) -> bool:
+        pass
+
+    async def role_process_msg(self,msg:AgentMsg,the_role:AIRole,workflow_chat_session:AIChatSession):        
+        msg.target = the_role.get_role_id()
+  
+
         prompt = AgentPrompt()
         prompt.append(the_role.agent.prompt)
         prompt.append(self.get_workflow_rule_prompt())
         prompt.append(the_role.get_prompt())
         # prompt.append(self._get_function_prompt(the_role.get_name()))
         # prompt.append(self._get_knowlege_prompt(the_role.get_name()))
-        prompt.append(await self._get_prompt_from_session(chatsession))
+        
+        #support group chat, user content include sender name!
+        prompt.append(await self._get_prompt_from_session(workflow_chat_session))
 
         msg_prompt = AgentPrompt()
-        msg_prompt.messages = [{"role":"user","content":msg.body}]
+        msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
         prompt.append(msg_prompt)
 
         self._format_msg_by_env_value(prompt)
-  
+        inner_functions = self._get_inner_functions()
+        
         async def _do_process_msg():
             #TODO: send msg to agent might be better?
-            result_str = await ComputeKernel().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
-            result = Workflow.prase_llm_result(result_str)
+            task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size(),inner_functions)
+            result_str = task_result.result_str
             logger.info(f"{the_role.role_id} process {msg.sender}:{msg.body},llm str is :{result_str}")
+            
+            inner_func_call_node = task_result.result_message.get("function_call")
+            
+            if inner_func_call_node:
+                #TODO to save more token ,can i use msg_prompt?
+                result_str = await self._role_execute_func(the_role,inner_func_call_node,prompt,msg)
+
+            result = Workflow.prase_llm_result(result_str)
             for postmsg in result.post_msgs:
+                postmsg.prev_msg_id = msg.get_msg_id()
+                # might be craete a new msg.topic for this postmsg
                 postmsg.topic = msg.topic
-                await self.role_post_msg(postmsg,the_role)
+                
+                await self.role_post_msg(postmsg,the_role,workflow_chat_session)
+                if not self._is_in_same_workflow(postmsg):
+                    role_sesion = AIChatSession.get_session(the_role.get_role_id(),f"{postmsg.target}#{msg.topic}",self.db_file)
+                    role_sesion.append(postmsg)
+                else:
+                    # message will be saved in role.process_message
+                    pass
+  
                 
             for post_call in result.post_calls:
+                action_msg = msg.create_action_msg(post_call[0],post_call[1],the_role.get_role_id())
+                workflow_chat_session.append(action_msg)
                 await self.role_post_call(post_call,the_role)
+                #save post_call
                 
             result_prompt_str = ""
             match result.state:
                 case "ignore":
                     return None
                 case "reponsed":
-                    resp_msg = AgentMsg()
-                    resp_msg.topic = msg.topic
-                    resp_msg.set(session_owner,msg.sender,result.resp)
-            
-                    chatsession.append_recv(msg)
-                    chatsession.append_post(resp_msg)
+                    resp_msg = msg.create_resp_msg(result.resp)
+                    resp_msg.sender = the_role.get_role_id()
+                    # It is always the person handling the messages who puts them into the session.
+                    workflow_chat_session.append(msg)
+                    workflow_chat_session.append(resp_msg)
+                    #await self.get_bus().resp_message(resp_msg)
                     return resp_msg
                 case "waiting":
                     # TODO: Use role:"function" would be better
                     for sendmsg in result.send_msgs:
                         target = sendmsg.target
                         sendmsg.topic = msg.topic
-                        send_resp = await self.role_send_msg(sendmsg,the_role)
+                        sendmsg.prev_msg_id = msg.get_msg_id()
+                        send_resp = await self.role_send_msg(sendmsg,the_role,workflow_chat_session)
                         if send_resp is not None:
                             result_prompt_str += f"\n{target} response is :{send_resp.body}"
+
+                        if not self._is_in_same_workflow(sendmsg):
+                            role_sesion = AIChatSession.get_session(the_role.get_role_id(),f"{sendmsg.target}#{sendmsg.topic}",self.db_file)
+                            role_sesion.append(sendmsg)
+                            role_sesion.append(send_resp)
+                        else:
+                             # message will be saved in role.process_message
+                            pass
                        
                     for call in result.calls:
+                        action_msg = msg.create_action_msg(call[0],call[1],call_result,the_role.get_role_id)
                         call_result = await self.role_call(call,the_role)
+          
                         if call_result is not None:
                             result_prompt_str += f"\ncall {call[0]} result is :{call_result}"
+                            #save action
+                            action_msg.result_str = call_result
+                            workflow_chat_session.append(action_msg)
 
                     result_prompt = AgentPrompt()
                     result_prompt.messages = [{"role":"user","content":result_prompt_str}]
@@ -408,17 +520,9 @@ class Workflow:
                 result_prompt.messages.append({"role":"user","content":f"{msg.body}"})
         
         return result_prompt
-
-
-    def _get_function_prompt(self,role_name:str) -> AgentPrompt:
-        # system functions
-        # env functions
-        # user install functions
-        pass    
     
     def _get_knowlege_prompt(self,role_name:str) -> AgentPrompt:
         pass
-
 
     def get_workflow_rule_prompt(self) -> AgentPrompt:
         return self.rule_prompt
@@ -445,6 +549,4 @@ class Workflow:
 
             #            the_env.attach_event_handler(k,_env_msg_handler)
             #            break
-        else:
-            logger.warn(f"environment {env.get_id()} already connected!")
 
