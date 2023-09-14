@@ -54,11 +54,17 @@ class OpenAI_ComputeNode(ComputeNode):
         prompts = task.params["prompts"]
 
         logger.info(f"call openai {mode_name} prompts: {prompts}")
-        resp = openai.ChatCompletion.create(model=mode_name,
+        if task.params.get("inner_functions") is None:
+            resp = openai.ChatCompletion.create(model=mode_name,
                                             messages=prompts,
-                                            functions=task.params["inner_functions"],
                                             max_tokens=task.params["max_token_size"],
-                                            temperature=0.7) # TODO: add temperature to task params?
+                                            temperature=0.7)
+        else:
+            resp = openai.ChatCompletion.create(model=mode_name,
+                                                messages=prompts,
+                                                functions=task.params["inner_functions"],
+                                                max_tokens=task.params["max_token_size"],
+                                                temperature=0.7) # TODO: add temperature to task params?
         
         logger.info(f"openai response: {resp}")
         

@@ -26,7 +26,7 @@ shell_style = Style.from_dict({
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
-from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgState,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession
+from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
@@ -73,6 +73,7 @@ class AIOS_Shell:
         open_ai_node.start()
         ComputeKernel().add_compute_node(open_ai_node)
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
+        AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
         return True 
         
 
@@ -83,13 +84,16 @@ class AIOS_Shell:
         agent_msg = AgentMsg()
         agent_msg.set(sender,target_id,msg)
         agent_msg.topic = topic
-        resp = await AIBus.get_default_bus().send_message(target_id,agent_msg)
+        resp = await AIBus.get_default_bus().send_message(agent_msg)
         if resp is not None:
             return resp.body
         else:
             return "error!"
 
     async def install_workflow(self,workflow_id:Workflow) -> None:
+        pass
+    
+    async def _user_process_msg(self,msg:AgentMsg) -> AgentMsg:
         pass
 
     async def call_func(self,func_name, args):
@@ -115,6 +119,7 @@ class AIOS_Shell:
             case 'login':
                 if len(args) >= 1:
                     self.username = args[0]
+                AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
                 return self.username + " login success!"    
             case 'history':
                 num = 10
@@ -134,7 +139,7 @@ class AIOS_Shell:
                 if chatsession is not None:
                     msgs = chatsession.read_history(num,offset)
                     format_texts = []
-                    for msg in reversed(msgs):
+                    for msg in msgs:
                         format_texts.append(("class:content",f"{msg.sender} >>> {msg.body}"))
                         format_texts.append(("",f"\n-------------------\n"))
                     return FormattedText(format_texts)
@@ -171,6 +176,7 @@ async def main():
                         format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
     shell = AIOS_Shell("user")
     await shell.initial()
+
     print(f"aios shell {shell.get_version()} ready.")
 
     completer = WordCompleter(['send($target,$msg,$topic)', 

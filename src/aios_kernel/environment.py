@@ -70,12 +70,6 @@ class Environment:
     def _do_get_value(self,key:str) -> Optional[str]:
         pass
 
-    def get_functions(self):
-        # system functions
-        # env functions
-        # user install functions
-        pass
-
     def register_get_handler(self,key:str,handler:Callable) -> None:
         h = self.get_handlers.get(key)
         if h is not None:
