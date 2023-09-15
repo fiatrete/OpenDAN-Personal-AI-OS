@@ -1,12 +1,12 @@
 # define a object type enum
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import IntEnum
 from .hash import HashValue
 import base58
 import base36
 
 
-class ObjectType(Enum):
+class ObjectType(IntEnum):
     Chunk = 7
     Image = 101
     Video = 102

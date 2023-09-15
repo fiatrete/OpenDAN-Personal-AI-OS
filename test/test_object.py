@@ -23,6 +23,7 @@ from knowledge import (
     EmailObjectBuilder,
     ObjectRelationStore,
     KnowledgeStore,
+    EmailObject,
 )
 import asyncio
 import unittest
@@ -42,6 +43,20 @@ class TestVectorSTorage(unittest.TestCase):
 
         email_folder = "F:\\system\\Downloads\\8081ffdb80925f5bff9c6ab9c4756c7d"
         email_object = EmailObjectBuilder({}, email_folder).build()
+        
+        id = email_object.calculate_id()
+        print(f"got email object: {id.to_base58()}")
+        
+        # test encode & decode
+        ret = email_object.encode()
+        obj = EmailObject.decode(ret)
+        id2 = obj.calculate_id()
+        print(f"got email object: {id2.to_base58()}")
+        self.assertEqual(id.to_base58(), id2.to_base58())
+        
+        ret2 = obj.encode()
+        self.assertEqual(ret, ret2)
+        
 
     def test_relation(self):
         obj1 = ObjectID.hash_data("12345".encode("utf-8"))

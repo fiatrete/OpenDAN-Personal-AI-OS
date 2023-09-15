@@ -1,4 +1,3 @@
-
 # define a object type enum
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -6,6 +5,16 @@ from .object_id import ObjectID, ObjectType
 import hashlib
 import json
 import pickle
+from typing import Any
+
+
+class ObjectEnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, ObjectID):
+            return o.to_base58()
+
+        return super().default(o)
+
 
 class KnowledgeObject(ABC):
     def __init__(self, object_type: ObjectType, desc: dict = {}, body: dict = {}):
@@ -18,7 +27,7 @@ class KnowledgeObject(ABC):
 
     def object_id(self) -> ObjectID:
         return self.calculate_id()
-    
+
     def set_desc_with_key_value(self, key, value):
         self.desc[key] = value
 
@@ -27,7 +36,7 @@ class KnowledgeObject(ABC):
 
     def get_desc(self) -> dict:
         return self.desc
-    
+
     def set_body_with_key_value(self, key, value):
         self.body[key] = value
 
@@ -36,10 +45,13 @@ class KnowledgeObject(ABC):
 
     def get_body(self) -> dict:
         return self.body
-    
+
     def calculate_id(self):
         # Convert the object_type and desc to string and compute the SHA256 hash
-        data = json.dumps({"object_type": self.object_type, "desc": self.desc})
+        data = json.dumps(
+            {"object_type": self.object_type, "desc": self.desc},
+            cls=ObjectEnhancedJSONEncoder,
+        )
         sha256 = hashlib.sha256()
         sha256.update(data.encode())
         return ObjectID(sha256.digest())
@@ -50,5 +62,3 @@ class KnowledgeObject(ABC):
     @staticmethod
     def decode(data: bytes):
         return pickle.loads(data)
-
-    

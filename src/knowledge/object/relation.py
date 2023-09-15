@@ -4,10 +4,10 @@ import sqlite3
 from typing import List, Tuple, Optional
 import logging
 import os
-from enum import Enum
+from enum import IntEnum
 
 
-class ObjectRelationType(Enum):
+class ObjectRelationType(IntEnum):
     Parent = 1
 
 

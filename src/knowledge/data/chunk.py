@@ -1,9 +1,9 @@
-from enum import Enum
+from enum import IntEnum
 from ..object import ObjectID
 
 ChunkID = ObjectID
 
-class PositionType(Enum):
+class PositionType(IntEnum):
     Unknown = 1
     Device = 2
     File = 3
