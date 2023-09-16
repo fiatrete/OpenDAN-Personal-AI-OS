@@ -16,20 +16,17 @@ logger = logging.getLogger(__name__)
 
 class Stability_ComputeNode(ComputeNode):
     _instanace = None
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = Stability_ComputeNode()
+        return cls._instance
 
-    def __new__(cls):
-        if cls._instanace is None:
-            cls._instanace = super(Stability_ComputeNode, cls).__new__(cls)
-            cls._instanace.is_start = False
-        return cls._instanace
 
     def __init__(self) -> None:
         super().__init__()
-        if self.is_start is True:
-            logger.warn("Stability_ComputeNode is already start")
-            return
 
-        self.is_start = True
+        self.is_start = False
         self.node_id = "stability_node"
         self.api_key = ""
         self.engine = "stable-diffusion-512-v2-1"
@@ -88,8 +85,8 @@ class Stability_ComputeNode(ComputeNode):
 
         for resp in answers:
             for artifact in resp.artifacts:
-                logger.info("artifact:", artifact.id,
-                            artifact.type, artifact.finish_reason)
+                logger.info(f"artifact:{artifact.id},{artifact.type},{artifact.finish_reason}")
+                
                 if artifact.finish_reason == generation.FILTER:
                     logging.warn("request activated the API's safety filters")
                 if artifact.type == generation.ARTIFACT_IMAGE:
@@ -108,6 +105,9 @@ class Stability_ComputeNode(ComputeNode):
         return None
 
     def start(self):
+        if self.is_start:
+            return
+        self.is_start = True
         async def _run_task_loop():
             while True:
                 logger.info("stability_node is waiting for task...")

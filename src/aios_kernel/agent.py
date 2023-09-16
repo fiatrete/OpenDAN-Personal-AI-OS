@@ -82,7 +82,7 @@ class AIAgent:
         self.chat_db = None
         self.unread_msg = Queue() # msg from other agent
         self.owner_env : Environment = None
-        self.owenr_bus : AIBus = None
+        self.owenr_bus = None
         
     @classmethod
     def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
@@ -164,7 +164,7 @@ class AIAgent:
         
         inner_functions = self._get_inner_functions()
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
-        task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
+        task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
         
         ineternal_call_record.result_str = task_result.result_str
         ineternal_call_record.done_time = time.time()
@@ -198,7 +198,7 @@ class AIAgent:
 
             inner_functions = self._get_inner_functions()
 
-            task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
             final_result = task_result.result_str
 
             inner_func_call_node = task_result.result_message.get("function_call")

@@ -9,9 +9,10 @@ import os
 class WorkflowManager:
     _instance = None
 
-    def __new__(cls):
+    @classmethod
+    def get_instance(cls):
         if cls._instance is None:
-            cls._instance = super(WorkflowManager, cls).__new__(cls)
+            cls._instance = WorkflowManager()
         return cls._instance
 
 

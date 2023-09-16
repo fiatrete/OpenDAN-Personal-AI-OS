@@ -11,3 +11,4 @@ from .bus import AIBus
 from .workflow_env import WorkflowEnvironment,CalenderEnvironment,CalenderEvent
 from .tunnel import AgentTunnel
 from .tg_tunnel import TelegramTunnel
+from .email_tunnel import EmailTunnel
