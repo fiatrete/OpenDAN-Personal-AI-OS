@@ -4,6 +4,7 @@ import sys
 import os
 import logging
 import re
+import toml
 
 from typing import Any, Optional, TypeVar, Tuple, Sequence
 import argparse
@@ -26,12 +27,12 @@ shell_style = Style.from_dict({
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
-from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession
+from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
-from aios_kernel import CalenderEnvironment,Environment
+
 
 
 class AIOS_Shell:
@@ -74,6 +75,13 @@ class AIOS_Shell:
         ComputeKernel().add_compute_node(open_ai_node)
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+
+        TelegramTunnel.register_to_loader()
+
+        tunnels_config_path = os.path.abspath(directory + "/../../../rootfs/tunnels.cfg.toml")
+        tunnel_config = toml.load(tunnels_config_path)
+        await AgentTunnel.load_all_tunnels_from_config(tunnel_config["tunnels"])
+
         return True 
         
 

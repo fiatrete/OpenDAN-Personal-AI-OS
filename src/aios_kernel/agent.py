@@ -243,8 +243,8 @@ class AIAgent:
         result_prompt = AgentPrompt()
         for msg in reversed(messages):
             if msg.target == chatsession.owner_id:
-                result_prompt.messages.append({"role":"user","content":f"{msg.sender}:{msg.body}"})
-            if msg.sender == chatsession.owner_id:
+                result_prompt.messages.append({"role":"user","content":msg.body})
+            elif msg.sender == chatsession.owner_id:
                 result_prompt.messages.append({"role":"assistant","content":msg.body})
         
         return result_prompt

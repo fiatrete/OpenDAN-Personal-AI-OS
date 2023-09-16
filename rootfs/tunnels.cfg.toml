@@ -1,0 +1,6 @@
+[[tunnels]]
+tunnel_id = "MyRoobot"
+type="TelegramTunnel"
+target="agent_1"
+token=""
+
