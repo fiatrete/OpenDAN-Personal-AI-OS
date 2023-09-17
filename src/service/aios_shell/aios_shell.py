@@ -26,7 +26,7 @@ shell_style = Style.from_dict({
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
-from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgState,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession
+from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgState,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,LocalLlama_ComputeNode
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
@@ -69,9 +69,15 @@ class AIOS_Shell:
         
         AgentManager().initial(os.path.abspath(directory + "/../../../rootfs/"))
         WorkflowManager().initial(os.path.abspath(directory + "/../../../rootfs/workflows/"))
+
         open_ai_node = OpenAI_ComputeNode()
         open_ai_node.start()
         ComputeKernel().add_compute_node(open_ai_node)
+
+        llama_ai_node = LocalLlama_ComputeNode()
+        llama_ai_node.start()
+        ComputeKernel().add_compute_node(llama_ai_node)
+
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         return True 
         

@@ -9,3 +9,4 @@ from .role import AIRole,AIRoleGroup
 from .workflow import Workflow
 from .bus import AIBus
 from .workflow_env import WorkflowEnvironment,CalenderEnvironment,CalenderEvent
+from .local_llama_compute_node import LocalLlama_ComputeNode
