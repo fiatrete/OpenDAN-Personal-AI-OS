@@ -1,3 +1,10 @@
+
+chromadb==0.4
+openai==0.28
+toml==0.10
+moviepy==1.0
+base58==2.1
+base36==0.1
 aiofiles==23.2.1
 aiohttp==3.7.0
 aioimaplib==1.0.1
@@ -5,11 +12,12 @@ aiosmtplib==2.0.2
 beautifulsoup4==4.12.2
 mail_parser==3.15.0
 openai==0.27.10
-Pillow==10.0.1
+Pillow
 prompt_toolkit==3.0.39
 protobuf
 pydantic==1.10.11
 python-telegram-bot==20.5
 Requests==2.31.0
-stability_sdk==0.8.4
+stability_sdk
 toml==0.10.2
+

@@ -59,46 +59,85 @@ class OpenAI_ComputeNode(ComputeNode):
 
     def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
-        mode_name = task.params["model_name"]
-        # max_token_size = task.params["max_token_size"]
-        prompts = task.params["prompts"]
+        if task.task_type == "text_embedding":
+            model_name = task.params["model_name"]
+            input = task.params["input"]
+            logger.info(f"call openai {model_name} input: {input}")
 
-        logger.info(f"call openai {mode_name} prompts: {prompts}")
+            resp = openai.Embedding.create(model=model_name,
+                                            input=input)
+            
+            # resp = {
+            # "object": "list",
+            # "data": [
+            #     {
+            #     "object": "embedding",
+            #     "index": 0,
+            #     "embedding": [
+            #         -0.00930514745414257,
+            #         0.00765434792265296,
+            #         -0.007167573552578688,
+            #         -0.012373941019177437,
+            #         -0.04884673282504082
+            #     ]}]
+            # }
 
-        if task.params.get("inner_functions") is None:
-            resp = openai.ChatCompletion.create(model=mode_name,
-                                            messages=prompts,
-                                            max_tokens=task.params["max_token_size"],
-                                            temperature=0.7)
-        else:
-            resp = openai.ChatCompletion.create(model=mode_name,
+            logger.info(f"openai response: {resp}")
+
+            result = ComputeTaskResult()    
+            result.set_from_task(task)
+            result.worker_id = self.node_id
+            result.result = resp["data"][0]["embedding"]
+
+            return result
+          
+        if task.task_type == "llm_completion":
+            mode_name = task.params["model_name"]
+            # max_token_size = task.params["max_token_size"]
+            prompts = task.params["prompts"]
+
+            mode_name = task.params["model_name"]
+	        # max_token_size = task.params["max_token_size"]
+            prompts = task.params["prompts"]          
+       
+
+            logger.info(f"call openai {mode_name} prompts: {prompts}")
+
+            if task.params.get("inner_functions") is None:
+                resp = openai.ChatCompletion.create(model=mode_name,
                                                 messages=prompts,
-                                                functions=task.params["inner_functions"],
                                                 max_tokens=task.params["max_token_size"],
-                                                temperature=0.7) # TODO: add temperature to task params?
+                                                temperature=0.7)
+            else:
+                resp = openai.ChatCompletion.create(model=mode_name,
+                                                    messages=prompts,
+                                                    functions=task.params["inner_functions"],
+                                                    max_tokens=task.params["max_token_size"],
+                                                    temperature=0.7) # TODO: add temperature to task params?
 
         
-        logger.info(f"openai response: {resp}")
-        
-        result = ComputeTaskResult()
-        result.set_from_task(task)
+            logger.info(f"openai response: {resp}")
 
-        status_code = resp["choices"][0]["finish_reason"]
-        match status_code:
-            case "function_call":
-                task.state = ComputeTaskState.DONE
-            case "stop":
-                task.state = ComputeTaskState.DONE
-            case _:
-                task.state = ComputeTaskState.ERROR
-                task.error_str = f"The status code was {status_code}."
-                return None
+            result = ComputeTaskResult()
+            result.set_from_task(task)
 
-        result.worker_id = self.node_id
-        result.result_str = resp["choices"][0]["message"]["content"]
-        result.result_message = resp["choices"][0]["message"]
+            status_code = resp["choices"][0]["finish_reason"]
+            match status_code:
+                case "function_call":
+                    task.state = ComputeTaskState.DONE
+                case "stop":
+                    task.state = ComputeTaskState.DONE
+                case _:
+                    task.state = ComputeTaskState.ERROR
+                    task.error_str = f"The status code was {status_code}."
+                    return None
+
+            result.worker_id = self.node_id
+            result.result_str = resp["choices"][0]["message"]["content"]
+            result.result_message = resp["choices"][0]["message"]
 
         return result
+
 
     def start(self):
         if self.is_start is True:
@@ -125,8 +164,16 @@ class OpenAI_ComputeNode(ComputeNode):
     def get_capacity(self):
         pass
 
+
     def is_support(self, task: ComputeTask) -> bool:
-        return task.task_type == ComputeTaskType.LLM_COMPLETION and (not task.params["model_name"] or task.params["model_name"] == "gpt-4-0613")
+        if task.task_type == ComputeTaskType.LLM_COMPLETION: 
+            if (not task.params["model_name"] or task.params["model_name"] == "gpt-4-0613")
+                return True
+        if task.task_type == "text_embedding":
+            if task.params["model_name"] == "text-embedding-ada-002":
+                return True
+        return False
+
 
     def is_local(self) -> bool:
         return False

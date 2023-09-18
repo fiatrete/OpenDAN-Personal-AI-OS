@@ -53,6 +53,17 @@ class ComputeTask:
         if inner_functions is not None:
             self.params["inner_functions"] = inner_functions
 
+    def set_text_embedding_params(self, input, model_name=None, callchain_id = None):
+        self.task_type = "text_embedding"
+        self.create_time = time.time()
+        self.task_id = uuid.uuid4().hex
+        self.callchain_id = callchain_id
+        if model_name is not None:
+            self.params["model_name"] = model_name
+        else:
+            self.params["model_name"] = "text-embedding-ada-002"
+        self.params["input"] = input
+
     def display(self) -> str:
         return f"ComputeTask: {self.task_id} {self.task_type} {self.state}"
 
