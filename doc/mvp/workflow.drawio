@@ -220,7 +220,8 @@
         </mxGraphModel>
     </diagram>
     <diagram id="7NYJTgo0U9cdVshLy85U" name="Page-3">
-        <mxGraphModel dx="500" dy="864" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+
+        <mxGraphModel dx="1881" dy="676" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -361,6 +362,32 @@
                         <mxPoint x="230" y="433" as="sourcePoint"/>
                         <mxPoint x="280" y="383" as="targetPoint"/>
                     </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="zNgk-d6xdACtSja1wnUq" name="Page-4">
+        <mxGraphModel dx="2069" dy="1139" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="PKOyaMforMDOFoUY4PA1-1" value="ChatSession" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="140" y="150" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="PKOyaMforMDOFoUY4PA1-2" value="SubSession" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="230" y="240" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="PKOyaMforMDOFoUY4PA1-3" value="SubSession" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="230" y="330" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="PKOyaMforMDOFoUY4PA1-4" value="Agent Message" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="150" width="130" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="PKOyaMforMDOFoUY4PA1-5" value="Agent Message" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="230" width="130" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="PKOyaMforMDOFoUY4PA1-6" value="Agent Message" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+                    <mxGeometry x="600" y="320" width="130" height="60" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

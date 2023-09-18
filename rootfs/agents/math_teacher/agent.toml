@@ -1,0 +1,6 @@
+instance_id = "math_teacher"
+fullname = "the one"
+llm_model_name = "gpt-4-0613"
+[[prompt]]
+role = "system"
+content = "你是精通数学的老师"

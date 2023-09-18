@@ -4,6 +4,7 @@ import sys
 import os
 import logging
 import re
+import toml
 
 from typing import Any, Optional, TypeVar, Tuple, Sequence
 import argparse
@@ -17,6 +18,19 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
+directory = os.path.dirname(__file__)
+sys.path.append(directory + '/../../')
+
+from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode
+
+
+sys.path.append(directory + '/../../component/')
+from agent_manager import AgentManager
+from workflow_manager import WorkflowManager
+
+
+logger = logging.getLogger(__name__)
+
 shell_style = Style.from_dict({
     'title': '#87d7ff bold', #RGB
     'content': '#007f00 bold',
@@ -24,68 +38,97 @@ shell_style = Style.from_dict({
 })
 
 
-directory = os.path.dirname(__file__)
-sys.path.append(directory + '/../../')
-from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgState,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession
-
-sys.path.append(directory + '/../../component/')
-from agent_manager import AgentManager
-from workflow_manager import WorkflowManager
-
-
-
 class AIOS_Shell:
     def __init__(self,username:str) -> None:
         self.username = username
         self.current_target = "_"
         self.current_topic = "default"
+        self.is_working = True
+
+    def declare_all_user_config(self):
+        user_config = AIStorage.get_instance().get_user_config()
+        user_config.add_user_config("username","username is your full name when using AIOS",False,None,)
+
+        openai_node = OpenAI_ComputeNode.get_instance()
+        openai_node.declare_user_config()
+
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
-        agent : AIAgent = await AgentManager().get(msg.target)
+        target_id = msg.target.split(".")[0]
+        agent : AIAgent = await AgentManager.get_instance().get(target_id)
         if agent is not None:
-            bus.register_message_handler(msg.target,agent._process_msg)
+            agent.owner_env = Environment.get_env_by_id("calender") 
+            bus.register_message_handler(target_id,agent._process_msg)
             return True
         
-        a_workflow = await WorkflowManager().get_workflow(msg.target)
+        a_workflow = await WorkflowManager.get_instance().get_workflow(target_id)
         if a_workflow is not None:
-            bus.register_message_handler(msg.target,a_workflow._process_msg)
-            for subflow in a_workflow.sub_workflows.values():
-                bus.register_message_handler(subflow.workflow_name,subflow._process_msg)
+            bus.register_message_handler(target_id,a_workflow._process_msg)
             return True
         
         return False
     
     async def is_agent(self,target_id:str) -> bool:
-        agent : AIAgent = await AgentManager().get(target_id)
+        agent : AIAgent = await AgentManager.get_instance().get(target_id)
         if agent is not None:
             return True
         else:
             return False
 
     async def initial(self) -> bool:
-        AgentManager().initial(os.path.abspath(directory + "/../../../rootfs/"))
-        WorkflowManager().initial(os.path.abspath(directory + "/../../../rootfs/workflows/"))
-        open_ai_node = OpenAI_ComputeNode()
-        open_ai_node.start()
-        ComputeKernel().add_compute_node(open_ai_node)
+        cal_env = CalenderEnvironment("calender")
+        cal_env.start()
+        Environment.set_env_by_id("calender",cal_env)
+        
+        AgentManager.get_instance().initial()
+        WorkflowManager.get_instance().initial()
+
+        open_ai_node = OpenAI_ComputeNode.get_instance()
+        if await open_ai_node.initial() is not True:
+            logger.error("openai node initial failed!")
+            return False
+        
+        ComputeKernel.get_instance().add_compute_node(open_ai_node)
+        
+        llama_ai_node = LocalLlama_ComputeNode()
+        llama_ai_node.start()
+        ComputeKernel().add_compute_node(llama_ai_node)
+
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
+        AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+
+        TelegramTunnel.register_to_loader()
+        EmailTunnel.register_to_loader()
+
+        user_data_dir = AIStorage.get_instance().get_myai_dir()
+        tunnels_config_path = os.path.abspath(f"{user_data_dir}/tunnels.cfg.toml")
+        tunnel_config = None
+        try: 
+            tunnel_config = toml.load(tunnels_config_path)
+            if tunnel_config is not None:
+                await AgentTunnel.load_all_tunnels_from_config(tunnel_config["tunnels"])
+        except Exception as e:
+            logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
+            
+
+
         return True 
         
 
     def get_version(self) -> str:
-        return "0.0.1"
+        return "0.5.1"
 
     async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None) -> str:
         agent_msg = AgentMsg()
         agent_msg.set(sender,target_id,msg)
         agent_msg.topic = topic
-        resp = await AIBus().get_default_bus().send_message(target_id,agent_msg)
+        resp = await AIBus.get_default_bus().send_message(agent_msg)
         if resp is not None:
             return resp.body
         else:
             return "error!"
 
-    async def install_workflow(self,workflow_id:Workflow) -> None:
+    async def _user_process_msg(self,msg:AgentMsg) -> AgentMsg:
         pass
 
     async def call_func(self,func_name, args):
@@ -108,24 +151,30 @@ class AIOS_Shell:
                 self.current_topic = topic
                 show_text = FormattedText([("class:title", f"current session switch to {topic}@{target_id}")])
                 return show_text
+            case 'login':
+                if len(args) >= 1:
+                    self.username = args[0]
+                AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+                return self.username + " login success!"    
             case 'history':
                 num = 10
                 offset = 0
-                if len(args) >= 1:
-                    num = args[0]
-                if len(args) >= 2:
-                    offset = args[1]
+                if args is not None:
+                    if len(args) >= 1:
+                        num = args[0]
+                    if len(args) >= 2:
+                        offset = args[1]
 
                 db_path = ""
                 if await self.is_agent(self.current_target):
-                    db_path = AgentManager().db_path
+                    db_path = AgentManager.get_instance().db_path
                 else:
-                    db_path = WorkflowManager().db_file
+                    db_path = WorkflowManager.get_instance().db_file
                 chatsession:AIChatSession = AIChatSession.get_session(self.current_target,f"{self.username}#{self.current_topic}",db_path,False)
                 if chatsession is not None:
                     msgs = chatsession.read_history(num,offset)
                     format_texts = []
-                    for msg in reversed(msgs):
+                    for msg in msgs:
                         format_texts.append(("class:content",f"{msg.sender} >>> {msg.body}"))
                         format_texts.append(("",f"\n-------------------\n"))
                     return FormattedText(format_texts)
@@ -136,46 +185,120 @@ class AIOS_Shell:
                 return FormattedText([("class:title", f"help~~~")])
 
 
-#######################################################################################    
-history = FileHistory('history.txt')
+##########################################################################################################################    
+history = FileHistory('aios_shell_history.txt')
 session = PromptSession(history=history) 
 
-def parse_function_call(s):
-    match = re.match(r'(\w+)\((.*)\)$', s)
-    if match:
-        func_name = match.group(1)
-        args_str = match.group(2)
-        
-        args = []
-        buffer = ''
-        quote_count = 0  # Count of single or double quotes
-        for char in args_str:
-
-            if char in ['"', "'"]:
-                quote_count += 1
-            if char == ',' and quote_count % 2 == 0:  # ',' is outside of quotes
-                args.append(buffer.strip())
-                buffer = ''
-            else:
-                buffer += char
-        if buffer:
-            args.append(buffer.strip())
-        
-        return func_name, args
-    else:
+def parse_function_call(func_string):
+    match = re.search(r'\s*(\w+)\s*\(\s*(.*)\s*\)\s*', func_string)
+    if not match:
         return None
-    
+
+    func_name = match.group(1)
+    params_string = match.group(2).strip()    
+    params = re.split(r'\s*,\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', params_string)
+    params = [param.strip('"') for param in params]
+    if len(params[0]) == 0:
+        params = None
+
+    return func_name, params
+
+async def get_user_config_from_input(check_result:dict) -> bool:
+    for key,item in check_result.items():
+        user_input = await session.prompt_async(f"{key} ({item.desc}) not define! \nPlease input:",style=shell_style)
+        if len(user_input) > 0:
+            AIStorage.get_instance().get_user_config().set_user_config(key,user_input)
+
+    await AIStorage.get_instance().get_user_config().save_value_to_user_config()
+    return True
+
+async def main_daemon_loop(shell:AIOS_Shell):
+    while shell.is_working:
+        await asyncio.sleep(1)
+
+    return 0
+
+def print_welcome_screen():
+    print("\033[1;31m")  
+    logo = """
+\t_______                    ____________________   __
+\t__  __ \______________________  __ \__    |__  | / /
+\t_  / / /__  __ \  _ \_  __ \_  / / /_  /| |_   |/ / 
+\t/ /_/ /__  /_/ /  __/  / / /  /_/ /_  ___ |  /|  /  
+\t\____/ _  .___/\___//_/ /_//_____/ /_/  |_/_/ |_/   
+\t        /_/                                          
+
+    """
+    print(logo)
+    print("\033[0m")  
+
+    print("\033[1;32m \t\tWelcome to OpenDAN - Your Personal AI OS\033[0m\n")  
+    introduce = """
+\tThe core goal of version 0.5.1 is to turn the concept of AIOS into code and get it up and running as quickly as possible. 
+\tAfter three weeks of development, our plans have undergone some changes based on the actual progress of the system. 
+\tUnder the guidance of this goal, some components do not need to be fully implemented. Furthermore, 
+\tbased on the actual development experience from several demo Intelligent Applications, 
+\twe intend to strengthen some components. This document will explain these changes and provide an update 
+\ton the current development progress of MVP(0.5.1,0.5.2)
+
+"""
+    print(introduce)
+
+    print(f"\033[1;34m \t\tVersion: {AIOS_Version}\n\033")  
+    print("\033[1;33m \tOpenDAN is an open-source project, let's define the future of Humans and AI together.\033[0m")  
+    print("\033[1;33m \tGithub\t: https://github.com/fiatrete/OpenDAN-Personal-AI-OS\033[0m")  
+    print("\033[1;33m \tWebsite\t: https://www.opendan.ai\033[0m")
+    print("\n\n")
+
 
 async def main():
-    print("aios shell prepareing...")
-    logging.basicConfig(filename="aios_shell.log",filemode="w",level=logging.INFO,format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
-    shell = AIOS_Shell("user")
-    await shell.initial()
-    print(f"aios shell {shell.get_version()} ready.")
+    print_welcome_screen()
+    print("OpenDAN is booting...")
+    logging.basicConfig(filename="aios_shell.log",filemode="w",encoding='utf-8',force=True,
+                        level=logging.INFO,
+                        format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
+    
+    if os.path.isdir(f"{directory}/../../../rootfs"):
+        AIStorage.get_instance().is_dev_mode = True
+    else:
+        AIStorage.get_instance().is_dev_mode = False    
 
+    is_daemon = False
+    if os.name != 'nt':
+        if os.getppid() == 1:
+            is_daemon = True
+
+    shell = AIOS_Shell("user")   
+    shell.declare_all_user_config() 
+    await AIStorage.get_instance().initial()
+    check_result = AIStorage.get_instance().get_user_config().check_user_config()
+    if check_result is not None:
+        if is_daemon:
+            logger.error(check_result)
+            return 1
+        else:
+            #Remind users to enter necessary configurations.
+            if await get_user_config_from_input(check_result) is False:
+                return 1
+    
+    init_result = await shell.initial()
+    if init_result is False:
+        if is_daemon:
+            logger.error("aios shell initial failed!")
+            return 1
+        else:
+            print("aios shell initial failed!")
+
+    print(f"aios shell {shell.get_version()} ready.")
+    if is_daemon:
+        return await main_daemon_loop(shell)
+
+    #TODO: read last input config
     completer = WordCompleter(['send($target,$msg,$topic)', 
                                'open($target,$topic)', 
                                'history($num,$offset)',
+                               'login($username)',
+                               'connect($target)',
                                'show()',
                                'exit()', 
                                'help()'], ignore_case=True)
@@ -198,8 +321,6 @@ async def main():
 
         print_formatted_text(show_text,style=shell_style)
         #print_formatted_text(f"{shell.username}<->{shell.current_topic}@{shell.current_target} >>> {resp}",style=shell_style)
-
-    
 
 if __name__ == "__main__":    
     asyncio.run(main())

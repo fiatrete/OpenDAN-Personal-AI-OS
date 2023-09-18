@@ -2,7 +2,7 @@
 import logging
 import toml
 
-from aios_kernel import AIAgent,AIAgentTemplete
+from aios_kernel import AIAgent,AIAgentTemplete,AIStorage
 from package_manager import PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
 
 logger = logging.getLogger(__name__)
@@ -11,16 +11,19 @@ logger = logging.getLogger(__name__)
 class AgentManager:
     _instance = None
    
-    def __new__(cls):
+    @classmethod
+    def get_instance(cls)->'AgentManager':
         if cls._instance is None:
-            cls._instance = super(AgentManager, cls).__new__(cls)
+            cls._instance = AgentManager()
         return cls._instance
     
+    def initial(self) -> None:
+        system_app_dir = AIStorage.get_instance().get_system_app_dir()
+        user_data_dir = AIStorage.get_instance().get_myai_dir()
 
-    def initial(self,root_dir:str) -> None:
-        self.agent_templete_env : PackageEnv = PackageEnvManager().get_env(f"{root_dir}/templetes/templetes.cfg")
-        self.agent_env : PackageEnv = PackageEnvManager().get_env(f"{root_dir}/agents/agents.cfg")
-        self.db_path = f"{root_dir}/agents_chat.db"
+        self.agent_templete_env : PackageEnv = PackageEnvManager().get_env(f"{system_app_dir}/templates/templetes.cfg")
+        self.agent_env : PackageEnv = PackageEnvManager().get_env(f"{system_app_dir}/agents/agents.cfg")
+        self.db_path = f"{user_data_dir}/messages.db"
         self.loaded_agent_instance = {}
         if self.agent_templete_env is None:
             raise Exception("agent_manager initial failed")

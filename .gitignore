@@ -2,3 +2,11 @@
 *.pyc
 rootfs/data
 *.log
+rootfs/email/config.local.toml
+rootfs/data
+venv
+aios_shell.log
+history.txt
+math_school_env.db
+workflows.db
+

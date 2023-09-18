@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from .compute_task import ComputeTask
+from .compute_task import ComputeTask, ComputeTaskType
 
 
 class ComputeNode(ABC):
@@ -8,15 +8,15 @@ class ComputeNode(ABC):
         self.enable = True
 
     @abstractmethod
-    async def push_task(self,task:ComputeTask,proiority:int = 0):
-        pass
-    
-    @abstractmethod
-    async def remove_task(self,task_id:str):
+    async def push_task(self, task: ComputeTask, proiority: int = 0):
         pass
 
     @abstractmethod
-    def get_task_state(self,task_id:str):
+    async def remove_task(self, task_id: str):
+        pass
+
+    @abstractmethod
+    def get_task_state(self, task_id: str):
         pass
 
     @abstractmethod
@@ -37,17 +37,13 @@ class ComputeNode(ABC):
 
     def is_trusted(self) -> bool:
         return True
-    
+
     def get_fee_type(self) -> str:
         return "free"
-    
-    
 
 class LocalComputeNode(ComputeNode):
     def display(self) -> str:
         return super().display()
-    
+
     def is_local(self) -> bool:
         return True
-    
-

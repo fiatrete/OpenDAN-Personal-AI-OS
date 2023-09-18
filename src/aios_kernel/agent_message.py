@@ -1,27 +1,102 @@
 from enum import Enum
 import uuid
 import time 
+import re
 
-class AgentMsgState(Enum):
+class AgentMsgType(Enum):
+    TYPE_MSG = 0
+    TYPE_INTERNAL_CALL = 1
+    TYPE_ACTION = 2
+    TYPE_EVENT = 3
+
+class AgentMsgStatus(Enum):
     RESPONSED = 0
     INIT = 1
     SENDING = 2
     PROCESSING = 3
     ERROR = 4
+    RECVED = 5
+    EXECUTED = 6
+
+# msg is a msg / msg resp
+# msg body可以有内容类型（MIME标签），text, image, voice, video, file,以及富文本(html)
+# msg is a inner function call with result
+# msg is a Action with result
+
+# qutoe Msg
+# forword msg
+# reply msg
+
+# 逻辑上的同一个Message在同一个session中看到的msgid相同
+#       在不同的session中看到的msgid不同
 
 class AgentMsg:
-    def __init__(self) -> None:
+    def __init__(self,msg_type=AgentMsgType.TYPE_MSG) -> None:
+        self.msg_id = ""
+        self.msg_type:AgentMsgType = msg_type
+        
+        self.prev_msg_id:str = None
+        self.quote_msg_id:str = None    
+        self.rely_msg_id:str = None # if not none means this is a respone msg
+        self.session_id:str = None
+
         self.create_time = 0
-        self.sender:str = None
+        self.done_time = 0
+        self.topic:str = None # topic is use to find session, not store in db
+
+        self.sender:str = None # obj_id.sub_objid@tunnel_id
         self.target:str = None
+        self.mentions:[] = None #use in group chat only
+        #self.title:str = None
         self.body:str = None
-        self.topic:str = "T#" + uuid.uuid4().hex
-        #self.msg_type = 0
-        self.state = AgentMsgState.INIT
+        self.body_mime:str = None #//default is "text/plain",encode is utf8
+
+        #type is call / action
+        self.func_name = None 
+        self.args = None
+        self.result_str = None
+
+        #type is event
+        self.event_name = None
+        self.event_args = None
+
+        self.status = AgentMsgStatus.INIT
+        self.inner_call_chain = []
         self.resp_msg = None
 
+    @classmethod
+    def create_internal_call_msg(self,func_name:str,args:dict,prev_msg_id:str,caller:str):
+        msg = AgentMsg(AgentMsgType.TYPE_INTERNAL_CALL)
+        msg.func_name = func_name
+        msg.args = args
+        msg.prev_msg_id = prev_msg_id
+        msg.sender = caller
+        return msg
+    
+    def create_action_msg(self,action_name:str,args:dict,caller:str):
+        msg = AgentMsg(AgentMsgType.TYPE_ACTION)
+        msg.func_name = action_name
+        msg.args = args
+        msg.prev_msg_id = self.msg_id
+        msg.topic  = self.topic
+        msg.sender = caller
+        return msg
+    
+    def create_resp_msg(self,resp_body):
+        resp_msg = AgentMsg()
+        resp_msg.msg_id = "msg#" + uuid.uuid4().hex
+        self.create_time = time.time()
+
+        resp_msg.rely_msg_id = self.msg_id
+        resp_msg.sender = self.target
+        resp_msg.target = self.sender
+        resp_msg.body = resp_body
+        resp_msg.topic = self.topic
+
+        return resp_msg
+
     def set(self,sender:str,target:str,body:str,topic:str=None) -> None:
-        self.id = "msg#" + uuid.uuid4().hex
+        self.msg_id = "msg#" + uuid.uuid4().hex
         self.sender = sender
         self.target = target
         self.body = body
@@ -30,10 +105,35 @@ class AgentMsg:
             self.topic = topic
 
     def get_msg_id(self) -> str:
-        return self.id
+        return self.msg_id
 
     def get_sender(self) -> str:
         return self.sender
 
     def get_target(self) -> str:
         return self.target
+    
+    def get_prev_msg_id(self) -> str:
+        return self.prev_msg_id
+    
+    def get_quote_msg_id(self) -> str:
+        return self.quote_msg_id
+    
+    @classmethod
+    def parse_function_call(cls,func_string:str):
+        match = re.search(r'\s*(\w+)\s*\(\s*(.*)\s*\)\s*', func_string)
+        if not match:
+            return None
+
+        func_name = match.group(1)
+        if func_name is None:
+            return None
+        if len(func_name) < 2:
+            return None
+        
+        params_string = match.group(2).strip()    
+        params = re.split(r'\s*,\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', params_string)
+        params = [param.strip('"') for param in params]
+
+        return func_name, params
+        

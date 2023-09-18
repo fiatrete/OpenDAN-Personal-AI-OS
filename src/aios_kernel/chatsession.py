@@ -5,8 +5,9 @@ import logging
 import threading
 import datetime
 import uuid
+import json
 
-from .agent_message import AgentMsg
+from .agent_message import AgentMsgType, AgentMsg, AgentMsgStatus
 
 class ChatSessionDB:
     def __init__(self, db_file):
@@ -54,14 +55,31 @@ class ChatSessionDB:
             """)
 
             # create messages table
+            # reciver_id could be None
+        
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS Messages (
                     MessageID TEXT PRIMARY KEY,
                     SessionID TEXT,
-                    SenderID TEXT,
+                    MsgType INTEGER,
+                    PrevMsgID TEXT,
+                    QuoteMsgID TEXT,
+                    RelyMsgID TEXT,
+                    
+                    SenderID TEXT, 
                     ReceiverID TEXT,
                     Timestamp TEXT,
+                    
+                    Topic TEXT,
+                    Mentions TEXT,
+                    ContentMIME TEXT,
                     Content TEXT,
+                    
+                    ActionName TEXT,
+                    ActionParams TEXT,
+                    ActionResult TEXT,
+                    DoneTime TEXT,     
+                         
                     Status INTEGER
                 );
             """)
@@ -83,15 +101,43 @@ class ChatSessionDB:
             logging.error("Error occurred while inserting session: %s", e)
             return -1  # return -1 if an error occurs
 
-    def insert_message(self, message_id, session_id, sender_id, receiver_id, timestamp, content, status):
+    def insert_message(self, msg:AgentMsg):
         """ insert a new message into the Messages table """
         try:
+            action_name = None
+            action_params = None
+            action_result = None
+            mentions = None
+            if msg.mentions:
+                mentions = json.dumps(msg.mentions)
+
+            match msg.msg_type:
+                case AgentMsgType.TYPE_MSG:
+                    pass
+                case AgentMsgType.TYPE_ACTION:
+                    action_name = msg.func_name
+                    action_params = json.dumps(msg.args)
+                    action_result = msg.result_str
+                case AgentMsgType.TYPE_INTERNAL_CALL:
+                    action_name = msg.func_name
+                    action_params = json.dumps(msg.args)
+                    action_result = msg.result_str
+                case AgentMsgType.TYPE_EVENT:
+                    action_name = msg.event_name
+                    action_params = json.dumps(msg.event_args)
+
+
             conn = self._get_conn()
             conn.execute("""
-                INSERT INTO Messages (MessageID, SessionID, SenderID, ReceiverID, Timestamp, Content, Status)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (message_id, session_id, sender_id, receiver_id, timestamp, content, status))
+                INSERT INTO Messages (MessageID, SessionID, MsgType, PrevMsgID, SenderID, ReceiverID, Timestamp, Topic,Mentions,ContentMIME,Content,ActionName,ActionParams,ActionResult,DoneTime,Status)
+                VALUES (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (msg.msg_id, msg.session_id, msg.msg_type.value, msg.prev_msg_id, msg.sender, msg.target, msg.create_time, msg.topic,mentions,msg.body_mime,msg.body,action_name,action_params,action_result,msg.done_time,msg.status.value))
             conn.commit()
+
+            if msg.inner_call_chain:
+                for inner_call in msg.inner_call_chain:
+                    self.insert_message(inner_call)
+
             return 0  # return 0 if successful
         except Error as e:
             logging.error("Error occurred while inserting message: %s", e)
@@ -134,7 +180,7 @@ class ChatSessionDB:
         """Get a message by its ID"""
         conn =self._get_conn()
         c = conn.cursor()
-        c.execute("SELECT MessageID,SessionID,SenderID,ReceiverID,Timestamp,Content,Status FROM Messages WHERE MessageID = ?", (message_id,))
+        c.execute("SELECT MessageID, SessionID, MsgType, PrevMsgID, SenderID, ReceiverID, Timestamp, Topic,Mentions,ContentMIME,Content,ActionName,ActionParams,ActionResult,DoneTime,Status FROM Messages WHERE MessageID = ?", (message_id,))
         message = c.fetchone()
         return message
 
@@ -144,7 +190,7 @@ class ChatSessionDB:
             conn = self._get_conn()
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT MessageID,SessionID,SenderID,ReceiverID,Timestamp,Content,Status FROM Messages
+                SELECT MessageID, SessionID, MsgType, PrevMsgID, SenderID, ReceiverID, Timestamp, Topic,Mentions,ContentMIME,Content,ActionName,ActionParams,ActionResult,DoneTime,Status FROM Messages
                 WHERE SessionID = ?
                 ORDER BY Timestamp DESC
                 LIMIT ? OFFSET ?
@@ -222,29 +268,31 @@ class AIChatSession:
         result = []
         for msg in msgs:
             agent_msg = AgentMsg()
-            agent_msg.id = msg[0]
-            agent_msg.sender = msg[2]
-            agent_msg.target = msg[3]
-            agent_msg.create_time = msg[4]
-            agent_msg.body = msg[5]
-            # agent_msg.state = msg[6]
+            agent_msg.msg_id = msg[0]
+            agent_msg.session_id = msg[1]
+            agent_msg.msg_type = AgentMsgType(msg[2])
+            agent_msg.prev_msg_id = msg[3]
+            agent_msg.sender = msg[4]
+            agent_msg.target = msg[5]
+            agent_msg.create_time = msg[6]
+            agent_msg.topic = msg[7]
+            if msg[8] is not None:
+                agent_msg.mentions = json.loads(msg[8])
+            agent_msg.body_mime = msg[9]
+            agent_msg.body = msg[10]
+            agent_msg.func_name = msg[11]
+            if msg[12] is not None:
+                agent_msg.args = json.loads(msg[12])
+            agent_msg.result_str = msg[13]
+            agent_msg.done_time = msg[14]
+            agent_msg.status = AgentMsgStatus(msg[15])
 
             result.append(agent_msg)
         return result
 
     def append(self,msg:AgentMsg) -> None:
-        self.db.insert_message(msg.id,self.session_id,msg.sender,msg.target,msg.create_time,msg.body,0)
-
-    def append_post(self,msg:AgentMsg) -> None:
-        """append msg to session, msg is post from session (owner => msg.target)"""
-        assert msg.sender == self.owner_id,"post message means msg.sender == self.owner_id"
-        self.append(msg)
-        
-
-    def append_recv(self,msg:AgentMsg) -> None:
-        """append msg to session, msg is recv from msg'sender (msg.sender => owner)"""
-        assert msg.target == self.owner_id,"recv message means msg.target == self.owner_id"
-        self.append(msg)        
+        msg.session_id = self.session_id
+        self.db.insert_message(msg)
 
     #def attach_event_handler(self,handler) -> None:
     #    """chat session changed event handler"""
