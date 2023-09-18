@@ -28,7 +28,7 @@ class ComputeNode(ABC):
         pass
 
     @abstractmethod
-    def is_support(self, task_type: ComputeTaskType) -> bool:
+    def is_support(self, task: ComputeTask) -> bool:
         pass
 
     @abstractmethod
@@ -40,7 +40,6 @@ class ComputeNode(ABC):
 
     def get_fee_type(self) -> str:
         return "free"
-
 
 class LocalComputeNode(ComputeNode):
     def display(self) -> str:

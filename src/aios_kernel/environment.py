@@ -109,7 +109,7 @@ class Environment:
     def get_value(self,key:str) -> Optional[str]:
         handler = self.get_handlers.get(key)
         if handler is not None:
-            return handler(key)
+            return handler()
     
         s = self.values.get(key)
         if isinstance(s,str):

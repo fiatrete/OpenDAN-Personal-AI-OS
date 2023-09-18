@@ -20,7 +20,9 @@ from prompt_toolkit.styles import Style
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
-from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel
+
+from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode
+
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
@@ -87,6 +89,11 @@ class AIOS_Shell:
             return False
         
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
+        
+        llama_ai_node = LocalLlama_ComputeNode()
+        llama_ai_node.start()
+        ComputeKernel().add_compute_node(llama_ai_node)
+
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
 

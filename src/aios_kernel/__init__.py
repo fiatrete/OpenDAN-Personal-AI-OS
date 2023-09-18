@@ -9,6 +9,7 @@ from .role import AIRole,AIRoleGroup
 from .workflow import Workflow
 from .bus import AIBus
 from .workflow_env import WorkflowEnvironment,CalenderEnvironment,CalenderEvent
+from .local_llama_compute_node import LocalLlama_ComputeNode
 from .whisper_node import WhisperComputeNode
 from .google_text_to_speech_node import GoogleTextToSpeechNode
 from .tunnel import AgentTunnel
@@ -17,3 +18,4 @@ from .email_tunnel import EmailTunnel
 from .storage import ResourceLocation,AIStorage,UserConfig,UserConfigItem
 
 AIOS_Version = "0.5.1, build 2023-9-17"
+

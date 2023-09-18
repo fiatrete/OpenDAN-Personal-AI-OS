@@ -134,8 +134,8 @@ class Stability_ComputeNode(ComputeNode):
     def get_capacity(self):
         pass
 
-    def is_support(self, task_type: ComputeTaskType) -> bool:
-        return task_type == ComputeTaskType.TEXT_2_IMAGE
+    def is_support(self, task: ComputeTask) -> bool:
+        return task.task_type == ComputeTaskType.TEXT_2_IMAGE
 
     def is_local(self) -> bool:
         return False

@@ -60,7 +60,7 @@ class ComputeKernel:
 
     def _schedule(self, task) -> ComputeNode:
         for node in self.compute_nodes.values():
-            if node.is_support(task.task_type) is True:
+            if node.is_support(task) is True:
                 return node
         logger.warning(
             f"task {task.display()} is not support by any compute node")

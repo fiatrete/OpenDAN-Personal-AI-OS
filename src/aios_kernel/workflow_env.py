@@ -58,12 +58,8 @@ class CalenderEnvironment(Environment):
     def stop(self):
         self.is_run = False
 
-    def get_now(self,key)->str:
-        now = datetime.now()
-        formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
-        return formatted_time    
-    
     async def _get_now(self) -> str:
+
         now = datetime.now()
         formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
         return formatted_time
