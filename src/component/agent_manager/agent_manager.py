@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 class AgentManager:
     _instance = None
    
-    def __new__(cls):
+    @classmethod
+    def get_instance(cls):
         if cls._instance is None:
-            cls._instance = super(AgentManager, cls).__new__(cls)
+            cls._instance = AgentManager()
         return cls._instance
     
-
     def initial(self,root_dir:str) -> None:
         self.agent_templete_env : PackageEnv = PackageEnvManager().get_env(f"{root_dir}/templetes/templetes.cfg")
         self.agent_env : PackageEnv = PackageEnvManager().get_env(f"{root_dir}/agents/agents.cfg")

@@ -134,16 +134,15 @@ class PackageEnv:
 
 class PackageEnvManager:
     _instance = None
-    def __new__(cls):
+    @classmethod
+    def get_instance(cls):
         if cls._instance is None:
-            cls._instance = super(PackageEnvManager, cls).__new__(cls)
+            cls._instance = PackageEnvManager()
         return cls._instance
     
     def __init__(self) -> None:
         self._pkg_envs = {}
-       
-        pass
-
+        
     def get_env(self,cfg_path:str) -> PackageEnv:
         if cfg_path in self._pkg_envs:
             return self._pkg_envs[cfg_path]

@@ -122,7 +122,11 @@ class Workflow:
         connected_env_ndoe = config.get("connected_env") 
         if  connected_env_ndoe is not None:
            for _node in connected_env_ndoe:
-                remote_env = Environment.get_env_by_id(_node.get("env_id"))
+                env_id = _node.get("env_id")
+                if env_id is None:
+                    continue
+
+                remote_env = Environment.get_env_by_id(_node.get(env_id))
                 if remote_env is None:
                      logger.error(f"Workflow load connected_env failed, env {env_id} not found!")
                      return False
@@ -391,7 +395,7 @@ class Workflow:
         
         inner_functions = self._get_inner_functions()
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
-        task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(prompt,
+        task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,
                                                                                 the_role.agent.llm_model_name,the_role.agent.max_token_size,
                                                                                 inner_functions)
         
@@ -431,7 +435,7 @@ class Workflow:
         
         async def _do_process_msg():
             #TODO: send msg to agent might be better?
-            task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size(),inner_functions)
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size(),inner_functions)
             result_str = task_result.result_str
             logger.info(f"{the_role.role_id} process {msg.sender}:{msg.body},llm str is :{result_str}")
             

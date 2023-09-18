@@ -1,0 +1,19 @@
+#[[tunnels]]
+#tunnel_id = "MyRoobot"
+#type="TelegramTunnel"
+#target="agent_1"
+
+#token=""
+
+#[[tunnels]]
+#tunnel_id="MyEmailRobot"
+#type="EmailTunnel"
+#target="agent_1"
+
+#email="your_email@msn.com"
+#imap="outlook.office365.com:993"
+#smtp="outlook.office365.com:587"
+#user=""
+#password=""
+#folder="inbox"
+#interval=10

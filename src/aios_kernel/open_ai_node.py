@@ -13,20 +13,17 @@ logger = logging.getLogger(__name__)
 
 class OpenAI_ComputeNode(ComputeNode):
     _instance = None
-
-    def __new__(cls):
+    @classmethod
+    def get_instance(cls):
         if cls._instance is None:
-            cls._instance = super(OpenAI_ComputeNode, cls).__new__(cls)
-            cls._instance.is_start = False
+            cls._instance = OpenAI_ComputeNode()
         return cls._instance
+    
 
     def __init__(self) -> None:
         super().__init__()
-        if self.is_start is True:
-            logger.warn("OpenAI_ComputeNode is already start")
-            return
 
-        self.is_start = True
+        self.is_start = False
         # openai.organization = "org-AoKrOtF2myemvfiFfnsSU8rF" #buckycloud
         self.openai_api_key = ""
         self.node_id = "openai_node"
@@ -89,6 +86,10 @@ class OpenAI_ComputeNode(ComputeNode):
         return result
 
     def start(self):
+        if self.is_start is True:
+            return
+        self.is_start = True
+        
         async def _run_task_loop():
             while True:
                 task = await self.task_queue.get()

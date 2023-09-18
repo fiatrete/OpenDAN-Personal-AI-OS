@@ -4,6 +4,7 @@ import sys
 import os
 import logging
 import re
+import toml
 
 from typing import Any, Optional, TypeVar, Tuple, Sequence
 import argparse
@@ -17,21 +18,23 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
+
+
+
+directory = os.path.dirname(__file__)
+sys.path.append(directory + '/../../')
+from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel
+
+sys.path.append(directory + '/../../component/')
+from agent_manager import AgentManager
+from workflow_manager import WorkflowManager
+
+
 shell_style = Style.from_dict({
     'title': '#87d7ff bold', #RGB
     'content': '#007f00 bold',
     'prompt': '#00FF00',
 })
-
-
-directory = os.path.dirname(__file__)
-sys.path.append(directory + '/../../')
-from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession
-
-sys.path.append(directory + '/../../component/')
-from agent_manager import AgentManager
-from workflow_manager import WorkflowManager
-from aios_kernel import CalenderEnvironment,Environment
 
 
 class AIOS_Shell:
@@ -42,13 +45,13 @@ class AIOS_Shell:
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
         target_id = msg.target.split(".")[0]
-        agent : AIAgent = await AgentManager().get(target_id)
+        agent : AIAgent = await AgentManager.get_instance().get(target_id)
         if agent is not None:
             agent.owner_env = Environment.get_env_by_id("calender") 
             bus.register_message_handler(target_id,agent._process_msg)
             return True
         
-        a_workflow = await WorkflowManager().get_workflow(target_id)
+        a_workflow = await WorkflowManager.get_instance().get_workflow(target_id)
         if a_workflow is not None:
             bus.register_message_handler(target_id,a_workflow._process_msg)
             return True
@@ -56,7 +59,7 @@ class AIOS_Shell:
         return False
     
     async def is_agent(self,target_id:str) -> bool:
-        agent : AIAgent = await AgentManager().get(target_id)
+        agent : AIAgent = await AgentManager.get_instance().get(target_id)
         if agent is not None:
             return True
         else:
@@ -67,13 +70,21 @@ class AIOS_Shell:
         cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
         
-        AgentManager().initial(os.path.abspath(directory + "/../../../rootfs/"))
-        WorkflowManager().initial(os.path.abspath(directory + "/../../../rootfs/workflows/"))
-        open_ai_node = OpenAI_ComputeNode()
+        AgentManager.get_instance().initial(os.path.abspath(directory + "/../../../rootfs/"))
+        WorkflowManager.get_instance().initial(os.path.abspath(directory + "/../../../rootfs/workflows/"))
+        open_ai_node = OpenAI_ComputeNode.get_instance()
         open_ai_node.start()
-        ComputeKernel().add_compute_node(open_ai_node)
+        ComputeKernel.get_instance().add_compute_node(open_ai_node)
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+
+        TelegramTunnel.register_to_loader()
+        EmailTunnel.register_to_loader()
+
+        tunnels_config_path = os.path.abspath(directory + "/../../../rootfs/tunnels.cfg.toml")
+        tunnel_config = toml.load(tunnels_config_path)
+        await AgentTunnel.load_all_tunnels_from_config(tunnel_config["tunnels"])
+
         return True 
         
 
@@ -132,9 +143,9 @@ class AIOS_Shell:
 
                 db_path = ""
                 if await self.is_agent(self.current_target):
-                    db_path = AgentManager().db_path
+                    db_path = AgentManager.get_instance().db_path
                 else:
-                    db_path = WorkflowManager().db_file
+                    db_path = WorkflowManager.get_instance().db_file
                 chatsession:AIChatSession = AIChatSession.get_session(self.current_target,f"{self.username}#{self.current_topic}",db_path,False)
                 if chatsession is not None:
                     msgs = chatsession.read_history(num,offset)
