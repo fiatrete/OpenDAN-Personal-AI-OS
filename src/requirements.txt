@@ -11,3 +11,4 @@ python-telegram-bot==20.5
 Requests==2.31.0
 stability_sdk==0.8.4
 toml==0.10.2
+google-cloud-texttospeech==2.14.1
