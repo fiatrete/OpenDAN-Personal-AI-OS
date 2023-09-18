@@ -49,6 +49,7 @@ class TelegramTunnel(AgentTunnel):
             logger.warning(f"tunnel {self.tunnel_id} is already started")
             return False
         self.is_start = True   
+        logger.warning(f"tunnel {self.tunnel_id} is starting...")
 
         self.app:Application = Application.builder().token(self.tg_token).build()
         self.app.add_handler(MessageHandler(filters.TEXT, self.on_message))
