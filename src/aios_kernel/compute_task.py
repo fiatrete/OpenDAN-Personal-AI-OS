@@ -12,12 +12,13 @@ class ComputeTaskState(Enum):
     PENDING = 4
 
 class ComputeTaskType(Enum):
-    NONE = -1
-    LLM_COMPLETION = 0
-    TEXT_2_IMAGE = 1
-    IMAGE_2_IMAGE = 2
-    VOICE_2_TEXT = 3
-    TEXT_2_VOICE = 4
+    NONE = "None"
+    LLM_COMPLETION = "llm_completion"
+    TEXT_2_IMAGE = "text_2_image"
+    IMAGE_2_IMAGE = "image_2_image"
+    VOICE_2_TEXT = "voice_2_text"
+    TEXT_2_VOICE = "text_2_voice"
+    TEXT_EMBEDDING ="text_embedding"
 
 
 class ComputeTask:
@@ -54,7 +55,7 @@ class ComputeTask:
             self.params["inner_functions"] = inner_functions
 
     def set_text_embedding_params(self, input, model_name=None, callchain_id = None):
-        self.task_type = "text_embedding"
+        self.task_type = ComputeTaskType.TEXT_EMBEDDING
         self.create_time = time.time()
         self.task_id = uuid.uuid4().hex
         self.callchain_id = callchain_id

@@ -102,7 +102,7 @@ class AIOS_Shell:
         EmailTunnel.register_to_loader()
 
         user_data_dir = AIStorage.get_instance().get_myai_dir()
-        tunnels_config_path = os.path.abspath(f"{user_data_dir}/tunnels.cfg.toml")
+        tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
         tunnel_config = None
         try: 
             tunnel_config = toml.load(tunnels_config_path)
