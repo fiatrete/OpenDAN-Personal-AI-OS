@@ -17,19 +17,14 @@ logger = logging.getLogger(__name__)
 
 class ComputeKernel:
     _instance = None
-
-    def __new__(cls):
+    @classmethod
+    def get_instance(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance.is_start = False
-
+            cls._instance = ComputeKernel()
         return cls._instance
-
+    
     def __init__(self) -> None:
-        if self.is_start is True:
-            return
-
-        self.is_start = True
+        self.is_start = False
         self.task_queue = Queue()
         self.is_start = False
         self.compute_nodes = {}

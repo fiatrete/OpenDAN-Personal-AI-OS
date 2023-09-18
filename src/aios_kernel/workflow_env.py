@@ -29,7 +29,7 @@ class CalenderEnvironment(Environment):
 
         self.add_ai_function(SimpleAIFunction("get_time",
                                         "get current time",
-                                        self.get_now))
+                                        self._get_now))
 
     def _do_get_value(self,key:str) -> Optional[str]:
         return None
@@ -58,7 +58,8 @@ class CalenderEnvironment(Environment):
     def stop(self):
         self.is_run = False
 
-    def get_now(self) -> str:
+    async def _get_now(self) -> str:
+
         now = datetime.now()
         formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
         return formatted_time
@@ -70,6 +71,7 @@ class WorkflowEnvironment(Environment):
         self.db_file = db_file
         self.local = threading.local()
         self.table_name = "WorkflowEnv_" + env_id
+
 
     def _get_conn(self):
         """ get db connection """

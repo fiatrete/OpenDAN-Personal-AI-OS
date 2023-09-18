@@ -1,24 +1,29 @@
 import logging
 import toml
-from aios_kernel import Workflow
+import os
+
+from aios_kernel import Workflow,AIStorage
 from package_manager import PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
 from agent_manager import AgentManager
 logger = logging.getLogger(__name__)
-import os
 
 class WorkflowManager:
     _instance = None
 
-    def __new__(cls):
+    @classmethod
+    def get_instance(cls):
         if cls._instance is None:
-            cls._instance = super(WorkflowManager, cls).__new__(cls)
+            cls._instance = WorkflowManager()
         return cls._instance
 
 
-    def initial(self,root_dir:str) -> None:
+    def initial(self) -> None:
         self.loaded_workflow = {}
-        self.workflow_env = PackageEnvManager().get_env(f"{root_dir}/workflows.cfg")
-        self.db_file = os.path.abspath(f"{root_dir}/workflows.db")
+        system_app_dir = AIStorage.get_instance().get_system_app_dir()
+        user_data_dir = AIStorage.get_instance().get_myai_dir()
+
+        self.workflow_env = PackageEnvManager().get_env(f"{system_app_dir}/workflows.cfg")
+        self.db_file = os.path.abspath(f"{user_data_dir}/messages.db")
         if self.workflow_env is None:
             raise Exception("WorkflowManager initial failed")
         

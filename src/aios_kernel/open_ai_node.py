@@ -7,38 +7,48 @@ import logging
 
 from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
 from .compute_node import ComputeNode
+from .storage import AIStorage,UserConfig
 
 logger = logging.getLogger(__name__)
 
 
 class OpenAI_ComputeNode(ComputeNode):
     _instance = None
-
-    def __new__(cls):
+    @classmethod
+    def get_instance(cls):
         if cls._instance is None:
-            cls._instance = super(OpenAI_ComputeNode, cls).__new__(cls)
-            cls._instance.is_start = False
+            cls._instance = OpenAI_ComputeNode()
         return cls._instance
+    
+    @classmethod
+    def declare_user_config(cls):
+        if os.getenv("OPENAI_API_KEY_") is None:
+            user_config = AIStorage.get_instance().get_user_config()
+            user_config.add_user_config("openai_api_key","openai api key",False,None)
 
     def __init__(self) -> None:
         super().__init__()
-        if self.is_start is True:
-            logger.warn("OpenAI_ComputeNode is already start")
-            return
 
-        self.is_start = True
+        self.is_start = False
         # openai.organization = "org-AoKrOtF2myemvfiFfnsSU8rF" #buckycloud
-        self.openai_api_key = ""
+        self.openai_api_key = None
         self.node_id = "openai_node"
-
         self.task_queue = Queue()
 
-        if os.getenv("OPENAI_API_KEY") is not None:
-            openai.api_key = os.getenv("OPENAI_API_KEY")
-        else:
-            openai.api_key = self.openai_api_key
 
+    async def initial(self):
+        if os.getenv("OPENAI_API_KEY") is not None:
+            self.openai_api_key = os.getenv("OPENAI_API_KEY")
+        else:
+            self.openai_api_key = AIStorage.get_instance().get_user_config().get_user_config("openai_api_key")
+
+        if self.openai_api_key is None:
+            logger.error("openai_api_key is None!")
+            return False
+        
+        openai.api_key = self.openai_api_key
         self.start()
+        return True
 
     async def push_task(self, task: ComputeTask, proiority: int = 0):
         logger.info(f"openai_node push task: {task.display()}")
@@ -54,14 +64,19 @@ class OpenAI_ComputeNode(ComputeNode):
         prompts = task.params["prompts"]
 
         logger.info(f"call openai {mode_name} prompts: {prompts}")
-        try:
+
+        if task.params.get("inner_functions") is None:
+            resp = openai.ChatCompletion.create(model=mode_name,
+                                            messages=prompts,
+                                            max_tokens=task.params["max_token_size"],
+                                            temperature=0.7)
+        else:
             resp = openai.ChatCompletion.create(model=mode_name,
                                                 messages=prompts,
                                                 functions=task.params["inner_functions"],
                                                 max_tokens=task.params["max_token_size"],
                                                 temperature=0.7) # TODO: add temperature to task params?
-        except Exception as e:
-            logger.error(f"openai.ChatCompletion.create failed! {e}")
+
         
         logger.info(f"openai response: {resp}")
         
@@ -86,6 +101,10 @@ class OpenAI_ComputeNode(ComputeNode):
         return result
 
     def start(self):
+        if self.is_start is True:
+            return
+        self.is_start = True
+        
         async def _run_task_loop():
             while True:
                 task = await self.task_queue.get()

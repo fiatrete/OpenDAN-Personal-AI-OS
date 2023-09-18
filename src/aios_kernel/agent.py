@@ -7,7 +7,7 @@ import uuid
 import time
 import json
 
-from .agent_message import AgentMsg
+from .agent_message import AgentMsg, AgentMsgStatus, AgentMsgType
 from .chatsession import AIChatSession
 from .compute_task import ComputeTaskResult
 from .ai_function import AIFunction
@@ -73,7 +73,7 @@ class AIAgent:
         self.prompt:AgentPrompt = None
         self.llm_model_name:str = None
         self.max_token_size:int = 3600
-        self.instance_id:str = None
+        self.agent_id:str = None
         self.template_id:str = None
         self.fullname:str = None
         self.powerby = None  
@@ -82,6 +82,7 @@ class AIAgent:
         self.chat_db = None
         self.unread_msg = Queue() # msg from other agent
         self.owner_env : Environment = None
+        self.owenr_bus = None
         
     @classmethod
     def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
@@ -90,7 +91,7 @@ class AIAgent:
         result_agent.llm_model_name = templete.llm_model_name
         result_agent.max_token_size = templete.max_token_size
         result_agent.template_id = templete.template_id
-        result_agent.instance_id = "agent#" + uuid.uuid4().hex
+        result_agent.agent_id = "agent#" + uuid.uuid4().hex
         result_agent.fullname = fullname
         result_agent.powerby = templete.author
         result_agent.prompt = templete.prompt
@@ -100,10 +101,10 @@ class AIAgent:
         if config.get("instance_id") is None:
             logger.error("agent instance_id is None!")
             return False
-        self.instance_id = config["instance_id"]
+        self.agent_id = config["instance_id"]
 
         if config.get("fullname") is None:
-            logger.error(f"agent {self.instance_id} fullname is None!")
+            logger.error(f"agent {self.agent_id} fullname is None!")
             return False
         self.fullname = config["fullname"]
 
@@ -147,7 +148,7 @@ class AIAgent:
 
         return result_func 
 
-    async def _execute_func(self,inenr_func_call_node:dict,msg_prompt:AgentPrompt) -> str:
+    async def _execute_func(self,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg) -> str:
         from .compute_kernel import ComputeKernel
 
         func_name = inenr_func_call_node.get("name")
@@ -157,14 +158,21 @@ class AIAgent:
         if func_node is None:
             return "execute failed,function not found"
         
+        ineternal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
+
         result_str:str = await func_node.execute(**arguments)
-        inner_functions = self._get_inner_functions()
-        msg_prompt.messages.append({"role":"function","content":result_str,"name":func_name})
-        task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(msg_prompt,self.llm_model_name,self.max_token_size,inner_functions)
         
+        inner_functions = self._get_inner_functions()
+        prompt.messages.append({"role":"function","content":result_str,"name":func_name})
+        task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
+        
+        ineternal_call_record.result_str = task_result.result_str
+        ineternal_call_record.done_time = time.time()
+        org_msg.inner_call_chain.append(ineternal_call_record)
+
         inner_func_call_node = task_result.result_message.get("function_call")
         if inner_func_call_node:
-            return await self._execute_func(inner_func_call_node,msg_prompt)       
+            return await self._execute_func(inner_func_call_node,prompt,org_msg)      
         else:
             return task_result.result_str
 
@@ -172,7 +180,13 @@ class AIAgent:
             from .compute_kernel import ComputeKernel
 
             session_topic = msg.get_sender() + "#" + msg.topic
-            chatsession = AIChatSession.get_session(self.instance_id,session_topic,self.chat_db)
+            chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
+            if msg.mentions is not None:
+                if not self.agent_id in msg.mentions:
+                    chatsession.append(msg)
+                    logger.info(f"agent {self.agent_id} recv a group chat message from {msg.sender},but is not mentioned,ignore!")
+                    return None
+            
             prompt = AgentPrompt()
             prompt.append(self.prompt)
             # prompt.append(self._get_knowlege_prompt(the_role.get_name()))
@@ -184,72 +198,32 @@ class AIAgent:
 
             inner_functions = self._get_inner_functions()
 
-            task_result:ComputeTaskResult = await ComputeKernel().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
             final_result = task_result.result_str
 
             inner_func_call_node = task_result.result_message.get("function_call")
             if inner_func_call_node:
-                final_result = await self._execute_func(inner_func_call_node,msg_prompt)
+                #TODO to save more token ,can i use msg_prompt?
+                final_result = await self._execute_func(inner_func_call_node,prompt,msg)
             
             result_type : str = self._get_llm_result_type(final_result)
             is_ignore = False
 
             match result_type:
-                # case "function":
-                #    callchain:CallChain = self._parse_function_call_chain(result)
-                #    resp = await callchain.exec()
-                #    if callchain.have_result():
-                #        # generator proc resp prompt with WAITING state
-                #        proc_resp_prompt:AgentPrompt = self._get_resp_prompt(resp,msg,the_role,prompt,chatsession)
-                #        final_result = await ComputeKernel().do_llm_completion(proc_resp_prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
-                #        return final_result
-
-                
-                # case "send_message":
-                #    # send message to other / sub workflow
-                #    next_msg:AgentMsg = self._parse_to_msg(result)
-                #    if next_msg is not None:
-                #        # TODO: Next Target can be another role in workflow
-                #        next_workflow:Workflow = self.get_workflow(next_msg.get_target())
-                #        inner_chat_session = the_role.agent.get_chat_session(next_msg.get_target(),next_msg.get_session_id())
-
-                #        inner_chat_session.append_post(next_msg)
-                #        resp = await next_workflow.send_msg(next_msg)
-                #        inner_chat_session.append_recv(resp)
-                #        # generator proc resp prompt with WAITING state
-                #        proc_resp_prompt:AgentPrompt = self._get_resp_prompt(resp,msg,the_role,prompt,chatsession)
-                #        final_result = await ComputeKernel().do_llm_completion(proc_resp_prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size())
-                        
-                #        return final_result
-                    
-                #case "post_message":
-                #    # post message to other / sub workflow
-                #    next_msg:AgentMsg = self._parse_to_msg(result)
-                #    if next_msg is not None:
-                #        next_workflow:Workflow = self.get_workflow(next_msg.get_target())
-                #        inner_chat_session = the_role.agent.get_chat_session(next_msg.get_target(),next_msg.get_session_id())
-                #        inner_chat_session.append_post(next_msg)
-                #        next_workflow.post_msg(next_msg)
-
                 case "ignore":
                     is_ignore = True
                     
             if is_ignore is not True:
-                # TODO : how to get inner chat session?
-                resp_msg = AgentMsg()
-                resp_msg.set(self.instance_id,msg.sender,final_result)
-                resp_msg.topic = msg.topic
-
-                if chatsession is not None:
-                    chatsession.append_recv(msg)
-                    chatsession.append_post(resp_msg)
+                resp_msg = msg.create_resp_msg(final_result)
+                chatsession.append(msg)
+                chatsession.append(resp_msg)
                 
                 return resp_msg
             
             return None
         
     def get_id(self) -> str:
-        return self.instance_id
+        return self.agent_id
     
     def get_fullname(self) -> str:
         return self.fullname
@@ -263,13 +237,14 @@ class AIAgent:
     def get_max_token_size(self) -> int:
         return self.max_token_size
     
-    async def _get_prompt_from_session(self,chatsession:AIChatSession) -> AgentPrompt:
+    async def _get_prompt_from_session(self,chatsession:AIChatSession,is_groupchat=False) -> AgentPrompt:
+        # TODO: get prompt from group chat is different from single chat
         messages = chatsession.read_history() # read last 10 message
         result_prompt = AgentPrompt()
         for msg in reversed(messages):
             if msg.target == chatsession.owner_id:
-                result_prompt.messages.append({"role":"user","content":f"{msg.sender}:{msg.body}"})
-            if msg.sender == chatsession.owner_id:
+                result_prompt.messages.append({"role":"user","content":msg.body})
+            elif msg.sender == chatsession.owner_id:
                 result_prompt.messages.append({"role":"assistant","content":msg.body})
         
         return result_prompt
