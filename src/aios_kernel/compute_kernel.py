@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import random
 from typing import Optional
 import logging
 import asyncio
@@ -59,9 +60,23 @@ class ComputeKernel:
         asyncio.create_task(_run_task_loop())
 
     def _schedule(self, task) -> ComputeNode:
+        # find all the node which supports this task
+        support_nodes = []
+        total_weights = 0
         for node in self.compute_nodes.values():
             if node.is_support(task) is True:
+                support_nodes.append({
+                    "pos": total_weights,
+                    "node": node
+                })
+                total_weights += node.weight()
+
+        # hit a random node with weight
+        hit_pos = random.randint(0, total_weights - 1)
+        for i in range(min(len(support_nodes) - 1, hit_pos), -1, -1):
+            if support_nodes[i]["pos"] <= hit_pos:
                 return node
+
         logger.warning(
             f"task {task.display()} is not support by any compute node")
         return None

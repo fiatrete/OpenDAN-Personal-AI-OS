@@ -35,6 +35,9 @@ class ComputeNode(ABC):
     def is_local(self) -> bool:
         pass
 
+    def weight(self) -> int:
+        return 1
+    
     def is_trusted(self) -> bool:
         return True
 
