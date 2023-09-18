@@ -21,3 +21,5 @@ openai
 Pillow
 aiosqlite
 PySocks==1.7.1
+toml==0.10.2
+google-cloud-texttospeech==2.14.1
