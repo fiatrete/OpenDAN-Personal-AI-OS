@@ -35,6 +35,7 @@ class ComputeNode(ABC):
     def is_local(self) -> bool:
         pass
 
+    # the hit weight when select this node in schedule
     def weight(self) -> int:
         return 1
     
