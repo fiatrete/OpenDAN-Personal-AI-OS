@@ -38,7 +38,7 @@ class ComputeTask:
             self.params["model_name"] = "gpt-4-0613"
         self.params["max_token_size"] = max_token_size
 
-    def set_text_embeding_params(self, input, model_name=None, callchain_id = None):
+    def set_text_embedding_params(self, input, model_name=None, callchain_id = None):
         self.task_type = "text_embedding"
         self.create_time = time.time()
         self.task_id = uuid.uuid4().hex

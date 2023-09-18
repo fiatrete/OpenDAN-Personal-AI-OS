@@ -82,7 +82,7 @@ class OpenAI_ComputeNode(ComputeNode):
             input = task.params["input"]
             logger.info(f"call openai {model_name} input: {input}")
 
-            resp = openai.Embeding.create(model=model_name,
+            resp = openai.Embedding.create(model=model_name,
                                             input=input)
             logger.info(f"openai response: {resp}")
 
