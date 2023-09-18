@@ -5,6 +5,7 @@ import os
 import logging
 import re
 import toml
+import shlex
 
 from typing import Any, Optional, TypeVar, Tuple, Sequence
 import argparse
@@ -141,6 +142,20 @@ class AIOS_Shell:
                 show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
                                            ("class:content", resp)])
                 return show_text
+            case 'set_config':
+                show_text = FormattedText([("class:title", f"set config failed!")])
+                if len(args) == 1:
+                    key = args[0]
+                    old_value,config_item = AIStorage.get_instance().get_user_config().get_user_config(key)
+                    if config_item is not None:
+                        value = await session.prompt_async(f"{key} : {config_item.desc} \nCurrent : {old_value}\nPlease input new value:",style=shell_style)
+                        AIStorage.get_instance().get_user_config().set_user_config(key,value)
+                        await AIStorage.get_instance().get_user_config().save_value_to_user_config()
+                        show_text = FormattedText([("class:title", f"set {key} to {value} success!")])
+                
+                return show_text
+
+
             case 'open':
                 if len(args) >= 1:
                     target_id = args[0]
@@ -190,18 +205,15 @@ history = FileHistory('aios_shell_history.txt')
 session = PromptSession(history=history) 
 
 def parse_function_call(func_string):
-    match = re.search(r'\s*(\w+)\s*\(\s*(.*)\s*\)\s*', func_string)
-    if not match:
+    if len(func_string) > 2:
+        if func_string[0] == '/' and func_string[1] != '/':
+            str_list = shlex.split(func_string[1:])
+            func_name = str_list[0]
+            params = str_list[1:]
+            return func_name, params
+    else:
         return None
-
-    func_name = match.group(1)
-    params_string = match.group(2).strip()    
-    params = re.split(r'\s*,\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', params_string)
-    params = [param.strip('"') for param in params]
-    if len(params[0]) == 0:
-        params = None
-
-    return func_name, params
+    
 
 async def get_user_config_from_input(check_result:dict) -> bool:
     for key,item in check_result.items():
@@ -233,6 +245,7 @@ def print_welcome_screen():
     print("\033[0m")  
 
     print("\033[1;32m \t\tWelcome to OpenDAN - Your Personal AI OS\033[0m\n")  
+
     introduce = """
 \tThe core goal of version 0.5.1 is to turn the concept of AIOS into code and get it up and running as quickly as possible. 
 \tAfter three weeks of development, our plans have undergone some changes based on the actual progress of the system. 
@@ -241,7 +254,7 @@ def print_welcome_screen():
 \twe intend to strengthen some components. This document will explain these changes and provide an update 
 \ton the current development progress of MVP(0.5.1,0.5.2)
 
-"""
+""" 
     print(introduce)
 
     print(f"\033[1;34m \t\tVersion: {AIOS_Version}\n\033")  
@@ -253,7 +266,7 @@ def print_welcome_screen():
 
 async def main():
     print_welcome_screen()
-    print("OpenDAN is booting...")
+    print("Booting...")
     logging.basicConfig(filename="aios_shell.log",filemode="w",encoding='utf-8',force=True,
                         level=logging.INFO,
                         format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
@@ -294,14 +307,16 @@ async def main():
         return await main_daemon_loop(shell)
 
     #TODO: read last input config
-    completer = WordCompleter(['send($target,$msg,$topic)', 
-                               'open($target,$topic)', 
-                               'history($num,$offset)',
-                               'login($username)',
-                               'connect($target)',
-                               'show()',
-                               'exit()', 
-                               'help()'], ignore_case=True)
+    completer = WordCompleter(['/send $target $msg $topic', 
+                               '/open $target $topic', 
+                               '/history $num $offset',
+                               '/login $username',
+                               '/connect $target',
+                               '/set_config $key',
+                               '/list_config',
+                               '/show',
+                               '/exit', 
+                               '/help'], ignore_case=True)
   
     while True:
         user_input = await session.prompt_async(f"{shell.username}<->{shell.current_topic}@{shell.current_target}$",completer=completer,style=shell_style)

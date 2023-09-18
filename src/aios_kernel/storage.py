@@ -84,7 +84,7 @@ class UserConfig:
         if config_item.value is None:
             return config_item.default_value
         
-        return config_item.value
+        return config_item.value,config_item
 
     def set_user_config(self,key:str,value:Any) -> None:
         config_item = self.config_table.get(key)

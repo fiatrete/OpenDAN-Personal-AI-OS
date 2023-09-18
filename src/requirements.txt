@@ -21,3 +21,4 @@ Requests==2.31.0
 stability_sdk
 toml==0.10.2
 
+google-cloud-texttospeech
