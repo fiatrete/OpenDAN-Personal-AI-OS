@@ -44,7 +44,11 @@ class ObjectID:  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def new_chunk_id(chunk_hash: HashValue):
-        return ObjectID(chunk_hash.value)
+        assert len(chunk_hash.value) == 32, "ObjectID must be 32 bytes long"
+        return ObjectID(bytes([ObjectType.Chunk]) + chunk_hash.value[1:])
+    
+    def get_object_type(self) -> ObjectType:
+        return ObjectType(self.value[0])
     
     @staticmethod
     def hash_data(data: bytes):

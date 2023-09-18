@@ -54,7 +54,8 @@ class KnowledgeObject(ABC):
         )
         sha256 = hashlib.sha256()
         sha256.update(data.encode())
-        return ObjectID(sha256.digest())
+        hash_bytes = sha256.digest()
+        return ObjectID(bytes([self.object_type]) + hash_bytes[1:])
 
     def encode(self) -> bytes:
         return pickle.dumps(self)

@@ -30,9 +30,10 @@ class ChromaVectorStore(VectorBase):
         self.collection = collection
 
     async def insert(self, vector: [float], id: ObjectID):
+        logging.info(f"will insert vector: {vector} id: {str(id)}")
         self.collection.add(
             embeddings=vector,
-            ids=id,
+            ids=str(id),
         )
 
     async def query(self, vector: [float], top_k: int) -> [ObjectID]:
@@ -40,8 +41,10 @@ class ChromaVectorStore(VectorBase):
             query_embeddings=vector,
             n_results=top_k,
         )
-
-        return ret["ids"]
+        logging.info(f"query result {ret}")
+        if len(ret['ids']) == 0:
+            return []
+        return list(map(ObjectID.from_base58, ret["ids"][0]))
 
     async def delete(self, id: ObjectID):
         self.collection.delete(

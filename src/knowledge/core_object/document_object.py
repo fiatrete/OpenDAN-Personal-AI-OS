@@ -53,7 +53,7 @@ class DocumentObjectBuilder:
         chunk_list = KnowledgeStore().get_chunk_list_writer().create_chunk_list_from_text(
             self.text,
             1024 * 4,
-            "."
+            ".?!\n"
         )
         doc = DocumentObject(self.meta, self.tags, chunk_list)
         doc_id = doc.calculate_id()

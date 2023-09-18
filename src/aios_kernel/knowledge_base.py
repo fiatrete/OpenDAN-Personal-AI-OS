@@ -1,5 +1,6 @@
 # define a knowledge base class
 import json
+import logging
 from . import AgentPrompt, ComputeKernel
 from knowledge import *
 
@@ -26,7 +27,7 @@ class KnowledgeBase:
         
             text = chunk.read().decode("utf-8")
             vector = await self.compute_kernel.do_text_embedding(text)
-            self.store.get_vector_store("default").insert(vector, chunk_id)
+            await self.store.get_vector_store("default").insert(vector, chunk_id)
 
     async def __embedding_image(self, image: ImageObject):
         desc = {}
@@ -37,7 +38,7 @@ class KnowledgeBase:
         if not not image.get_tags():
             desc["tags"] = image.get_tags()
         vector = await self.compute_kernel.do_text_embedding(json.dumps(desc))
-        self.store.get_vector_store("default").insert(vector, image.calculate_id())
+        await self.store.get_vector_store("default").insert(vector, image.calculate_id())
 
     async def __embedding_video(self, vedio: VideoObject):
         desc = {}
@@ -48,16 +49,20 @@ class KnowledgeBase:
         if not not vedio.get_tags():
             desc["tags"] = vedio.get_tags()
         vector = await self.compute_kernel.do_text_embedding(json.dumps(desc))
-        self.store.get_vector_store("default").insert(vector, vedio.calculate_id())
+        await self.store.get_vector_store("default").insert(vector, vedio.calculate_id())
 
     async def __embedding_rich_text(self, rich_text: RichTextObject):
-        for document in rich_text.get_documents().values():
+        for document_id in rich_text.get_documents().values():
+            document = DocumentObject.decode(self.store.get_object_store().get_object(document_id))
             await self.__embedding_document(document)
-        for image in rich_text.get_images().values():
+        for image_id in rich_text.get_images().values():
+            image = ImageObject.decode(self.store.get_object_store().get_object(image_id))
             await self.__embedding_image(image)
-        for vedio in rich_text.get_videos().values():
-            await self.__embedding_video(vedio)
-        for rich_text in rich_text.get_rich_texts().values():
+        for video_id in rich_text.get_videos().values():
+            video = VideoObject.decode(self.store.get_object_store().get_object(video_id))
+            await self.__embedding_video(video)
+        for rich_text_id in rich_text.get_rich_texts().values():
+            rich_text = RichTextObject.decode(self.store.get_object_store().get_object(rich_text_id))
             await self.__embedding_rich_text(rich_text)
 
     async def __embedding_email(self, email: EmailObject):
@@ -154,17 +159,19 @@ class KnowledgeBase:
         await self.__do_embedding(object)
 
     async def query_prompt(self, prompt: AgentPrompt):
+        logging.info(f"query_prompt: {prompt}")
         objects = await self.query_objects(prompt)
         knowledge_prompt = self.prompt_from_objects(objects)
+        logging.info(f"prompt_from_objects result: {knowledge_prompt.as_str()}")
         prompt.append(knowledge_prompt)
 
     async def query_objects(self, prompt: AgentPrompt) -> [ObjectID]:
         results = []
         for msg in prompt.messages:
-            if msg.role == "user":
-                vector = await self.compute_kernel.do_text_embedding(msg.content)
+            if msg["role"] == "user":
+                vector = await self.compute_kernel.do_text_embedding(msg["content"])
                 object_ids = await self.store.get_vector_store("default").query(vector, 10)
-                results.append(object_ids)
+                results.extend(object_ids)
         return results
 
     def __load_object(self, object_id: ObjectID) -> KnowledgeObject:
@@ -187,11 +194,12 @@ class KnowledgeBase:
         for object_id in object_ids:
             parents = self.store.get_relation_store().get_related_root_objects(object_id)
             # last parent is the root object
-            root_object_id = parents[-1]
-            if results[root_object_id] is None:
-                results[root_object_id] = [root_object_id, object_id]
+            root_object_id = parents[0] if parents else object_id
+            logging.info(f"object_id: {str(object_id)} root_object_id: {str(root_object_id)}")
+            if str(root_object_id) in results:
+                results[str(root_object_id)].append(object_id)
             else:
-                results[root_object_id].append(object_id)
+                results[str(root_object_id)] = [root_object_id, object_id]
 
         content = "I found the following contents described with json format:\n"
         result_desc = []
@@ -228,7 +236,7 @@ class KnowledgeBase:
         content += ".\n"
 
         prompt = AgentPrompt()
-        prompt.add_message("knowledge", content)
+        prompt.messages.append({"role": "knowledge", "content": content})    
 
         return prompt
                     

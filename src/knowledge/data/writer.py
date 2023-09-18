@@ -74,19 +74,20 @@ class ChunkListWriter:
         text: str, chunk_max_words: int, separator_chars: str = ".,"
     ) -> List[str]:
         sentences = re.split(f"[{separator_chars}]", text)
-        chunk_list = []
-        chunk = []
-        word_count = 0
-        for sentence in sentences:
-            words = sentence.split()
-            for word in words:
-                if word_count < chunk_max_words:
-                    chunk.append(word)
-                    word_count += 1
-                else:
-                    chunk_list.append(" ".join(chunk))
-                    chunk = [word]
-                    word_count = 1
-        if chunk:
-            chunk_list.append(" ".join(chunk))
-        return chunk_list
+        # chunk_list = []
+        # chunk = []
+        # word_count = 0
+        # for sentence in sentences:
+        #     words = sentence.split()
+        #     for word in words:
+        #         if word_count < chunk_max_words:
+        #             chunk.append(word)
+        #             word_count += 1
+        #         else:
+        #             chunk_list.append(" ".join(chunk))
+        #             chunk = [word]
+        #             word_count = 1
+        # if chunk:
+        #     chunk_list.append(" ".join(chunk))
+        # return chunk_list
+        return sentences

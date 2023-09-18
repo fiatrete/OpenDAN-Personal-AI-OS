@@ -84,6 +84,22 @@ class OpenAI_ComputeNode(ComputeNode):
 
             resp = openai.Embedding.create(model=model_name,
                                             input=input)
+            
+            # resp = {
+            # "object": "list",
+            # "data": [
+            #     {
+            #     "object": "embedding",
+            #     "index": 0,
+            #     "embedding": [
+            #         -0.00930514745414257,
+            #         0.00765434792265296,
+            #         -0.007167573552578688,
+            #         -0.012373941019177437,
+            #         -0.04884673282504082
+            #     ]}]
+            # }
+
             logger.info(f"openai response: {resp}")
 
             result = ComputeTaskResult()    
