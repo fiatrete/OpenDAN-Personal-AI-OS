@@ -18,17 +18,16 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
-
-
-
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
-from aios_kernel import Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel
+from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
 
+
+logger = logging.getLogger(__name__)
 
 shell_style = Style.from_dict({
     'title': '#87d7ff bold', #RGB
@@ -42,6 +41,15 @@ class AIOS_Shell:
         self.username = username
         self.current_target = "_"
         self.current_topic = "default"
+        self.is_working = True
+
+    def declare_all_user_config(self):
+        user_config = AIStorage.get_instance().get_user_config()
+        user_config.add_user_config("username","username is your full name when using AIOS",False,None,)
+
+        openai_node = OpenAI_ComputeNode.get_instance()
+        openai_node.declare_user_config()
+
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
         target_id = msg.target.split(".")[0]
@@ -70,10 +78,14 @@ class AIOS_Shell:
         cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
         
-        AgentManager.get_instance().initial(os.path.abspath(directory + "/../../../rootfs/"))
-        WorkflowManager.get_instance().initial(os.path.abspath(directory + "/../../../rootfs/workflows/"))
+        AgentManager.get_instance().initial()
+        WorkflowManager.get_instance().initial()
+
         open_ai_node = OpenAI_ComputeNode.get_instance()
-        open_ai_node.start()
+        if await open_ai_node.initial() is not True:
+            logger.error("openai node initial failed!")
+            return False
+        
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
@@ -81,15 +93,23 @@ class AIOS_Shell:
         TelegramTunnel.register_to_loader()
         EmailTunnel.register_to_loader()
 
-        tunnels_config_path = os.path.abspath(directory + "/../../../rootfs/tunnels.cfg.toml")
-        tunnel_config = toml.load(tunnels_config_path)
-        await AgentTunnel.load_all_tunnels_from_config(tunnel_config["tunnels"])
+        user_data_dir = AIStorage.get_instance().get_myai_dir()
+        tunnels_config_path = os.path.abspath(f"{user_data_dir}/tunnels.cfg.toml")
+        tunnel_config = None
+        try: 
+            tunnel_config = toml.load(tunnels_config_path)
+            if tunnel_config is not None:
+                await AgentTunnel.load_all_tunnels_from_config(tunnel_config["tunnels"])
+        except Exception as e:
+            logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
+            
+
 
         return True 
         
 
     def get_version(self) -> str:
-        return "0.0.1"
+        return "0.5.1"
 
     async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None) -> str:
         agent_msg = AgentMsg()
@@ -101,9 +121,6 @@ class AIOS_Shell:
         else:
             return "error!"
 
-    async def install_workflow(self,workflow_id:Workflow) -> None:
-        pass
-    
     async def _user_process_msg(self,msg:AgentMsg) -> AgentMsg:
         pass
 
@@ -161,8 +178,8 @@ class AIOS_Shell:
                 return FormattedText([("class:title", f"help~~~")])
 
 
-#######################################################################################    
-history = FileHistory('history.txt')
+##########################################################################################################################    
+history = FileHistory('aios_shell_history.txt')
 session = PromptSession(history=history) 
 
 def parse_function_call(func_string):
@@ -178,22 +195,103 @@ def parse_function_call(func_string):
         params = None
 
     return func_name, params
-    
+
+async def get_user_config_from_input(check_result:dict) -> bool:
+    for key,item in check_result.items():
+        user_input = await session.prompt_async(f"{key} ({item.desc}) not define! \nPlease input:",style=shell_style)
+        if len(user_input) > 0:
+            AIStorage.get_instance().get_user_config().set_user_config(key,user_input)
+
+    await AIStorage.get_instance().get_user_config().save_value_to_user_config()
+    return True
+
+async def main_daemon_loop(shell:AIOS_Shell):
+    while shell.is_working:
+        await asyncio.sleep(1)
+
+    return 0
+
+def print_welcome_screen():
+    print("\033[1;31m")  
+    logo = """
+\t_______                    ____________________   __
+\t__  __ \______________________  __ \__    |__  | / /
+\t_  / / /__  __ \  _ \_  __ \_  / / /_  /| |_   |/ / 
+\t/ /_/ /__  /_/ /  __/  / / /  /_/ /_  ___ |  /|  /  
+\t\____/ _  .___/\___//_/ /_//_____/ /_/  |_/_/ |_/   
+\t        /_/                                          
+
+    """
+    print(logo)
+    print("\033[0m")  
+
+    print("\033[1;32m \t\tWelcome to OpenDAN - Your Personal AI OS\033[0m\n")  
+    introduce = """
+\tThe core goal of version 0.5.1 is to turn the concept of AIOS into code and get it up and running as quickly as possible. 
+\tAfter three weeks of development, our plans have undergone some changes based on the actual progress of the system. 
+\tUnder the guidance of this goal, some components do not need to be fully implemented. Furthermore, 
+\tbased on the actual development experience from several demo Intelligent Applications, 
+\twe intend to strengthen some components. This document will explain these changes and provide an update 
+\ton the current development progress of MVP(0.5.1,0.5.2)
+
+"""
+    print(introduce)
+
+    print(f"\033[1;34m \t\tVersion: {AIOS_Version}\n\033")  
+    print("\033[1;33m \tOpenDAN is an open-source project, let's define the future of Humans and AI together.\033[0m")  
+    print("\033[1;33m \tGithub\t: https://github.com/fiatrete/OpenDAN-Personal-AI-OS\033[0m")  
+    print("\033[1;33m \tWebsite\t: https://www.opendan.ai\033[0m")
+    print("\n\n")
+
 
 async def main():
-    print("aios shell prepareing...")
+    print_welcome_screen()
+    print("OpenDAN is booting...")
     logging.basicConfig(filename="aios_shell.log",filemode="w",encoding='utf-8',force=True,
                         level=logging.INFO,
                         format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
-    shell = AIOS_Shell("user")
-    await shell.initial()
+    
+    if os.path.isdir(f"{directory}/../../../rootfs"):
+        AIStorage.get_instance().is_dev_mode = True
+    else:
+        AIStorage.get_instance().is_dev_mode = False    
+
+    is_daemon = False
+    if os.name != 'nt':
+        if os.getppid() == 1:
+            is_daemon = True
+
+    shell = AIOS_Shell("user")   
+    shell.declare_all_user_config() 
+    await AIStorage.get_instance().initial()
+    check_result = AIStorage.get_instance().get_user_config().check_user_config()
+    if check_result is not None:
+        if is_daemon:
+            logger.error(check_result)
+            return 1
+        else:
+            #Remind users to enter necessary configurations.
+            if await get_user_config_from_input(check_result) is False:
+                return 1
+    
+    init_result = await shell.initial()
+    if init_result is False:
+        if is_daemon:
+            logger.error("aios shell initial failed!")
+            return 1
+        else:
+            print("aios shell initial failed!")
 
     print(f"aios shell {shell.get_version()} ready.")
+    if is_daemon:
+        return await main_daemon_loop(shell)
 
+    #TODO: read last input config
     completer = WordCompleter(['send($target,$msg,$topic)', 
                                'open($target,$topic)', 
                                'history($num,$offset)',
-                               'login($username)'
+                               'login($username)',
+                               'connect($target)',
                                'show()',
                                'exit()', 
                                'help()'], ignore_case=True)
@@ -216,8 +314,6 @@ async def main():
 
         print_formatted_text(show_text,style=shell_style)
         #print_formatted_text(f"{shell.username}<->{shell.current_topic}@{shell.current_target} >>> {resp}",style=shell_style)
-
-    
 
 if __name__ == "__main__":    
     asyncio.run(main())

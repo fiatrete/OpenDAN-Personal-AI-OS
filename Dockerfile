@@ -1,8 +1,13 @@
 FROM python:3.11
 WORKDIR /opt/aios
 COPY ./src /opt/aios
-COPY ./rootfs /var/aios
-RUN pip install --no-cache-dir -r /opt/opendan/requirements.txt
+COPY ./rootfs /opt/aios/app
+
+RUN mkdir -p /root/myai/app
+RUN mkdir -p /root/myai/data
+RUN mkdir -p /root/myai/etc
+
+RUN pip install --no-cache-dir -r /opt/aios/requirements.txt
 
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1

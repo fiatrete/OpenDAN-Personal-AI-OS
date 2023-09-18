@@ -10,6 +10,7 @@ import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
 
 from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
 from .compute_node import ComputeNode
+from .storage import AIStorage,UserConfig
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,11 @@ class Stability_ComputeNode(ComputeNode):
         if cls._instance is None:
             cls._instance = Stability_ComputeNode()
         return cls._instance
-
+    
+    @classmethod
+    def declare_user_config(cls):
+        user_config = AIStorage.get_instance().get_user_config()
+        user_config.add_user_config("stability_api_key",False,None,"STABILITY_API_KEY")
 
     def __init__(self) -> None:
         super().__init__()
