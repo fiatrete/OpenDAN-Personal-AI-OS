@@ -88,12 +88,13 @@ class AIOS_Shell:
         if await open_ai_node.initial() is not True:
             logger.error("openai node initial failed!")
             return False
-        
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
         
         llama_ai_node = LocalLlama_ComputeNode()
-        llama_ai_node.start()
-        ComputeKernel().add_compute_node(llama_ai_node)
+        await llama_ai_node.start()
+        ComputeKernel.get_instance().add_compute_node(llama_ai_node)
+
+        await ComputeKernel.get_instance().start()
 
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
@@ -318,7 +319,7 @@ async def main():
                                '/show',
                                '/exit', 
                                '/help'], ignore_case=True)
-  
+    await asyncio.sleep(0.2) 
     while True:
         user_input = await session.prompt_async(f"{shell.username}<->{shell.current_topic}@{shell.current_target}$",completer=completer,style=shell_style)
         if len(user_input) <= 1:

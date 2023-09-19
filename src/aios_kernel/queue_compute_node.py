@@ -53,7 +53,7 @@ class Queue_ComputeNode(ComputeNode):
 
         return result
 
-    def start(self):
+    async def start(self):
         async def _run_task_loop():
             while True:
                 task = await self.task_queue.get()

@@ -30,8 +30,6 @@ class ComputeKernel:
         self.is_start = False
         self.compute_nodes = {}
 
-        self.start()
-
     def run(self, task: ComputeTask) -> None:
         # check there is compute node can support this task
         if self.is_task_support(task) is False:
@@ -41,7 +39,7 @@ class ComputeKernel:
         # add task to working_queue
         self.task_queue.put_nowait(task)
 
-    def start(self):
+    async def start(self):
         if self.is_start is True:
             logger.warn("compute_kernel is already start")
             return

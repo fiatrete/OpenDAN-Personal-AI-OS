@@ -67,6 +67,7 @@ class AgentMsg:
     @classmethod
     def create_internal_call_msg(self,func_name:str,args:dict,prev_msg_id:str,caller:str):
         msg = AgentMsg(AgentMsgType.TYPE_INTERNAL_CALL)
+        msg.create_time = time.time()
         msg.func_name = func_name
         msg.args = args
         msg.prev_msg_id = prev_msg_id
@@ -75,6 +76,7 @@ class AgentMsg:
     
     def create_action_msg(self,action_name:str,args:dict,caller:str):
         msg = AgentMsg(AgentMsgType.TYPE_ACTION)
+        msg.create_time = time.time()
         msg.func_name = action_name
         msg.args = args
         msg.prev_msg_id = self.msg_id
@@ -85,7 +87,7 @@ class AgentMsg:
     def create_resp_msg(self,resp_body):
         resp_msg = AgentMsg()
         resp_msg.msg_id = "msg#" + uuid.uuid4().hex
-        self.create_time = time.time()
+        resp_msg.create_time = time.time()
 
         resp_msg.rely_msg_id = self.msg_id
         resp_msg.sender = self.target

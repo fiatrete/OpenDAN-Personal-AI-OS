@@ -90,7 +90,7 @@ class AIBus:
             
             await asyncio.sleep(0.2)
             retry_times += 1
-            if retry_times > 100:
+            if retry_times > 5*120: # default timeout is 120 sec
                 msg.status = AgentMsgStatus.ERROR
                 return None
             

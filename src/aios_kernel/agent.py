@@ -239,13 +239,12 @@ class AIAgent:
     
     async def _get_prompt_from_session(self,chatsession:AIChatSession,is_groupchat=False) -> AgentPrompt:
         # TODO: get prompt from group chat is different from single chat
-        messages = chatsession.read_history() # read last 10 message
+        messages = chatsession.read_history() # read 
         result_prompt = AgentPrompt()
         for msg in reversed(messages):
-            if msg.target == chatsession.owner_id:
-                result_prompt.messages.append({"role":"user","content":msg.body})
-            elif msg.sender == chatsession.owner_id:
+            if msg.sender == self.agent_id:
                 result_prompt.messages.append({"role":"assistant","content":msg.body})
-        
+            else:
+                result_prompt.messages.append({"role":"user","content":msg.body})
         return result_prompt
 
