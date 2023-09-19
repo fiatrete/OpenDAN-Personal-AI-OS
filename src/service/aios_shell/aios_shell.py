@@ -34,8 +34,9 @@ logger = logging.getLogger(__name__)
 
 shell_style = Style.from_dict({
     'title': '#87d7ff bold', #RGB
-    'content': '#007f00 bold',
+    'content': '#007f00', # resp content
     'prompt': '#00FF00',
+    'error': '#8F0000 bold'
 })
 
 
@@ -110,12 +111,10 @@ class AIOS_Shell:
         try: 
             tunnel_config = toml.load(tunnels_config_path)
             if tunnel_config is not None:
-                await AgentTunnel.load_all_tunnels_from_config(tunnel_config["tunnels"])
+                await AgentTunnel.load_all_tunnels_from_config(tunnel_config)
         except Exception as e:
             logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
             
-
-
         return True 
         
 
@@ -134,6 +133,50 @@ class AIOS_Shell:
 
     async def _user_process_msg(self,msg:AgentMsg) -> AgentMsg:
         pass
+
+
+
+    async def get_tunnel_config_from_input(self,tunnel_target,tunnel_type):
+        tunnel_config = {}
+        tunnel_config["tunnel_id"] = f"{tunnel_type}_2_{tunnel_target}"
+        tunnel_config["target"] = tunnel_target
+        intpu_table = {}
+        tunnel_introduce : str = ""
+        match tunnel_type:
+            case "telegram":
+                tunnel_config["type"] = "TelegramTunnel"
+                intpu_table["token"] = UserConfigItem("telegram bot token")
+            case "email":
+                tunnel_config["type"] = "EmailTunnel"
+            case _:
+                error_text = FormattedText([("class:error", f"tunnel type {tunnel_type}not support!")])    
+                print_formatted_text(error_text,style=shell_style)
+                return None
+
+        intro_text = FormattedText([("class:prompt", tunnel_introduce)])    
+        print_formatted_text(intro_text,style=shell_style)
+        for key,item in intpu_table.items():
+            user_input = await try_get_input(f"{key} : {item.desc}")
+            if user_input is None:
+                return None
+            
+            tunnel_config[key] = user_input   
+
+        return tunnel_config
+                 
+
+    async def append_tunnel_config(self,tunnel_config):
+        user_data_dir = AIStorage.get_instance().get_myai_dir()
+        tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
+        try: 
+            all_tunnels = toml.load(tunnels_config_path)
+            if all_tunnels is not None:
+                all_tunnels[tunnel_config["tunnel_id"]] = tunnel_config
+                f = open(tunnels_config_path,"w")
+                if f:
+                    toml.dump(all_tunnels,f)
+        except Exception as e:
+            logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
 
     async def call_func(self,func_name, args):
         match func_name:
@@ -158,8 +201,24 @@ class AIOS_Shell:
                         show_text = FormattedText([("class:title", f"set {key} to {value} success!")])
                 
                 return show_text
+            case 'connect':
+                show_text = FormattedText([("class:title", "args error, /connect $target telegram | email")])
+                if len(args) < 1:
+                    return show_text
+                tunnel_target = args[0]
+                if len(args) < 2:
+                    tunnel_type = "telegram"
+                else:
+                    tunnel_type = args[1]
 
+                tunnel_config = await self.get_tunnel_config_from_input(tunnel_target,tunnel_type)
+                if tunnel_config:
+                    if await AgentTunnel.load_tunnel_from_config(tunnel_config):
+                        # append
+                        await self.append_tunnel_config(tunnel_config)
+                        show_text = FormattedText([("class:title", f"connect to {tunnel_target} success!")])
 
+                return show_text
             case 'open':
                 if len(args) >= 1:
                     target_id = args[0]
@@ -221,10 +280,28 @@ def parse_function_call(func_string):
     else:
         return None
     
+async def try_get_input(desc:str,check_func:callable = None) -> str:
+    user_input = await session.prompt_async(f"{desc} \nType /exit to abort. \nPlease input:",style=shell_style)
+    err_str = ""
+    if check_func is None:
+        if len(user_input) > 0:
+            if user_input != "/exit":
+                return user_input
+            else:
+                return None
+        
+    else:
+        is_ok,err_str = check_func(user_input)
+        if is_ok:
+            return user_input
+    
+    error_text = FormattedText([("class:error", err_str)])    
+    print_formatted_text(error_text,style=shell_style)
+    return await try_get_input(desc,check_func)
 
 async def get_user_config_from_input(check_result:dict) -> bool:
     for key,item in check_result.items():
-        user_input = await session.prompt_async(f"{key} ({item.desc}) not define! \nPlease input:",style=shell_style)
+        user_input = await try_get_input(f"System config {key} ({item.desc}) not define!")
         if len(user_input) > 0:
             AIStorage.get_instance().get_user_config().set_value(key,user_input)
 
@@ -240,12 +317,12 @@ async def main_daemon_loop(shell:AIOS_Shell):
 def print_welcome_screen():
     print("\033[1;31m")  
     logo = """
-\t_______                    ____________________   __
-\t__  __ \______________________  __ \__    |__  | / /
-\t_  / / /__  __ \  _ \_  __ \_  / / /_  /| |_   |/ / 
-\t/ /_/ /__  /_/ /  __/  / / /  /_/ /_  ___ |  /|  /  
-\t\____/ _  .___/\___//_/ /_//_____/ /_/  |_/_/ |_/   
-\t        /_/                                          
+\t   _______                    ____________________   __
+\t   __  __ \______________________  __ \__    |__  | / /
+\t   _  / / /__  __ \  _ \_  __ \_  / / /_  /| |_   |/ / 
+\t   / /_/ /__  /_/ /  __/  / / /  /_/ /_  ___ |  /|  /  
+\t   \____/ _  .___/\___//_/ /_//_____/ /_/  |_/_/ |_/   
+\t           /_/                                          
 
     """
     print(logo)

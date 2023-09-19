@@ -68,7 +68,7 @@ class TelegramTunnel(AgentTunnel):
             logger.warning(f"tunnel {self.tunnel_id} is already started")
             return False
         self.is_start = True   
-        logger.warning(f"tunnel {self.tunnel_id} is starting...")
+        logger.info(f"tunnel {self.tunnel_id} is starting...")
 
         self.bot = Bot(self.tg_token)
         self.update_queue = asyncio.Queue()
@@ -92,7 +92,7 @@ class TelegramTunnel(AgentTunnel):
                     update_id += 1
 
         asyncio.create_task(_run_app())
-        logger.warning(f"tunnel {self.tunnel_id} started.")
+        logger.info(f"tunnel {self.tunnel_id} started.")
         return True
 
     async def close(self) -> None:

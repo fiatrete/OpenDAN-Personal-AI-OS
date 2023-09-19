@@ -14,11 +14,11 @@ class ResourceLocation:
         pass
 
 class UserConfigItem:
-    def __init__(self) -> None:
+    def __init__(self,desc:str=None) -> None:
         self.default_value = None 
         self.is_optional = False
         self.item_type = "str"
-        self.desc = None
+        self.desc = desc
         self.value = None
         self.user_set = False
         
