@@ -126,7 +126,7 @@ class Workflow:
                 if env_id is None:
                     continue
 
-                remote_env = Environment.get_env_by_id(_node.get(env_id))
+                remote_env = Environment.get_env_by_id(env_id)
                 if remote_env is None:
                      logger.error(f"Workflow load connected_env failed, env {env_id} not found!")
                      return False

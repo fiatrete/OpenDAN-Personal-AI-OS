@@ -95,7 +95,7 @@ class OpenAI_ComputeNode(ComputeNode):
                 mode_name = task.params["model_name"]
                 prompts = task.params["prompts"]
                 max_token_size = task.params.get("max_token_size")
-                llm_inner_functions = task.params["inner_functions"]
+                llm_inner_functions = task.params.get("inner_functions")
                 if max_token_size is None:
                     max_token_size = 4000
                     

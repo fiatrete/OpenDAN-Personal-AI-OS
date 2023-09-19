@@ -22,7 +22,7 @@ class WorkflowManager:
         system_app_dir = AIStorage.get_instance().get_system_app_dir()
         user_data_dir = AIStorage.get_instance().get_myai_dir()
 
-        self.workflow_env = PackageEnvManager().get_env(f"{system_app_dir}/workflows.cfg")
+        self.workflow_env = PackageEnvManager().get_env(f"{system_app_dir}/workflows/workflows.cfg")
         self.db_file = os.path.abspath(f"{user_data_dir}/messages.db")
         if self.workflow_env is None:
             raise Exception("WorkflowManager initial failed")
@@ -33,7 +33,7 @@ class WorkflowManager:
     
     async def _load_workflow_agents(self,workflow:Workflow) -> bool:
         for v in workflow.role_group.roles.values():
-            agent = await AgentManager().get(v.agent_name)
+            agent = await AgentManager.get_instance().get(v.agent_name)
             if agent is None:
                 logger.error(f"load agent {v.agent_name} failed!")
                 return False

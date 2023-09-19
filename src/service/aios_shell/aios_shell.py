@@ -92,7 +92,7 @@ class AIOS_Shell:
         
         llama_ai_node = LocalLlama_ComputeNode()
         await llama_ai_node.start()
-        ComputeKernel.get_instance().add_compute_node(llama_ai_node)
+        #ComputeKernel.get_instance().add_compute_node(llama_ai_node)
 
         await ComputeKernel.get_instance().start()
 
