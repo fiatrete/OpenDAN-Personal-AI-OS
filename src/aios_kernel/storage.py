@@ -55,7 +55,7 @@ class UserConfig:
         except Exception as e:
             logger.warn(f"load user config from {file_path} failed!")
 
-    async def save_value_to_user_config(self) -> None:
+    async def save_to_user_config(self) -> None:
         will_save_config = {}
         for key,value in self.config_table.items():
             if value.user_set:
@@ -76,17 +76,24 @@ class UserConfig:
         
         return True
 
-    def get_user_config(self,key:str) -> Any:
+    def get_config_item(self,key:str) -> Any:
+        config_item = self.config_table.get(key)
+        if config_item is None:
+            raise Exception("user config key %s not exist",key)
+
+        return config_item
+    
+    def get_value(self,key:str)->Any:
         config_item = self.config_table.get(key)
         if config_item is None:
             raise Exception("user config key %s not exist",key)
         
         if config_item.value is None:
             return config_item.default_value
-        
-        return config_item
 
-    def set_user_config(self,key:str,value:Any) -> None:
+        return config_item.value
+
+    def set_value(self,key:str,value:Any) -> None:
         config_item = self.config_table.get(key)
         if config_item is None:
             logger.warning("user config key %s not exist",key)
@@ -97,7 +104,7 @@ class UserConfig:
         #TODO: save to file?
 
         
-    def check_user_config(self) -> None:
+    def check_config(self) -> None:
         check_result = {}
         for key,config_item in self.config_table.items():
             if config_item.value is None and not config_item.is_optional:

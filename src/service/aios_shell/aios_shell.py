@@ -53,6 +53,8 @@ class AIOS_Shell:
         openai_node = OpenAI_ComputeNode.get_instance()
         openai_node.declare_user_config()
 
+        user_config.add_user_config("shell.current","last opened target and topic",True,"default@Jarvis")
+
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
         target_id = msg.target.split(".")[0]
@@ -147,12 +149,12 @@ class AIOS_Shell:
                 show_text = FormattedText([("class:title", f"set config failed!")])
                 if len(args) == 1:
                     key = args[0]
-                    config_item = AIStorage.get_instance().get_user_config().get_user_config(key)
-                    old_value = config_item.value
+                    config_item = AIStorage.get_instance().get_user_config().get_config_item(key)
+                    old_value = AIStorage.get_instance().get_user_config().get_value(key)
                     if config_item is not None:
                         value = await session.prompt_async(f"{key} : {config_item.desc} \nCurrent : {old_value}\nPlease input new value:",style=shell_style)
-                        AIStorage.get_instance().get_user_config().set_user_config(key,value)
-                        await AIStorage.get_instance().get_user_config().save_value_to_user_config()
+                        AIStorage.get_instance().get_user_config().set_value(key,value)
+                        await AIStorage.get_instance().get_user_config().save_to_user_config()
                         show_text = FormattedText([("class:title", f"set {key} to {value} success!")])
                 
                 return show_text
@@ -167,11 +169,14 @@ class AIOS_Shell:
                 self.current_target = target_id
                 self.current_topic = topic
                 show_text = FormattedText([("class:title", f"current session switch to {topic}@{target_id}")])
+                AIStorage.get_instance().get_user_config().set_value("shell.current",f"{self.current_topic}@{self.current_target}")
+                await AIStorage.get_instance().get_user_config().save_to_user_config()
                 return show_text
             case 'login':
                 if len(args) >= 1:
                     self.username = args[0]
                 AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+                
                 return self.username + " login success!"    
             case 'history':
                 num = 10
@@ -221,9 +226,9 @@ async def get_user_config_from_input(check_result:dict) -> bool:
     for key,item in check_result.items():
         user_input = await session.prompt_async(f"{key} ({item.desc}) not define! \nPlease input:",style=shell_style)
         if len(user_input) > 0:
-            AIStorage.get_instance().get_user_config().set_user_config(key,user_input)
+            AIStorage.get_instance().get_user_config().set_value(key,user_input)
 
-    await AIStorage.get_instance().get_user_config().save_value_to_user_config()
+    await AIStorage.get_instance().get_user_config().save_to_user_config()
     return True
 
 async def main_daemon_loop(shell:AIOS_Shell):
@@ -286,7 +291,7 @@ async def main():
     shell = AIOS_Shell("user")   
     shell.declare_all_user_config() 
     await AIStorage.get_instance().initial()
-    check_result = AIStorage.get_instance().get_user_config().check_user_config()
+    check_result = AIStorage.get_instance().get_user_config().check_config()
     if check_result is not None:
         if is_daemon:
             logger.error(check_result)
@@ -319,6 +324,12 @@ async def main():
                                '/show',
                                '/exit', 
                                '/help'], ignore_case=True)
+
+    current = AIStorage.get_instance().get_user_config().get_value("shell.current")
+    current = current.split("@")
+    shell.current_target = current[1]
+    shell.current_topic = current[0]
+
     await asyncio.sleep(0.2) 
     while True:
         user_input = await session.prompt_async(f"{shell.username}<->{shell.current_topic}@{shell.current_target}$",completer=completer,style=shell_style)

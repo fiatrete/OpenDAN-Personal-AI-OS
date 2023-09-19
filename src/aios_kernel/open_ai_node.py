@@ -40,7 +40,7 @@ class OpenAI_ComputeNode(ComputeNode):
         if os.getenv("OPENAI_API_KEY") is not None:
             self.openai_api_key = os.getenv("OPENAI_API_KEY")
         else:
-            self.openai_api_key = AIStorage.get_instance().get_user_config().get_user_config("openai_api_key").value
+            self.openai_api_key = AIStorage.get_instance().get_user_config().get_value("openai_api_key")
 
         if self.openai_api_key is None:
             logger.error("openai_api_key is None!")
