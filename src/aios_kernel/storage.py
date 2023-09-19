@@ -21,7 +21,15 @@ class UserConfigItem:
         self.desc = desc
         self.value = None
         self.user_set = False
-        
+
+    def clone(self):
+        new_config_item = UserConfigItem()
+        new_config_item.default_value = self.default_value
+        new_config_item.is_optional = self.is_optional
+        new_config_item.desc = self.desc
+        new_config_item.item_type = self.item_type
+        new_config_item.value = self.value
+        return new_config_item
 
 class UserConfig:
     def __init__(self) -> None:
@@ -89,7 +97,9 @@ class UserConfig:
             raise Exception("user config key %s not exist",key)
         
         if config_item.value is None:
-            return config_item.default_value
+            default_config_item = config_item.clone()
+            default_config_item.value = config_item.default_value
+            return default_config_item
 
         return config_item.value
 
