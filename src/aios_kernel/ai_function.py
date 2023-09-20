@@ -69,6 +69,21 @@ class AIFunction:
     #def load_from_config(self,config:dict) -> bool:
     #    pass
 
+class FunctionItem:
+    def __init__(self,name,args) -> None:
+        self.name = name
+        self.args = args
+        self.body = None
+
+    def append_body(self,body:str) -> None:
+        if self.body is None:
+            self.body = body
+        else:
+            self.body += body
+
+    def dumps(self) -> str:
+        pass
+
 # call chain is a combination of ai_function,group of ai_function.
 class CallChain:
     def __init__(self) -> None:

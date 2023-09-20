@@ -6,6 +6,7 @@ import logging
 import uuid
 import time
 import json
+import shlex
 
 from .agent_message import AgentMsg, AgentMsgStatus, AgentMsgType
 from .chatsession import AIChatSession
@@ -14,7 +15,6 @@ from .ai_function import AIFunction
 from .environment import Environment
 
 logger = logging.getLogger(__name__)
-
 
 class AgentPrompt:
     def __init__(self) -> None:

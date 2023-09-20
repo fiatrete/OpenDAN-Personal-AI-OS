@@ -4,7 +4,7 @@ import json
 import os
 import time 
 from asyncio import Queue
-from typing import Optional,Tuple
+from typing import Optional,Tuple,List
 from abc import ABC, abstractmethod
 
 from .environment import Environment,EnvironmentEvent
@@ -12,7 +12,7 @@ from .agent_message import AgentMsg,AgentMsgStatus
 from .agent import AgentPrompt,AgentMsg
 from .chatsession import AIChatSession
 from .role import AIRole,AIRoleGroup
-from .ai_function import AIFunction
+from .ai_function import AIFunction,FunctionItem
 from .compute_kernel import ComputeKernel
 from .compute_task import ComputeTask,ComputeTaskResult,ComputeTaskState
 from .bus import AIBus
@@ -42,10 +42,10 @@ class LLMResult:
     def __init__(self) -> None:
         self.state : str = "ignore"
         self.resp : str = ""
-        self.post_msgs = []
-        self.send_msgs = []
-        self.calls = []
-        self.post_calls = []
+        self.post_msgs : List[AgentMsg] = []
+        self.send_msgs : List[AgentMsg] = []
+        self.calls : List[FunctionItem] = []
+        self.post_calls : List[FunctionItem] = []
 
 
 class Workflow:
@@ -255,46 +255,59 @@ class Workflow:
         
         lines = llm_result_str.splitlines()
         is_need_wait = False
-        for line in lines:
-            func_call = AgentMsg.parse_function_call(line)
-            if func_call:
-                func_args = func_call[1]
-                match func_call[0]:
-                    case "sendmsg":# sendmsg($target_id,$msg_content)
-                        if len(func_args) != 2:
-                            logger.error(f"parse sendmsg failed! {func_call}")
-                            continue
-                        new_msg = AgentMsg()
-                        target_id = func_args[0]
-                        msg_content = func_args[1]
-                        new_msg.set("_",target_id,msg_content)
-    
-                        r.send_msgs.append(new_msg)
-                        is_need_wait = True
-                        continue
-                    case "postmsg":# postmsg($target_id,$msg_content)
-                        if len(func_args) != 2:
-                            logger.error(f"parse postmsg failed! {func_call}")
-                            continue
-                        new_msg = AgentMsg()
-                        target_id = func_args[0]
-                        msg_content = func_args[1]
-                        new_msg.set("_",target_id,msg_content)
-                        r.post_msgs.append(new_msg)
-                        continue
-                    case "call":# call($func_name,$args_str)
-                        r.calls.append(func_call)
-                        is_need_wait = True
-                        continue 
-                    case "post_call": # post_call($func_name,$args_str)
-                        r.post_calls.append(func_call)
-                        continue
+
+        def check_args(func_item:FunctionItem):
+            match func_name:
+                case "send_msg":# sendmsg($target_id,$msg_content)
+                    if len(func_args) != 1:
+                        logger.error(f"parse sendmsg failed! {func_call}")
+                        return False
+                    new_msg = AgentMsg()
+                    target_id = func_item.args[0]
+                    msg_content = func_item.body
+                    new_msg.set("_",target_id,msg_content)
+
+                    r.send_msgs.append(new_msg)
+                    is_need_wait = True
+                    
+                case "post_msg":# postmsg($target_id,$msg_content)
+                    if len(func_args) != 1:
+                        logger.error(f"parse postmsg failed! {func_call}")
+                        return False
+                    new_msg = AgentMsg()
+                    target_id = func_item.args[0]
+                    msg_content = func_item.body
+                    new_msg.set("_",target_id,msg_content)
+                    r.post_msgs.append(new_msg)
+                    
+                case "call":# call($func_name,$args_str)
+                    r.calls.append(func_item)
+                    is_need_wait = True
+                    return True
+                case "post_call": # post_call($func_name,$args_str)
+                    r.post_calls.append(func_item)
+                    return True    
                 
-                r.resp += line + "\n"
+        current_func : FunctionItem = None
+        for line in lines:
+            if line.startswith("##/"):
+                if current_func:
+                    if check_args(current_func) is False:
+                        r.resp += current_func.dumps()
+               
+                func_name,func_args = AgentMsg.parse_function_call(line[3:])
+                current_func = FunctionItem(func_name,func_args)
             else:
-                r.resp += line + "\n"
+                if current_func:
+                    current_func.append_body(line + "\n")
+                else:
+                    r.resp += line + "\n"
         
-        if is_need_wait:
+        if current_func:
+            if check_args(current_func) is False:
+                r.resp += current_func.dumps()
+                
+        if len(r.send_msgs) > 0 or len(r.calls) > 0:
             r.state = "waiting"
         else:
             r.state = "reponsed"
@@ -339,21 +352,20 @@ class Workflow:
         logger.info(f"{msg.sender} post message {msg.msg_id} to AIBus: {msg.target}")
         return await self.get_bus().send_message(msg)
 
-    async def role_call(self,call:tuple,the_role:AIRole):
-        logger.info(f"{the_role.role_id} call {call[0]} with args {call[1]}")
-        func_name = call[0]
-        arguments = call[1]
+    async def role_call(self,func_item:FunctionItem,the_role:AIRole):
+        logger.info(f"{the_role.role_id} call {func_item.name} ")
+        arguments = func_item.args
 
-        func_node : AIFunction = self.workflow_env.get_ai_function(func_name)
+        func_node : AIFunction = self.workflow_env.get_ai_function(func_item.name)
         if func_node is None:
             return "execute failed,function not found"
     
         result_str:str = await func_node.execute(**arguments)        
         return result_str
 
-    async def role_post_call(self,call:tuple,the_role:AIRole):
-        logger.info(f"{the_role.role_id} post call {call[0]} with args {call[1]}")
-        return await self.role_call(call,the_role)
+    async def role_post_call(self,func_item:FunctionItem,the_role:AIRole):
+        logger.info(f"{the_role.role_id} post call {func_item.name} ")
+        return await self.role_call(func_item,the_role)
 
     def _format_msg_by_env_value(self,prompt:AgentPrompt):
         if self.workflow_env is None:
@@ -553,4 +565,8 @@ class Workflow:
 
             #            the_env.attach_event_handler(k,_env_msg_handler)
             #            break
+
+
+
+
 

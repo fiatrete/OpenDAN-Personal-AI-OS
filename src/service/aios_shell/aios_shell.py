@@ -427,6 +427,7 @@ async def main():
         print_formatted_text(show_text,style=shell_style)
         #print_formatted_text(f"{shell.username}<->{shell.current_topic}@{shell.current_target} >>> {resp}",style=shell_style)
 
+
 if __name__ == "__main__":    
     asyncio.run(main())
 
