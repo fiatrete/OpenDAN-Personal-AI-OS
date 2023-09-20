@@ -106,7 +106,7 @@ class CalenderEnvironment(Environment):
                 VALUES (?, ?, ?, ?, ?, ?);
             """, (title, start_time, end_time, participants, location, details))
             await db.commit()
-            return "Add event ok"
+            return f"execute add_event OK,event '{title}' already add to calender!"
 
     async def _search_events(self,query):
         async with aiosqlite.connect(self.db_file) as db:
@@ -137,7 +137,9 @@ class CalenderEnvironment(Environment):
             rows = await cursor.fetchall()
 
             result = {}
+            have_result = False
             for row in rows:
+                have_result = True
                 _event = {}
                 _event["title"] = row[1]
                 _event["start_time"] = row[2]
@@ -146,6 +148,10 @@ class CalenderEnvironment(Environment):
                 _event["location"] = row[5]
                 _event["details"] = row[6]
                 result[row[0]] = _event
+            
+            if not have_result:
+                return "No event."
+            
             return json.dumps(result, indent=4, sort_keys=True)
        
     async def _update_event(self,event_id, new_title=None, new_participants=None, new_location=None, new_details=None ,start_time=None, end_time=None):

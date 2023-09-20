@@ -99,19 +99,21 @@ class OpenAI_ComputeNode(ComputeNode):
                 llm_inner_functions = task.params.get("inner_functions")
                 if max_token_size is None:
                     max_token_size = 4000
+
+                result_token = int(max_token_size * 0.4)
                     
                 logger.info(f"call openai {mode_name} prompts: {prompts}")
 
                 if llm_inner_functions is None:
                     resp = openai.ChatCompletion.create(model=mode_name,
                                                     messages=prompts,
-                                                    max_tokens=max_token_size,
+                                                    max_tokens=result_token,
                                                     temperature=0.7)
                 else:
                     resp = openai.ChatCompletion.create(model=mode_name,
                                                         messages=prompts,
                                                         functions=llm_inner_functions,
-                                                        max_tokens=max_token_size,
+                                                        max_tokens=result_token,
                                                         temperature=0.7) # TODO: add temperature to task params?
 
             
@@ -121,6 +123,7 @@ class OpenAI_ComputeNode(ComputeNode):
                 result.set_from_task(task)
 
                 status_code = resp["choices"][0]["finish_reason"]
+                token_usage = resp.get("usage")
                 match status_code:
                     case "function_call":
                         task.state = ComputeTaskState.DONE
@@ -134,6 +137,8 @@ class OpenAI_ComputeNode(ComputeNode):
                 result.worker_id = self.node_id
                 result.result_str = resp["choices"][0]["message"]["content"]
                 result.result_message = resp["choices"][0]["message"]
+                if token_usage:
+                    result.result_refers["token_usage"] = token_usage
                 return result
             case _:
                 task.state = ComputeTaskState.ERROR

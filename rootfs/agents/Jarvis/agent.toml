@@ -1,6 +1,7 @@
 instance_id = "Jarvis"
 fullname = "Jarvis"
 llm_model_name = "gpt-3.5-turbo-16k-0613"
+max_token_size = 16000
 
 [[prompt]]
 role = "system"

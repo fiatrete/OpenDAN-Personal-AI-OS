@@ -41,7 +41,7 @@ class ComputeTask:
         self.create_time = time.time()
         self.task_id = uuid.uuid4().hex
         self.callchain_id = callchain_id
-        self.params["prompts"] = prompts.messages
+        self.params["prompts"] = prompts.to_message_list()
         if model_name is not None:
             self.params["model_name"] = model_name
         else:
@@ -78,7 +78,7 @@ class ComputeTaskResult:
         self.result_code: int = 0
         self.result_str: str = None # easy to use,can read from result
         self.result_message: dict = {}
-        self.result_refers: dict = None
+        self.result_refers: dict = {}
         self.pading_data: bytearray = None
 
     def set_from_task(self, task: ComputeTask):

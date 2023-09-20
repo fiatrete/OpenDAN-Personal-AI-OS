@@ -19,27 +19,57 @@ logger = logging.getLogger(__name__)
 class AgentPrompt:
     def __init__(self) -> None:
         self.messages = []
+        self.system_message = None
 
     def as_str(self)->str:
         result_str = "" 
+        if self.system_message:
+            result_str += self.system_message.get("role") + ":" + self.system_message.get("content") + "\n"
         if self.messages:
             for msg in self.messages:
                 result_str += msg.get("role") + ":" + msg.get("content") + "\n"
 
         return result_str
     
+    def to_message_list(self):
+        result = []
+        if self.system_message:
+            result.append(self.system_message)
+        result.extend(self.messages)
+        return result
+    
     def append(self,prompt):
         if prompt is None:
             return
         
+        if prompt.system_message is not None:
+            if self.system_message is None:
+                self.system_message = prompt.system_message
+            else:
+                self.system_message["content"] += prompt.system_message.get("content")
+
         self.messages.extend(prompt.messages)
+
+    def get_prompt_token_len(self):
+        result = 0
+
+        if self.system_message:
+            result += len(self.system_message.get("content"))
+        for msg in self.messages:
+            result += len(msg.get("content"))
+
+        return result
 
     def load_from_config(self,config:list) -> bool:
         if isinstance(config,list) is not True:
             logger.error("prompt is not list!")
             return False
-        
-        self.messages = config
+        self.messages = []
+        for msg in config:
+            if msg.get("role") == "system":
+                self.system_message = msg
+            else:
+                self.messages.append(msg)
         return True
 
 
@@ -203,16 +233,18 @@ class AIAgent:
             return None
         
         result_func = []
+        result_len = 0
         for inner_func in all_inner_function:
             this_func = {}
             this_func["name"] = inner_func.get_name()
             this_func["description"] = inner_func.get_description()
             this_func["parameters"] = inner_func.get_parameters()
+            result_len += len(json.dumps(this_func)) / 4
             result_func.append(this_func)
 
-        return result_func 
+        return result_func,result_len
 
-    async def _execute_func(self,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg) -> str:
+    async def _execute_func(self,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> str:
         from .compute_kernel import ComputeKernel
 
         func_name = inenr_func_call_node.get("name")
@@ -231,7 +263,7 @@ class AIAgent:
             logger.error(f"llm execute inner func:{func_name} error:{e}")
             
 
-        inner_functions = self._get_inner_functions()
+        inner_functions,inner_function_len = self._get_inner_functions()
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
         task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
         
@@ -239,9 +271,11 @@ class AIAgent:
         ineternal_call_record.done_time = time.time()
         org_msg.inner_call_chain.append(ineternal_call_record)
 
-        inner_func_call_node = task_result.result_message.get("function_call")
+        if stack_limit > 0:
+            inner_func_call_node = task_result.result_message.get("function_call")
+            
         if inner_func_call_node:
-            return await self._execute_func(inner_func_call_node,prompt,org_msg)      
+            return await self._execute_func(inner_func_call_node,prompt,org_msg,stack_limit-1)      
         else:
             return task_result.result_str
 
@@ -270,16 +304,20 @@ class AIAgent:
             
             prompt = AgentPrompt()
             prompt.append(await self._get_agent_prompt())
+            inner_functions,function_token_len = self._get_inner_functions()
             # prompt.append(self._get_knowlege_prompt(the_role.get_name()))
-            prompt.append(await self._get_prompt_from_session(chatsession)) # chat context
+            system_prompt_len = prompt.get_prompt_token_len()
+            input_len = len(msg.body)
+            
+            history_prmpt,history_token_len = await self._get_prompt_from_session(chatsession,system_prompt_len + function_token_len,input_len)
+            prompt.append(history_prmpt) # chat context
             
             msg_prompt = AgentPrompt()
             msg_prompt.messages = [{"role":"user","content":msg.body}]
             prompt.append(msg_prompt)
 
             self._format_msg_by_env_value(prompt)
-            inner_functions = self._get_inner_functions()
-
+            logger.info(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}")
             task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
             final_result = task_result.result_str
 
@@ -332,14 +370,26 @@ class AIAgent:
     def get_max_token_size(self) -> int:
         return self.max_token_size
     
-    async def _get_prompt_from_session(self,chatsession:AIChatSession,is_groupchat=False) -> AgentPrompt:
+    async def _get_prompt_from_session(self,chatsession:AIChatSession,system_token_len,input_token_len,is_groupchat=False) -> AgentPrompt:
         # TODO: get prompt from group chat is different from single chat
+        history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
         messages = chatsession.read_history() # read 
+        result_token_len = 0
         result_prompt = AgentPrompt()
+        read_history_msg = 0
         for msg in reversed(messages):
+            read_history_msg += 1
             if msg.sender == self.agent_id:
                 result_prompt.messages.append({"role":"assistant","content":msg.body})
+                
             else:
                 result_prompt.messages.append({"role":"user","content":msg.body})
-        return result_prompt
+
+            history_len -= len(msg.body)
+            result_token_len += len(msg.body)
+            if history_len < 0:
+                logger.warning(f"_get_prompt_from_session reach limit of token,just read {read_history_msg} history message.")
+                break
+
+        return result_prompt,result_token_len
 
