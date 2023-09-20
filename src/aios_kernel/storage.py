@@ -97,9 +97,7 @@ class UserConfig:
             raise Exception("user config key %s not exist",key)
         
         if config_item.value is None:
-            default_config_item = config_item.clone()
-            default_config_item.value = config_item.default_value
-            return default_config_item
+            return config_item.default_value
 
         return config_item.value
 

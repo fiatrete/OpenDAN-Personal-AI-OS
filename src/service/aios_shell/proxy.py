@@ -11,7 +11,7 @@ sys.path.append(directory + '/../../')
 from aios_kernel import AIStorage
 
 def apply_storage():
-    proxy_cfg = AIStorage.get_instance().get_user_config().get_user_config("proxy")
+    proxy_cfg = AIStorage.get_instance().get_user_config().get_config_item("proxy")
     if proxy_cfg is None:
         return
     
