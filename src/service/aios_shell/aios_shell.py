@@ -193,15 +193,15 @@ class AIOS_Shell:
                 show_text = FormattedText([("class:title", f"set config failed!")])
                 if len(args) == 1:
                     key = args[0]
-                    config_item = AIStorage.get_instance().get_user_config().get_user_config(key)
+                    config_item = AIStorage.get_instance().get_user_config().get_config_item(key)
                     
                     old_value = None
                     if config_item is not None:
                         old_value = config_item.value
 
                     value = await session.prompt_async(f"{key} : {config_item.desc} \nCurrent : {old_value}\nPlease input new value:",style=shell_style)
-                    AIStorage.get_instance().get_user_config().set_user_config(key,value)
-                    await AIStorage.get_instance().get_user_config().save_value_to_user_config()
+                    AIStorage.get_instance().get_user_config().set_value(key,value)
+                    await AIStorage.get_instance().get_user_config().save_to_user_config()
                     show_text = FormattedText([("class:title", f"set {key} to {value} success!")])
                 
                 return show_text
