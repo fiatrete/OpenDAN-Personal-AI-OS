@@ -1,7 +1,7 @@
 # define a knowledge base class
 import json
 import logging
-from . import AgentPrompt, ComputeKernel
+from . import AgentPrompt, ComputeKernel, AIStorage
 from knowledge import *
 
 
@@ -239,9 +239,6 @@ class KnowledgeBase:
         prompt.messages.append({"role": "knowledge", "content": content})    
 
         return prompt
-                    
-                        
-                    
-                
+
 
     
