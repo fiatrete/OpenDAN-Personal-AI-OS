@@ -3,6 +3,8 @@ import uuid
 import time 
 import re
 import shlex
+from typing import List
+from .ai_function import FunctionItem
 
 class AgentMsgType(Enum):
     TYPE_MSG = 0
@@ -129,3 +131,11 @@ class AgentMsg:
         params = str_list[1:]
         return func_name, params
         
+class LLMResult:
+    def __init__(self) -> None:
+        self.state : str = "ignore"
+        self.resp : str = ""
+        self.post_msgs : List[AgentMsg] = []
+        self.send_msgs : List[AgentMsg] = []
+        self.calls : List[FunctionItem] = []
+        self.post_calls : List[FunctionItem] = []

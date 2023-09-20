@@ -20,13 +20,6 @@ class AIBusHandler:
         if self.handler is None:
             return None
         
-        if self.enable_defualt_proc:
-            # do default process
-            if msg.rely_msg_id is not None:
-                self.results[msg.rely_msg_id] = msg
-                return None
-            
-
         resp_msg = await self.handler(msg)
         if self.enable_defualt_proc:
             if resp_msg is not None:
@@ -52,6 +45,10 @@ class AIBus:
 
         handler = self.handlers.get(target_id)
         if handler:
+            if msg.rely_msg_id is not None:
+                handler.results[msg.rely_msg_id] = msg
+                return None
+            
             handler.queue.put_nowait(msg)
             self.start_process(target_id)
             return True

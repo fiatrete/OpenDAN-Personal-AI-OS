@@ -8,7 +8,7 @@ from typing import Optional,Tuple,List
 from abc import ABC, abstractmethod
 
 from .environment import Environment,EnvironmentEvent
-from .agent_message import AgentMsg,AgentMsgStatus
+from .agent_message import AgentMsg,AgentMsgStatus,FunctionItem,LLMResult
 from .agent import AgentPrompt,AgentMsg
 from .chatsession import AIChatSession
 from .role import AIRole,AIRoleGroup
@@ -38,14 +38,7 @@ class MessageFilter:
         return True
 
 
-class LLMResult:
-    def __init__(self) -> None:
-        self.state : str = "ignore"
-        self.resp : str = ""
-        self.post_msgs : List[AgentMsg] = []
-        self.send_msgs : List[AgentMsg] = []
-        self.calls : List[FunctionItem] = []
-        self.post_calls : List[FunctionItem] = []
+
 
 
 class Workflow:
@@ -306,7 +299,7 @@ class Workflow:
         if current_func:
             if check_args(current_func) is False:
                 r.resp += current_func.dumps()
-                
+
         if len(r.send_msgs) > 0 or len(r.calls) > 0:
             r.state = "waiting"
         else:

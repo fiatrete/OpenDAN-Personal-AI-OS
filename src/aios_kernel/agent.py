@@ -8,7 +8,7 @@ import time
 import json
 import shlex
 
-from .agent_message import AgentMsg, AgentMsgStatus, AgentMsgType
+from .agent_message import AgentMsg, AgentMsgStatus, AgentMsgType,FunctionItem,LLMResult
 from .chatsession import AIChatSession
 from .compute_task import ComputeTaskResult
 from .ai_function import AIFunction
@@ -124,15 +124,81 @@ class AIAgent:
         return True
 
 
-    def _get_llm_result_type(self,result:str) -> str:
-        if result == "ignore":
-            return "ignore"
+    def _get_llm_result_type(self,llm_result_str:str) -> LLMResult:
+        r = LLMResult()
+        if llm_result_str is None:
+            r.state = "ignore"
+            return r
+        if llm_result_str == "ignore":
+            r.state = "ignore"
+            return r
         
-        return "text"
+        lines = llm_result_str.splitlines()
+        is_need_wait = False
+
+        def check_args(func_item:FunctionItem):
+            match func_name:
+                case "send_msg":# sendmsg($target_id,$msg_content)
+                    if len(func_args) != 1:
+                        logger.error(f"parse sendmsg failed! {func_call}")
+                        return False
+                    new_msg = AgentMsg()
+                    target_id = func_item.args[0]
+                    msg_content = func_item.body
+                    new_msg.set(self.agent_id,target_id,msg_content)
+
+                    r.send_msgs.append(new_msg)
+                    is_need_wait = True
+                    
+                case "post_msg":# postmsg($target_id,$msg_content)
+                    if len(func_args) != 1:
+                        logger.error(f"parse postmsg failed! {func_call}")
+                        return False
+                    new_msg = AgentMsg()
+                    target_id = func_item.args[0]
+                    msg_content = func_item.body
+                    new_msg.set(self.agent_id,target_id,msg_content)
+                    r.post_msgs.append(new_msg)
+                    
+                case "call":# call($func_name,$args_str)
+                    r.calls.append(func_item)
+                    is_need_wait = True
+                    return True
+                case "post_call": # post_call($func_name,$args_str)
+                    r.post_calls.append(func_item)
+                    return True    
+                
+        current_func : FunctionItem = None
+        for line in lines:
+            if line.startswith("##/"):
+                if current_func:
+                    if check_args(current_func) is False:
+                        r.resp += current_func.dumps()
+               
+                func_name,func_args = AgentMsg.parse_function_call(line[3:])
+                current_func = FunctionItem(func_name,func_args)
+            else:
+                if current_func:
+                    current_func.append_body(line + "\n")
+                else:
+                    r.resp += line + "\n"
+        
+        if current_func:
+            if check_args(current_func) is False:
+                r.resp += current_func.dumps()
+                
+        if len(r.send_msgs) > 0 or len(r.calls) > 0:
+            r.state = "waiting"
+        else:
+            r.state = "reponsed"
+
+        return r
     
     def _get_inner_functions(self) -> dict:
         if self.owner_env is None:
             return None
+        
+        return None
         
         all_inner_function = self.owner_env.get_all_ai_functions()
         if all_inner_function is None:
@@ -178,6 +244,7 @@ class AIAgent:
 
     async def _process_msg(self,msg:AgentMsg) -> AgentMsg:
             from .compute_kernel import ComputeKernel
+            from .bus import AIBus
 
             session_topic = msg.get_sender() + "#" + msg.topic
             chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
@@ -206,13 +273,26 @@ class AIAgent:
                 #TODO to save more token ,can i use msg_prompt?
                 final_result = await self._execute_func(inner_func_call_node,prompt,msg)
             
-            result_type : str = self._get_llm_result_type(final_result)
+            llm_result : LLMResult = self._get_llm_result_type(final_result)
             is_ignore = False
-
-            match result_type:
+            result_prompt_str = ""
+            match llm_result.state:
                 case "ignore":
                     is_ignore = True
+                case "waiting":
+                    for sendmsg in llm_result.send_msgs:
+                        target = sendmsg.target
+                        sendmsg.topic = msg.topic
+                        sendmsg.prev_msg_id = msg.get_msg_id()
+                        send_resp = await AIBus.get_default_bus().send_message(sendmsg)
+                        if send_resp is not None:
+                            result_prompt_str += f"\n{target} response is :{send_resp.body}"
+                            agent_sesion = AIChatSession.get_session(self.agent_id,f"{sendmsg.target}#{sendmsg.topic}",self.chat_db)
+                            agent_sesion.append(sendmsg)
+                            agent_sesion.append(send_resp)
                     
+                    final_result = llm_result.resp + result_prompt_str
+
             if is_ignore is not True:
                 resp_msg = msg.create_resp_msg(final_result)
                 chatsession.append(msg)

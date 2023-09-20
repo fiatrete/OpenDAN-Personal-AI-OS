@@ -4,6 +4,7 @@ import os
 import asyncio
 from asyncio import Queue
 import logging
+import json
 
 from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
 from .compute_node import ComputeNode
@@ -114,7 +115,7 @@ class OpenAI_ComputeNode(ComputeNode):
                                                         temperature=0.7) # TODO: add temperature to task params?
 
             
-                logger.info(f"openai response: {resp}")
+                logger.info(f"openai response: {json.dumps(resp, indent=4)}")
 
                 result = ComputeTaskResult()
                 result.set_from_task(task)
