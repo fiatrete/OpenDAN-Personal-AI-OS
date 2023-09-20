@@ -81,7 +81,7 @@ class AIOS_Shell:
 
     async def initial(self) -> bool:
         cal_env = CalenderEnvironment("calender")
-        cal_env.start()
+        await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
         
         AgentManager.get_instance().initial()

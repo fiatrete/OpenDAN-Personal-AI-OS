@@ -1,6 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import Dict,Coroutine,Callable
 
+class ParameterDefine:
+    def __init__(self) -> None:
+        self.name = None
+        self.type = None
+        self.description = None
+        
+
 class AIFunction:
     def __init__(self) -> None:
         self.description : str = None
@@ -107,8 +114,18 @@ class SimpleAIFunction(AIFunction):
     
     def get_parameters(self) -> Dict:
         if self.parameters is not None:
-            return self.parameters
+            result = {}
+            result["type"] = "object"
+            parm_defines = {}
+            for parm,desc in self.parameters.items():
+                parm_item = {}
+                parm_item["type"] = "string"
+                parm_item["description"] = desc
+                parm_defines[parm] = parm_item
+            result["properties"] = parm_defines
+            return result
         return {"type": "object", "properties": {}}
+
 
     async def execute(self,**kwargs) -> str:
         if self.func_handler is None:
