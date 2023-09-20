@@ -248,6 +248,14 @@ class AIAgent:
     async def _get_agent_prompt(self) -> AgentPrompt:
         return self.prompt
 
+    def _format_msg_by_env_value(self,prompt:AgentPrompt):
+        if self.owner_env is None:
+            return
+        
+        for msg in prompt.messages:
+            old_content = msg.get("content")
+            msg["content"] = old_content.format_map(self.owner_env)
+
     async def _process_msg(self,msg:AgentMsg) -> AgentMsg:
             from .compute_kernel import ComputeKernel
             from .bus import AIBus
@@ -269,6 +277,7 @@ class AIAgent:
             msg_prompt.messages = [{"role":"user","content":msg.body}]
             prompt.append(msg_prompt)
 
+            self._format_msg_by_env_value(prompt)
             inner_functions = self._get_inner_functions()
 
             task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)

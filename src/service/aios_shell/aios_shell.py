@@ -409,7 +409,7 @@ async def main():
 
     await asyncio.sleep(0.2) 
     while True:
-        user_input = await session.prompt_async(f"{shell.username}<->{shell.current_topic}@{shell.current_target}$",completer=completer,style=shell_style)
+        user_input = await session.prompt_async(f"{shell.username}<->{shell.current_topic}@{shell.current_target}$ ",completer=completer,style=shell_style)
         if len(user_input) <= 1:
             continue
 
