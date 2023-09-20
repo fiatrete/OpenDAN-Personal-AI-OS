@@ -16,17 +16,25 @@ def apply_storage():
         return
     
     host_url = proxy_cfg.value
-    if host_url is not None:
-        (proxy_type, host) = host_url.split("@")
+    if host_url is not None and len(host_url) > 3:
+        url_fields = host_url.split("@")
+        proxy_type, host, username, password = url_fields[0], None, None, None
+        if len(url_fields) > 1:
+            host = url_fields[1]
+            if len(url_fields) > 2:
+                username = url_fields[2]
+                if len(url_fields) > 3:
+                    password = url_fields[3]
+        
         match proxy_type:
             case "socks5":
                 (host, port) = host.split(":")
-                socks.set_default_proxy(socks.SOCKS5, host, int(port))
+                socks.set_default_proxy(socks.SOCKS5, host, int(port), username = username, password = password)
                 socket.socket = socks.socksocket
-                print("proxy {host_url} will be used.")
+                print(f"proxy {host_url} will be used.")
             case _:
-                print("the proxy type ({proxy_type}) has not support.")
+                print(f"the proxy type ({proxy_type}) has not support.")
 
 def declare_user_config():
     user_config = AIStorage.get_instance().get_user_config()
-    user_config.add_user_config("proxy", "set your proxy service as 'proxy_type@host:port', 'proxy_type' = 'socks5'", True, None)
+    user_config.add_user_config("proxy", "set your proxy service as 'proxy_type@host:port@username@password', 'proxy_type' = 'socks5'", True, None)
