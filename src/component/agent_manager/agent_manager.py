@@ -1,6 +1,7 @@
 
 import logging
 import toml
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from aios_kernel import AIAgent,AIAgentTemplete,AIStorage
 from package_manager import PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
@@ -17,6 +18,12 @@ class AgentManager:
             cls._instance = AgentManager()
         return cls._instance
     
+    def __init__(self) -> None:
+        self.agent_templete_env : PackageEnv = None
+        self.agent_env : PackageEnv = None
+        self.db_path : str = None 
+        self.loaded_agent_instance : Dict[str,AIAgent] = None
+    
     def initial(self) -> None:
         system_app_dir = AIStorage.get_instance().get_system_app_dir()
         user_data_dir = AIStorage.get_instance().get_myai_dir()
@@ -27,6 +34,9 @@ class AgentManager:
         self.loaded_agent_instance = {}
         if self.agent_templete_env is None:
             raise Exception("agent_manager initial failed")
+    
+    async def scan_all_agent(self)->None:
+        pass
         
     
     async def get(self,agent_id:str) -> AIAgent:

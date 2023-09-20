@@ -198,8 +198,6 @@ class AIAgent:
         if self.owner_env is None:
             return None
         
-        return None
-        
         all_inner_function = self.owner_env.get_all_ai_functions()
         if all_inner_function is None:
             return None
@@ -219,15 +217,20 @@ class AIAgent:
 
         func_name = inenr_func_call_node.get("name")
         arguments = json.loads(inenr_func_call_node.get("arguments"))
+        logger.info(f"llm execute inner func:{func_name} ({json.dumps(arguments)})")
 
         func_node : AIFunction = self.owner_env.get_ai_function(func_name)
         if func_node is None:
             return "execute failed,function not found"
         
         ineternal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
+        try:
+            result_str:str = await func_node.execute(**arguments)
+        except Exception as e:
+            result_str = "call error:" + str(e)  
+            logger.error(f"llm execute inner func:{func_name} error:{e}")
+            
 
-        result_str:str = await func_node.execute(**arguments)
-        
         inner_functions = self._get_inner_functions()
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
         task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
@@ -242,6 +245,17 @@ class AIAgent:
         else:
             return task_result.result_str
 
+    async def _get_agent_prompt(self) -> AgentPrompt:
+        return self.prompt
+
+    def _format_msg_by_env_value(self,prompt:AgentPrompt):
+        if self.owner_env is None:
+            return
+        
+        for msg in prompt.messages:
+            old_content = msg.get("content")
+            msg["content"] = old_content.format_map(self.owner_env)
+
     async def _process_msg(self,msg:AgentMsg) -> AgentMsg:
             from .compute_kernel import ComputeKernel
             from .bus import AIBus
@@ -255,7 +269,7 @@ class AIAgent:
                     return None
             
             prompt = AgentPrompt()
-            prompt.append(self.prompt)
+            prompt.append(await self._get_agent_prompt())
             # prompt.append(self._get_knowlege_prompt(the_role.get_name()))
             prompt.append(await self._get_prompt_from_session(chatsession)) # chat context
             
@@ -263,6 +277,7 @@ class AIAgent:
             msg_prompt.messages = [{"role":"user","content":msg.body}]
             prompt.append(msg_prompt)
 
+            self._format_msg_by_env_value(prompt)
             inner_functions = self._get_inner_functions()
 
             task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)

@@ -167,8 +167,12 @@ class OpenAI_ComputeNode(ComputeNode):
 
     def is_support(self, task: ComputeTask) -> bool:
         if task.task_type == ComputeTaskType.LLM_COMPLETION: 
-            if not task.params["model_name"] or task.params["model_name"] == "gpt-4-0613":
+            if not task.params["model_name"]:
                 return True
+            model_name : str = task.params["model_name"]
+            if model_name.startswith("gpt-"):
+                return True
+            
         if task.task_type == ComputeTaskType.TEXT_EMBEDDING:
             if task.params["model_name"] == "text-embedding-ada-002":
                 return True

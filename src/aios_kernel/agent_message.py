@@ -35,7 +35,7 @@ class AgentMsgStatus(Enum):
 
 class AgentMsg:
     def __init__(self,msg_type=AgentMsgType.TYPE_MSG) -> None:
-        self.msg_id = ""
+        self.msg_id = "msg#" + uuid.uuid4().hex
         self.msg_type:AgentMsgType = msg_type
         
         self.prev_msg_id:str = None
@@ -89,7 +89,6 @@ class AgentMsg:
     
     def create_resp_msg(self,resp_body):
         resp_msg = AgentMsg()
-        resp_msg.msg_id = "msg#" + uuid.uuid4().hex
         resp_msg.create_time = time.time()
 
         resp_msg.rely_msg_id = self.msg_id
@@ -101,7 +100,6 @@ class AgentMsg:
         return resp_msg
 
     def set(self,sender:str,target:str,body:str,topic:str=None) -> None:
-        self.msg_id = "msg#" + uuid.uuid4().hex
         self.sender = sender
         self.target = target
         self.body = body
