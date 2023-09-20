@@ -47,7 +47,7 @@ class LocalLlama_ComputeNode(Queue_ComputeNode):
                     "state": ComputeTaskState.ERROR,
                     "error": {
                         "code": response.status_code,
-                        "message": "http request failed: " + response.status_code
+                        "message": "http request failed: " + str(response.status_code)
                     }
                 }
             else:

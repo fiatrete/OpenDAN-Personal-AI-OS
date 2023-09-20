@@ -21,7 +21,15 @@ class UserConfigItem:
         self.desc = desc
         self.value = None
         self.user_set = False
-        
+
+    def clone(self):
+        new_config_item = UserConfigItem()
+        new_config_item.default_value = self.default_value
+        new_config_item.is_optional = self.is_optional
+        new_config_item.desc = self.desc
+        new_config_item.item_type = self.item_type
+        new_config_item.value = self.value
+        return new_config_item
 
 class UserConfig:
     def __init__(self) -> None:

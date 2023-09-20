@@ -20,3 +20,4 @@ google-cloud-texttospeech
 openai
 Pillow
 aiosqlite
+PySocks==1.7.1

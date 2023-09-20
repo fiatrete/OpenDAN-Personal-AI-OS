@@ -23,7 +23,7 @@ directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
 from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode
-
+import proxy
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
@@ -55,6 +55,7 @@ class AIOS_Shell:
         openai_node.declare_user_config()
 
         user_config.add_user_config("shell.current","last opened target and topic",True,"default@Jarvis")
+        proxy.declare_user_config()
 
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
@@ -95,7 +96,7 @@ class AIOS_Shell:
         
         llama_ai_node = LocalLlama_ComputeNode()
         await llama_ai_node.start()
-        #ComputeKernel.get_instance().add_compute_node(llama_ai_node)
+        # ComputeKernel.get_instance().add_compute_node(llama_ai_node)
 
         await ComputeKernel.get_instance().start()
 
@@ -194,6 +195,7 @@ class AIOS_Shell:
                     key = args[0]
                     config_item = AIStorage.get_instance().get_user_config().get_config_item(key)
                     old_value = AIStorage.get_instance().get_user_config().get_value(key)
+                    
                     if config_item is not None:
                         value = await session.prompt_async(f"{key} : {config_item.desc} \nCurrent : {old_value}\nPlease input new value:",style=shell_style)
                         AIStorage.get_instance().get_user_config().set_value(key,value)
@@ -389,6 +391,8 @@ async def main():
     print(f"aios shell {shell.get_version()} ready.")
     if is_daemon:
         return await main_daemon_loop(shell)
+
+    proxy.apply_storage()
 
     #TODO: read last input config
     completer = WordCompleter(['/send $target $msg $topic', 
