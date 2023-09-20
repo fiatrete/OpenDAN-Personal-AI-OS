@@ -10,48 +10,63 @@ import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
 
 from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
 from .compute_node import ComputeNode
-from .storage import AIStorage,UserConfig
+from .storage import AIStorage, UserConfig
 
 logger = logging.getLogger(__name__)
 
 
 class Stability_ComputeNode(ComputeNode):
     _instanace = None
+
     @classmethod
     def get_instance(cls):
         if cls._instance is None:
             cls._instance = Stability_ComputeNode()
         return cls._instance
-    
+
     @classmethod
     def declare_user_config(cls):
         user_config = AIStorage.get_instance().get_user_config()
-        user_config.add_user_config("stability_api_key",False,None,"STABILITY_API_KEY")
+        user_config.add_user_config(
+            "stability_api_key", "stability api key", False, None)
+        user_config.add_user_config(
+            "stability_model", "stability model name", True, "stable-diffusion-512-v2-1")
 
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__()
 
         self.is_start = False
         self.node_id = "stability_node"
         self.api_key = ""
-        self.engine = "stable-diffusion-512-v2-1"
+        self.model = ""
 
         self.task_queue = Queue()
 
         if os.getenv("STABILITY_API_KEY") is not None:
             self.api_key = os.getenv("STABILITY_API_KEY")
+        else:
+            self.api_key = AIStorage.get_instance(
+            ).get_user_config().get_value("stability_api_key")
+
+        if self.api_key is None:
+            logger.error("stability api key is None!")
+            return False
 
         # Check out the following link for a list of available engines: https://platform.stability.ai/docs/features/api-parameters#engine
-        if os.getenv("STABILITY_ENGINE") is not None:
-            self.engine = os.getenv("STABILITY_ENGINE")
+        if os.getenv("STABILITY_MODEL") is not None:
+            self.model = os.getenv("STABILITY_MODEL")
+        else:
+            self.model = AIStorage.get_instance().get_user_config().get_value("stability_model")
 
         self.client = client.StabilityInference(
             key=self.api_key,
             verbose=True,  # Print debug messages.
-            engine=self.engine,
+            engine=self.model,
         )
 
         self.start()
+
+        return True
 
     async def push_task(self, task: ComputeTask, proiority: int = 0):
         logger.info(f"stability_node push task: {task.display()}")
@@ -65,7 +80,7 @@ class Stability_ComputeNode(ComputeNode):
         # model_name && max_token_size not used here
         prompts = task.params["prompts"]
 
-        logging.info(f"call stability {self.engine} prompts: {prompts}")
+        logging.info(f"call stability {self.model} prompts: {prompts}")
         answers = self.client.generate(
             prompt=prompts,
             # If a seed is provided, the resulting generated image will be deterministic.
@@ -90,8 +105,9 @@ class Stability_ComputeNode(ComputeNode):
 
         for resp in answers:
             for artifact in resp.artifacts:
-                logger.info(f"artifact:{artifact.id},{artifact.type},{artifact.finish_reason}")
-                
+                logger.info(
+                    f"artifact:{artifact.id},{artifact.type},{artifact.finish_reason}")
+
                 if artifact.finish_reason == generation.FILTER:
                     logging.warn("request activated the API's safety filters")
                 if artifact.type == generation.ARTIFACT_IMAGE:
@@ -113,6 +129,7 @@ class Stability_ComputeNode(ComputeNode):
         if self.is_start:
             return
         self.is_start = True
+
         async def _run_task_loop():
             while True:
                 logger.info("stability_node is waiting for task...")
