@@ -7,7 +7,7 @@ from asyncio import Queue
 
 from .agent import AgentPrompt
 from .compute_node import ComputeNode
-from .compute_task import ComputeTask, ComputeTaskState, ComputeTaskResult
+from .compute_task import ComputeTask, ComputeTaskState, ComputeTaskResult, ComputeTaskType
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class ComputeKernel:
         if cls._instance is None:
             cls._instance = ComputeKernel()
         return cls._instance
-    
+
     def __init__(self) -> None:
         self.is_start = False
         self.task_queue = Queue()
@@ -73,7 +73,7 @@ class ComputeKernel:
         hit_pos = random.randint(0, total_weights - 1)
         for i in range(min(len(support_nodes) - 1, hit_pos), -1, -1):
             if support_nodes[i]["pos"] <= hit_pos:
-                return node
+                return support_nodes[i]["node"]
 
         logger.warning(
             f"task {task.display()} is not support by any compute node")
@@ -137,7 +137,7 @@ class ComputeKernel:
         task_req.set_text_embedding_params(input,model_name)
         self.run(task_req)
         return task_req
-    
+
     async def do_text_embedding(self,input:str,model_name:Optional[str] = None) -> [float]:
         task_req = self.text_embedding(input,model_name)
         async def check_timer():
@@ -155,11 +155,45 @@ class ComputeKernel:
 
                 await asyncio.sleep(0.5)
                 check_times += 1
-            
+
         await asyncio.create_task(check_timer())
         if task_req.state == ComputeTaskState.DONE:
             return task_req.result.result
-              
+
         return "error!"
-    
+
+    async def do_text_to_speech(self,
+                       input:str,
+                       language_code:Optional[str] = None,
+                       gender: Optional[str] = None,
+                       age: Optional[str] = None,
+                       voice_name: Optional[str] = None,
+                       tone: Optional[str] = None):
+        task_req = ComputeTask()
+        task_req.params["text"] = input
+        task_req.params["language_code"] = language_code
+        task_req.params["gender"] = gender
+        task_req.params["age"] = age
+        task_req.params["voice_name"] = voice_name
+        task_req.params["tone"] = tone
+        task_req.task_type = ComputeTaskType.TEXT_2_VOICE
+        self.run(task_req)
+
+        check_times = 0
+        while True:
+            if task_req.state == ComputeTaskState.DONE:
+                break
+            if task_req.state == ComputeTaskState.ERROR:
+                break
+            if check_times >= 60:
+                task_req.state = ComputeTaskState.ERROR
+                break
+            await asyncio.sleep(0.5)
+            check_times += 1
+
+        if task_req.state == ComputeTaskState.DONE:
+            return task_req.result.result
+        else:
+            raise Exception("do_text_to_speech failed!")
+
 
