@@ -22,8 +22,11 @@ from prompt_toolkit.styles import Style
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
-from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode
+
 import proxy
+from aios_kernel import *
+
+
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
@@ -115,7 +118,8 @@ class AIOS_Shell:
                 await AgentTunnel.load_all_tunnels_from_config(tunnel_config)
         except Exception as e:
             logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
-            
+        
+        KnowledgePipline.get_instance().initial()
         return True 
         
 
@@ -163,8 +167,7 @@ class AIOS_Shell:
             
             tunnel_config[key] = user_input   
 
-        return tunnel_config
-                 
+        return tunnel_config        
 
     async def append_tunnel_config(self,tunnel_config):
         user_data_dir = AIStorage.get_instance().get_myai_dir()
@@ -179,6 +182,55 @@ class AIOS_Shell:
         except Exception as e:
             logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
 
+    async def handle_knowledge_commands(self, args):
+        show_text = FormattedText([("class:title", "sub command not support!\n" 
+                              "/knowledge add email | dir\n"
+                              "/knowledge journal [$topn]\n"
+                              "/knowledge query $query\n")])
+        if len(args) < 1:
+            return show_text
+        sub_cmd = args[0]
+        if sub_cmd == "add":
+            if len(args) < 2:
+                return show_text
+            if args[1] == "email":
+                config = dict()
+                for key, item in KnowledgeEmailSource.user_config_items():
+                    user_input = await try_get_input(f"{key} : {item}")
+                    if user_input is None:
+                        return show_text
+                    config[key] = user_input
+                error = KnowledgePipline.get_instance().add_email_source(KnowledgeEmailSource(config))
+                if error is not None:
+                    return FormattedText([("class:title", f"/knowledge add email failed {error}\n")])
+                else:
+                    KnowledgePipline.get_instance().save_config()
+            if args[1] == "dir":
+                config = dict()
+                for key, item in KnowledgeDirSource.user_config_items():
+                    user_input = await try_get_input(f"{key} : {item}")
+                    if user_input is None:
+                        return show_text
+                    config[key] = user_input
+                error = KnowledgePipline.get_instance().add_dir_source(KnowledgeDirSource(config))
+                if error is not None:
+                    return FormattedText([("class:title", f"/knowledge add dir failed {error}\n")])
+                else:
+                    KnowledgePipline.get_instance().save_config()
+            else:
+                return show_text
+        if sub_cmd == "journal":
+            topn = 10 if len(args) == 1 else int(args[1])
+            journals = [str(journal) for journal in KnowledgePipline.get_instance().get_latest_journals(topn)]
+            print_formatted_text("\r\n".join(journals))
+        if sub_cmd == "query":
+            if len(args) < 2:
+                return show_text
+            prompt = AgentPrompt()
+            prompt.messages.append({"role": "user", "content":" ".join(args[1:])})
+            result = await KnowledgeBase().query_prompt(prompt)
+            print_formatted_text(result.as_str())
+            
     async def call_func(self,func_name, args):
         match func_name:
             case 'send':
@@ -221,6 +273,8 @@ class AIOS_Shell:
                         show_text = FormattedText([("class:title", f"connect to {tunnel_target} success!")])
 
                 return show_text
+            case 'knowledge':
+                return await self.handle_knowledge_commands(args)
             case 'open':
                 if len(args) >= 1:
                     target_id = args[0]
@@ -400,6 +454,9 @@ async def main():
                                '/history $num $offset',
                                '/login $username',
                                '/connect $target',
+                               '/knowledge add email | dir', 
+                               '/knowledge journal [$topn]',
+                               '/knowledge query $query' 
                                '/set_config $key',
                                '/list_config',
                                '/show',
