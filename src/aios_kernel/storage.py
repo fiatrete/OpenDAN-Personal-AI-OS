@@ -63,6 +63,7 @@ class UserConfig:
         except Exception as e:
             logger.warn(f"load user config from {file_path} failed!")
 
+
     async def save_to_user_config(self) -> None:
         will_save_config = {}
         for key,value in self.config_table.items():
@@ -183,4 +184,19 @@ class AIStorage:
 
     def put_named_object(self,name:str,obj:Any) -> None:
         pass
+    
+    async def try_create_file_with_default_value(self,path:str,default_value:str):
+        if os.path.exists(path):
+            return None
+        
+        try:
+            directory = os.path.dirname(path)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            async with aiofiles.open(path,"w") as f:
+                await f.write(default_value)
+
+        except Exception as e:
+            logger.error(f"open or create file {path} failed! {str(e)}")
+
 

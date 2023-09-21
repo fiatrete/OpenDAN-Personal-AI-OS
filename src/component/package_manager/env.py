@@ -16,7 +16,7 @@ class PackageEnv:
 
         self.locked_index : str = "./pkg.lock"
         self.is_strict : bool = True
-        self.parent_envs : list[PackageEnv] = None
+        self.parent_envs : list[PackageEnv] = []
         self.index_dbs = None
 
         self.env_dir = None
@@ -56,7 +56,7 @@ class PackageEnv:
         if media_info is None:
             if search_parent is True and self.parent_envs is not None:
                 for parent_env in self.parent_envs:
-                    media_info = parent_env.load(pkg_id,cid,False)
+                    media_info = parent_env.load(pkg_id,False)
                     if media_info is not None:
                         return media_info
             

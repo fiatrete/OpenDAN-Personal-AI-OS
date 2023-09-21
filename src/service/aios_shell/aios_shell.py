@@ -85,8 +85,8 @@ class AIOS_Shell:
         await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
         
-        AgentManager.get_instance().initial()
-        WorkflowManager.get_instance().initial()
+        await AgentManager.get_instance().initial()
+        await WorkflowManager.get_instance().initial()
 
         open_ai_node = OpenAI_ComputeNode.get_instance()
         if await open_ai_node.initial() is not True:

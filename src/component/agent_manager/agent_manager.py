@@ -8,6 +8,10 @@ from package_manager import PackageEnv,PackageEnvManager,PackageMediaInfo,Packag
 
 logger = logging.getLogger(__name__)
 
+default_agent_cfg = """
+main = "./"
+cache = "./.agents"
+"""
 
 class AgentManager:
     _instance = None
@@ -24,12 +28,17 @@ class AgentManager:
         self.db_path : str = None 
         self.loaded_agent_instance : Dict[str,AIAgent] = None
     
-    def initial(self) -> None:
+    async def initial(self) -> None:
         system_app_dir = AIStorage.get_instance().get_system_app_dir()
         user_data_dir = AIStorage.get_instance().get_myai_dir()
 
         self.agent_templete_env : PackageEnv = PackageEnvManager().get_env(f"{system_app_dir}/templates/templetes.cfg")
-        self.agent_env : PackageEnv = PackageEnvManager().get_env(f"{system_app_dir}/agents/agents.cfg")
+        sys_agent_env : PackageEnv = PackageEnvManager().get_env(f"{system_app_dir}/agents/agents.cfg")
+        user_agent_config_path = f"{user_data_dir}/agents/agents.cfg"
+        await AIStorage.get_instance().try_create_file_with_default_value(user_agent_config_path,default_agent_cfg)
+        self.agent_env : PackageEnv = PackageEnvManager().get_env(user_agent_config_path)
+        self.agent_env.parent_envs.append(sys_agent_env)
+
         self.db_path = f"{user_data_dir}/messages.db"
         self.loaded_agent_instance = {}
         if self.agent_templete_env is None:

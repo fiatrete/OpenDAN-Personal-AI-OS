@@ -7,6 +7,11 @@ from package_manager import PackageEnv,PackageEnvManager,PackageMediaInfo,Packag
 from agent_manager import AgentManager
 logger = logging.getLogger(__name__)
 
+default_workflow_cfg = """
+main = "./"
+cache = "./.agents"
+"""
+
 class WorkflowManager:
     _instance = None
 
@@ -17,12 +22,18 @@ class WorkflowManager:
         return cls._instance
 
 
-    def initial(self) -> None:
+    async def initial(self) -> None:
         self.loaded_workflow = {}
         system_app_dir = AIStorage.get_instance().get_system_app_dir()
         user_data_dir = AIStorage.get_instance().get_myai_dir()
 
-        self.workflow_env = PackageEnvManager().get_env(f"{system_app_dir}/workflows/workflows.cfg")
+        sys_workflow_env = PackageEnvManager().get_env(f"{system_app_dir}/workflows/workflows.cfg")
+        
+        user_workflow_config_path = f"{user_data_dir}/workflows/workflows.cfg"
+        await AIStorage.get_instance().try_create_file_with_default_value(user_workflow_config_path,default_workflow_cfg)
+        self.workflow_env = PackageEnvManager().get_env(f"{user_data_dir}/workflows/workflows.cfg")
+        self.workflow_env.parent_envs.append(sys_workflow_env)
+
         self.db_file = os.path.abspath(f"{user_data_dir}/messages.db")
         if self.workflow_env is None:
             raise Exception("WorkflowManager initial failed")
