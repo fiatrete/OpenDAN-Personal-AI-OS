@@ -24,6 +24,9 @@ import mailparser
 import hashlib
 import json
 import base64
+import chardet
+import aiofiles
+
 from bs4 import BeautifulSoup
 import requests
 import os
@@ -254,7 +257,16 @@ class KnowledgeDirSource:
 
     def path(self):
         return self.config["path"]
-
+    
+    @staticmethod
+    async def read_txt_file(file_path:str)->str:
+        cur_encode = "utf-8"
+        async with aiofiles.open(file_path,'rb') as f:
+            cur_encode = chardet.detect(await f.read())['encoding']
+        
+        async with aiofiles.open(file_path,'r',encoding=cur_encode) as f:
+            return await f.read()
+        
     async def run_once(self):
         logging.debug(f"knowledge dir source {self.id()} run once")
         journal_client = KnowledgeJournalClient()
@@ -278,11 +290,11 @@ class KnowledgeDirSource:
                 journal_client.insert(KnowledgeJournal("dir", self.id(), rel_path, str(image.calculate_id()), timestamp))
             if ext in ['.txt']:
                 logging.info(f"knowledge dir source {self.id()} found text file {file_path}")
-                with open(file_path, "r", encoding="utf-8") as f:
-                    text = f.read()
-                    document = DocumentObjectBuilder({}, {}, text).build()
-                    await KnowledgeBase().insert_object(document)
-                    journal_client.insert(KnowledgeJournal("dir", self.id(), rel_path, str(document.calculate_id()), timestamp))
+                text = await self.read_txt_file(file_path)
+    
+                document = DocumentObjectBuilder({}, {}, text).build()
+                await KnowledgeBase().insert_object(document)
+                journal_client.insert(KnowledgeJournal("dir", self.id(), rel_path, str(document.calculate_id()), timestamp))
             
 
 

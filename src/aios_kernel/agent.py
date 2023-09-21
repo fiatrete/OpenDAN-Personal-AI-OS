@@ -109,6 +109,7 @@ class AIAgent:
         self.fullname:str = None
         self.powerby = None  
         self.enable = True
+        self.enable_kb = False
 
         self.chat_db = None
         self.unread_msg = Queue() # msg from other agent
@@ -154,6 +155,8 @@ class AIAgent:
             self.max_token_size = config["max_token_size"]
         if config.get("enable_function") is not None:
             self.enable_function_list = config["enable_function"]
+        if config.get("enable_kb") is not None:
+            self.enable_kb = bool(config["enable_kb"])
         return True
 
 
@@ -300,9 +303,18 @@ class AIAgent:
             old_content = msg.get("content")
             msg["content"] = old_content.format_map(self.owner_env)
 
+    async def _get_knowlege_prompt(self,input_msg:AgentPrompt) -> AgentPrompt:
+        if self.enable_kb is False:
+            return None
+        
+        from .knowledge_base import KnowledgeBase
+        return await KnowledgeBase().query_prompt(input_msg)
+
     async def _process_msg(self,msg:AgentMsg) -> AgentMsg:
             from .compute_kernel import ComputeKernel
             from .bus import AIBus
+            
+
 
             session_topic = msg.get_sender() + "#" + msg.topic
             chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
@@ -311,22 +323,27 @@ class AIAgent:
                     chatsession.append(msg)
                     logger.info(f"agent {self.agent_id} recv a group chat message from {msg.sender},but is not mentioned,ignore!")
                     return None
-            
+                
+            msg_prompt = AgentPrompt()
+            msg_prompt.messages = [{"role":"user","content":msg.body}]
+
             prompt = AgentPrompt()
             prompt.append(await self._get_agent_prompt())
+            self._format_msg_by_env_value(prompt)
+
             inner_functions,function_token_len = self._get_inner_functions()
-            # prompt.append(self._get_knowlege_prompt(the_role.get_name()))
+       
             system_prompt_len = prompt.get_prompt_token_len()
             input_len = len(msg.body)
             
             history_prmpt,history_token_len = await self._get_prompt_from_session(chatsession,system_prompt_len + function_token_len,input_len)
             prompt.append(history_prmpt) # chat context
             
-            msg_prompt = AgentPrompt()
-            msg_prompt.messages = [{"role":"user","content":msg.body}]
+            kb_prompt = await self._get_knowlege_prompt(msg_prompt)
+            prompt.append(kb_prompt)
             prompt.append(msg_prompt)
 
-            self._format_msg_by_env_value(prompt)
+
             logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}，totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
             task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
             final_result = task_result.result_str

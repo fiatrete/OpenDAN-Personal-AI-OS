@@ -81,3 +81,4 @@ sympy==1.12
 telegram==0.0.1
 tokenizers==0.14.0
 toml==0.10.0
+chardet

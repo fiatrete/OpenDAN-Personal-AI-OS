@@ -165,8 +165,8 @@ class KnowledgeBase:
         objects = await self.query_objects(prompt)
         knowledge_prompt = self.prompt_from_objects(objects)
         logging.info(f"prompt_from_objects result: {knowledge_prompt.as_str()}")
-        prompt.append(knowledge_prompt)
-        return prompt
+       
+        return knowledge_prompt
 
     async def query_objects(self, prompt: AgentPrompt) -> [ObjectID]:
         results = []
@@ -204,7 +204,7 @@ class KnowledgeBase:
             else:
                 results[str(root_object_id)] = [root_object_id, object_id]
 
-        content = "I found the following contents described with json format:\n"
+        content = "*** I have provided the following known information for your reference with json format:\n"
         result_desc = []
         for result in results.values():
             # first element in result is the root object
@@ -239,7 +239,7 @@ class KnowledgeBase:
         content += ".\n"
 
         prompt = AgentPrompt()
-        prompt.messages.append({"role": "knowledge", "content": content})    
+        prompt.messages.append({"role": "user", "content": content})    
 
         return prompt
 
