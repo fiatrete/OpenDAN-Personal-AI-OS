@@ -142,8 +142,10 @@ class TelegramTunnel(AgentTunnel):
                     photo_file = open(resp_msg.body,"rb")
                     if photo_file:
                         await update.message.reply_photo(resp_msg.body)
+                        photo_file.close()
                     else:
                         await update.message.reply_text(resp_msg.body)
+                    
                 else:
                     await update.message.reply_text(resp_msg.body)
             
