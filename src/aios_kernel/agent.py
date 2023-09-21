@@ -94,6 +94,7 @@ class AIAgentTemplete:
             if self.prompt.load_from_config(config["prompt"]) is False:
                 logger.error("load prompt from config failed!")
                 return False
+
         
         return True
     
@@ -113,6 +114,7 @@ class AIAgent:
         self.unread_msg = Queue() # msg from other agent
         self.owner_env : Environment = None
         self.owenr_bus = None
+        self.enable_function_list = []
         
     @classmethod
     def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
@@ -150,7 +152,8 @@ class AIAgent:
             self.llm_model_name = config["llm_model_name"]
         if config.get("max_token_size") is not None:
             self.max_token_size = config["max_token_size"]
-
+        if config.get("enable_function") is not None:
+            self.enable_function_list = config["enable_function"]
         return True
 
 
@@ -235,8 +238,15 @@ class AIAgent:
         result_func = []
         result_len = 0
         for inner_func in all_inner_function:
+            func_name = inner_func.get_name()
+            if self.enable_function_list:
+                if len(self.enable_function_list) > 0:
+                    if func_name not in self.enable_function_list:
+                        logger.debug(f"ageint {self.agent_id} ignore inner func:{func_name}")
+                        continue
+
             this_func = {}
-            this_func["name"] = inner_func.get_name()
+            this_func["name"] = func_name
             this_func["description"] = inner_func.get_description()
             this_func["parameters"] = inner_func.get_parameters()
             result_len += len(json.dumps(this_func)) / 4

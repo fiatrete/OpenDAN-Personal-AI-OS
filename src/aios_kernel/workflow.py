@@ -368,15 +368,21 @@ class Workflow:
             old_content = msg.get("content")
             msg["content"] = old_content.format_map(self.workflow_env)
 
-    def _get_inner_functions(self) -> dict:
+    def _get_inner_functions(self,the_role:AIRole) -> dict:
         all_inner_function = self.workflow_env.get_all_ai_functions()
         if all_inner_function is None:
             return None
         
         result_func = []
         for inner_func in all_inner_function:
+            func_name = inner_func.get_name()
+            if the_role.enable_function_list:
+                if len(the_role.enable_function_list) > 0:
+                    if func_name not in the_role.enable_function_list:
+                        logger.debug(f"ageint {self.agent_id} ignore inner func:{func_name}")
+                        continue
             this_func = {}
-            this_func["name"] = inner_func.get_name()
+            this_func["name"] = func_name
             this_func["description"] = inner_func.get_description()
             this_func["parameters"] = inner_func.get_parameters()
             result_func.append(this_func)
@@ -436,7 +442,7 @@ class Workflow:
         prompt.append(msg_prompt)
 
         self._format_msg_by_env_value(prompt)
-        inner_functions = self._get_inner_functions()
+        inner_functions = self._get_inner_functions(the_role)
         
         async def _do_process_msg():
             #TODO: send msg to agent might be better?

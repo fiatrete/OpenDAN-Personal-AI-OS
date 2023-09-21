@@ -12,6 +12,7 @@ class AIRole:
         self.prompt : AgentPrompt = None
         self.introduce : str = None
         self.agent = None
+        self.enable_function_list : list[str] = None
 
     def load_from_config(self,config:dict) -> bool:
         name_node = config.get("name")
@@ -37,6 +38,9 @@ class AIRole:
         intro_node = config.get("intro")
         if intro_node is not None:
             self.introduce = intro_node
+
+        if config.get("enable_function") is not None:
+            self.enable_function_list = config["enable_function"]
     
     def get_role_id(self) -> str:
         return self.role_id
