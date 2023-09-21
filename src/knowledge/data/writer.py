@@ -46,7 +46,7 @@ class ChunkListWriter:
                     )
 
         file_hash = HashValue(hash_obj.digest())
-        print(f"calc file hash: {file_path}, {file_hash}")
+        # print(f"calc file hash: {file_path}, {file_hash}")
         
         return ChunkList(chunk_list, file_hash)
 

@@ -4,3 +4,108 @@
 
 # 2023-09-19 16:05:27.714815
 +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
+
+# 2023-09-20 14:48:06.181582
++/connect 
+
+# 2023-09-20 14:48:22.678945
++/connect Jarvis email
+
+# 2023-09-20 14:54:35.101026
++/connect Jarvis telegram
+
+# 2023-09-20 14:54:55.229801
++token abcd
+
+# 2023-09-20 16:22:34.229084
++/knowledge add email
+
+# 2023-09-20 16:22:46.797842
++puotosssa@live.com
+
+# 2023-09-20 16:22:53.622015
++p19870626
+
+# 2023-09-20 16:22:59.186145
++imap@live.com
+
+# 2023-09-20 16:23:02.334411
++993
+
+# 2023-09-20 16:40:29.996329
++/knowledge add email
+
+# 2023-09-20 16:40:52.860700
++puotosssa@live.com
+
+# 2023-09-20 16:40:55.324994
++fdafda
+
+# 2023-09-20 16:40:58.167154
++fdafdaf
+
+# 2023-09-20 16:40:59.757363
++993
+
+# 2023-09-20 16:42:55.288680
++/knowledge add email
+
+# 2023-09-20 16:42:56.916408
++fdfa
+
+# 2023-09-20 16:42:57.965232
++fdfds
+
+# 2023-09-20 16:42:59.149516
++fdafd
+
+# 2023-09-20 16:43:00.949104
++993
+
+# 2023-09-21 14:11:33.500467
++/knowledge add c:/users/tsukasa/myai/photos
+
+# 2023-09-21 14:14:31.488794
++/knowledge add dir
+
+# 2023-09-21 14:14:49.298635
++c:/users/tsukasa/myai/photos
+
+# 2023-09-21 15:27:58.550658
++/knowledge add dir
+
+# 2023-09-21 15:28:10.190467
++c:/users/tsukasa/myai/photos
+
+# 2023-09-21 15:32:32.431305
++/knowledge add dir
+
+# 2023-09-21 15:32:46.695566
++c:/users/tsukasa/myai/photos
+
+# 2023-09-21 15:33:36.391465
++/knowledge add dir
+
+# 2023-09-21 15:33:47.574853
++c:/users/tsukasa/myai/photos
+
+# 2023-09-21 17:44:26.308692
++/knowledge journals
+
+# 2023-09-21 17:45:42.925359
++/knowledge journal
+
+# 2023-09-21 18:13:08.720054
++/knowledge query what a see is 
+
+# 2023-09-21 18:20:09.275556
++/knowledge journal
+
+# 2023-09-21 18:20:10.746056
++/knowledge query what a see is 
+
+# 2023-09-21 18:29:48.391223
++/knowledge journal
+
+# 2023-09-21 18:29:51.406532
++/knowledge query what a see is 

@@ -1,7 +1,9 @@
 # define a knowledge base class
 import json
 import logging
-from . import AgentPrompt, ComputeKernel, AIStorage
+from .agent import AgentPrompt
+from .compute_kernel import ComputeKernel 
+from .storage import AIStorage
 from knowledge import *
 
 
@@ -17,7 +19,7 @@ class KnowledgeBase:
 
     def __singleton_init__(self) -> None:
         self.store = KnowledgeStore()
-        self.compute_kernel = ComputeKernel()
+        self.compute_kernel = ComputeKernel.get_instance()
 
     async def __embedding_document(self, document: DocumentObject):
         for chunk_id in document.get_chunk_list():
@@ -155,7 +157,7 @@ class KnowledgeBase:
     #         pass
 
     async def insert_object(self, object: KnowledgeObject):
-        # self.__save_object(object)
+        self.store.get_object_store().put_object(object.calculate_id(), object.encode())
         await self.__do_embedding(object)
 
     async def query_prompt(self, prompt: AgentPrompt):
@@ -164,6 +166,7 @@ class KnowledgeBase:
         knowledge_prompt = self.prompt_from_objects(objects)
         logging.info(f"prompt_from_objects result: {knowledge_prompt.as_str()}")
         prompt.append(knowledge_prompt)
+        return prompt
 
     async def query_objects(self, prompt: AgentPrompt) -> [ObjectID]:
         results = []

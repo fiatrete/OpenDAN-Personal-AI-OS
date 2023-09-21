@@ -94,7 +94,7 @@ class EmailObjectBuilder:
                 with open(content_file, "r", encoding="utf-8") as f:
                     text = f.read()
 
-                document = DocumentObjectBuilder({}, {}, text).build(relation_store=relation)
+                document = DocumentObjectBuilder({}, {}, text).build()
                 document_id = document.calculate_id()
                 store.put_object(document_id, document.encode())
                 documents = {"email.txt": document_id}

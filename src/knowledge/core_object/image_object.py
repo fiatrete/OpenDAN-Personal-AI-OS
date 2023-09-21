@@ -52,7 +52,7 @@ def get_exif_data(image_path: str):
         return {
             TAGS.get(key): exif_data[key]
             for key in exif_data.keys()
-            if key in TAGS and isinstance(exif_data[key], (bytes, str))
+            if key in TAGS and isinstance(exif_data[key], str)
         }
     else:
         return {}

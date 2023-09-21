@@ -49,7 +49,7 @@ class DocumentObjectBuilder:
         self.text = text
         return self
 
-    def build(self, relation_store: ObjectRelationStore) -> DocumentObject:
+    def build(self) -> DocumentObject:
         chunk_list = KnowledgeStore().get_chunk_list_writer().create_chunk_list_from_text(
             self.text,
             1024 * 4,
@@ -60,6 +60,6 @@ class DocumentObjectBuilder:
         
         # Add relation to store
         for chunk_id in chunk_list.chunk_list:
-            relation_store.add_relation(chunk_id, doc_id)
+            KnowledgeStore().get_relation_store().add_relation(chunk_id, doc_id)
             
         return doc
