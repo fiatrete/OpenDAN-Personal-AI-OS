@@ -83,9 +83,9 @@ class TextToSpeechFunction(AIFunction):
                     continue
 
         if audio is not None:
-            path = os.path.join(os.curdir, "{}.mp3".format(random.sample('zyxwvutsrqponmlkjihgfedcba', 10)))
+            path = os.path.join(os.path.realpath(os.curdir), "{}.mp3".format(''.join(random.sample('zyxwvutsrqponmlkjihgfedcba', 10))))
             audio.export(path, format="mp3")
-            return "complete.file path:{}".format(path)
+            return "已经生成音频文件, 文件路径为{}".format(path)
         else:
             return "failed"
 

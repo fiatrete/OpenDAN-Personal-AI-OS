@@ -118,7 +118,7 @@ class ComputeKernel:
                 if task_req.state == ComputeTaskState.ERROR:
                     break
 
-                if check_times >= 20:
+                if check_times >= 120:
                     task_req.state = ComputeTaskState.ERROR
                     break
 
@@ -129,7 +129,7 @@ class ComputeKernel:
         if task_req.state == ComputeTaskState.DONE:
             return task_req.result
 
-        return "error!"
+        raise Exception("error!")
 
     
     def text_embedding(self,input:str,model_name:Optional[str] = None):
