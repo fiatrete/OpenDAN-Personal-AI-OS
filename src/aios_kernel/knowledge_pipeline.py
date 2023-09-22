@@ -32,7 +32,7 @@ import requests
 import os
 import toml
 from .storage import AIStorage, UserConfigItem
-from .knowledge_base import KnowledgeBase, ImageObjectBuilder, ObjectID, ObjectType, DocumentObjectBuilder
+from .knowledge_base import KnowledgeBase, ImageObjectBuilder, ObjectID, ObjectType, DocumentObjectBuilder, EmailObjectBuilder, EmailObject
 
 class KnowledgeJournal:
     def __init__(self, source_type: str, source_id: str, item_id: str, object_id: str, timestamp=None):
@@ -53,7 +53,10 @@ class KnowledgeJournal:
                 pass
             return f"Add {object_type} from {os.path.join(self.source_id, self.item_id)}"
         if self.source_type == "email":
-            pass
+            object_id = ObjectID.from_base58(self.object_id)
+            email = EmailObject.decode(KnowledgeBase().store.get_object_store().get_object(object_id))
+            meta = email.get_meta()
+            return f'Add email from {os.path.join(self.source_id)} subject {meta["subject"]}'
 
 
 # init sqlite3 client
@@ -108,7 +111,7 @@ class KnowledgeEmailSource:
         self.config["type"] = "email"
     
     def id(self):
-        "::".join([self.config["imap_server"], self.config["address"]])
+        return self.config["address"]
 
     @classmethod
     def user_config_items(cls):
@@ -121,13 +124,15 @@ class KnowledgeEmailSource:
     @classmethod
     def local_root(cls):
         user_data_dir = AIStorage.get_instance().get_myai_dir()
-        return os.path.abspath(f"{user_data_dir}/email")    
+        return os.path.abspath(f"{user_data_dir}/knowledge/email")    
 
     async def run_once(self):
         # read config from toml file
         # and read from config config.local.toml if exists (config.local.toml is ignored by git)
+        logging.debug(f"knowledge email source {self.id()} run once")
+        filter = "ALL"  
         self.client = self.email_client()
-        await self.read_emails()
+        await self.read_emails(imap_keyword=filter)
 
     def email_client(self) -> imaplib.IMAP4_SSL:
         logging.info(f"read email config from {self.config.get('imap_server')}")
@@ -139,26 +144,37 @@ class KnowledgeEmailSource:
         return client
 
     async def read_emails(self, folder: str = 'INBOX', imap_keyword: str = "UNSEEN"):
+        journal_client = KnowledgeJournalClient()
+        latest_journal = journal_client.latest_journal(self.id())
+        latest_uid = 0 if latest_journal is None else int(latest_journal.item_id)
         self.client.select(folder)
         _, data = self.client.uid('search', None, imap_keyword)
         
         # get email uid list
         email_list = data[0].split()
         logging.info(f"got {len(email_list)} emails")
-        email_list.reverse()
+        journal_client = KnowledgeJournalClient()
         for uid in email_list:
-            if self.check_email_saved(uid):
+            _uid = int.from_bytes(uid)
+            if _uid > latest_uid:
+            email_dir = self.check_email_saved(uid)
+            if email_dir is not None:
                 logging.info(f"email uid {uid} already saved")
             else:
-                self.read_and_save_email(uid)
+                email_dir = self.read_and_save_email(uid)
                 logging.info(f"email uid {uid} saved")
+            email_object = EmailObjectBuilder({}, email_dir).build()
+            await KnowledgeBase().insert_object(email_object)
+            journal_client.insert(KnowledgeJournal("email", self.id(), str(int.from_bytes(uid)), str(email_object.calculate_id())))
 
-    def read_and_save_email(self, uid: str):
+
+    def read_and_save_email(self, uid: str) -> str:
         message_parts = "(BODY.PEEK[])"
         _, email_data = self.client.uid('fetch', uid, message_parts)
         mail = mailparser.parse_from_bytes(email_data[0][1])
         logging.info(f"got email subject [{mail.subject}]")
         self.save_email(mail)
+        return self.get_local_dir_name(mail)
 
     def get_local_dir_name(self, mail: mailparser.MailParser) -> str:
         dir =  f"{self.local_root()}/{self.config.get('address')}"
@@ -166,7 +182,7 @@ class KnowledgeEmailSource:
         name = hashlib.md5(name.encode('utf-8')).hexdigest()
         return f"{dir}/{name}"
 
-    def check_email_saved(self, uid: str):
+    def check_email_saved(self, uid: str) -> str:
         message_parts = "(BODY[HEADER])"
         _, email_data = self.client.uid('fetch', uid, message_parts)
         mail = mailparser.parse_from_bytes(email_data[0][1])
@@ -175,8 +191,8 @@ class KnowledgeEmailSource:
         logging.info(f"check email saved {dir}")
         file = f"{dir}/email.txt"
         if os.path.exists(file):
-            return False
-        return False
+            return dir
+        return None
 
     # save email attachment(images)
     def save_email_attachment(self, mail: mailparser.MailParser, email_dir: str):
@@ -205,12 +221,16 @@ class KnowledgeEmailSource:
         img_urls = [img['src'] for img in img_tags if 'src' in img.attrs]
         logging.info(f'Found {len(img_urls)} images in email body')
 
+        name_count = 0
+        
         if not os.path.exists(email_dir):
             os.makedirs(email_dir)
 
         for img_url in img_urls:
             # keep the original image filename(last of url)
-            img_filename = os.path.join(email_dir, img_url.split('/')[-1])
+            ext = img_url.split('/')[-1].split('.')[-1]
+            img_filename = os.path.join(email_dir, f"{name_count}.{ext}")
+            name_count += 1
             # download image 
             response = requests.get(img_url, stream=True)
             if response.status_code == 200:
@@ -230,7 +250,8 @@ class KnowledgeEmailSource:
         logging.info(f"save email to {email_dir}")
         if not os.path.exists(email_dir):
             os.makedirs(email_dir)
-        with open(f"{email_dir}/email.txt", "w") as f:
+        with open(f"{email_dir}/email.txt", "w", encoding='utf-8') as f:
+            # soup = BeautifulSoup(mail.body, 'html.parser')
             f.write(mail.body)
         with open(f"{email_dir}/meta.json", "w", encoding='utf-8') as f:
             mail_dict = json.loads(mail.mail_json)
