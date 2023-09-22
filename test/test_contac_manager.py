@@ -1,6 +1,6 @@
 import unittest
-import os
 import toml
+import os
 import sys
 
 directory = os.path.dirname(__file__)

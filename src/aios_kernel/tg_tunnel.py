@@ -4,11 +4,7 @@ import asyncio
 import uuid
 import time
 
-from typing import Callable
-
-from telegram import ForceReply, Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
-
+from telegram import Update
 from telegram import Bot
 from telegram.ext import Updater
 from telegram.error import Forbidden, NetworkError

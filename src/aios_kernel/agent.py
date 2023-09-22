@@ -162,6 +162,8 @@ class AIAgent:
         if config.get("contact_prompt") is not None:
             self.contact_prompt_str = config["contact_prompt"]
 
+        if config.get("owner_env") is not None:
+            self.owner_env = Environment.get_env_by_id(config["owner_env"])
 
         if config.get("powerby") is not None:
             self.powerby = config["powerby"]

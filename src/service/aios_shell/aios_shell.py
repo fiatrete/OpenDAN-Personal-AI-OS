@@ -67,7 +67,6 @@ class AIOS_Shell:
         target_id = msg.target.split(".")[0]
         agent : AIAgent = await AgentManager.get_instance().get(target_id)
         if agent is not None:
-            agent.owner_env = Environment.get_env_by_id("calender")
             bus.register_message_handler(target_id,agent._process_msg)
             return True
 
@@ -89,6 +88,9 @@ class AIOS_Shell:
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
+
+        workspace_env = WorkspaceEnvironment("bash")
+        Environment.set_env_by_id("bash",workspace_env)
 
 
         await AgentManager.get_instance().initial()

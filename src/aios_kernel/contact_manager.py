@@ -10,6 +10,7 @@ class Contact:
         self.added_by = added_by
         self.tags = tags
         self.notes = notes
+        self.is_family_member = False
 
     def to_dict(self):
         return {
