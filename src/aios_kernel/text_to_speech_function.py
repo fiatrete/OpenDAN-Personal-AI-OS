@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class TextToSpeechFunction(AIFunction):
     def __init__(self):
         self.func_id = "text_to_speech"
-        self.description = "根据输入的剧本生成音频数据"
+        self.description = "根据输入的剧本生成音频文件，成功时会返回音频文件路径"
 
     def get_name(self) -> str:
         return self.func_id
@@ -85,9 +85,9 @@ class TextToSpeechFunction(AIFunction):
         if audio is not None:
             path = os.path.join(os.path.realpath(os.curdir), "{}.mp3".format(''.join(random.sample('zyxwvutsrqponmlkjihgfedcba', 10))))
             audio.export(path, format="mp3")
-            return "已经生成音频文件, 文件路径为{}".format(path)
+            return "exec text_to_speech OK，speech file store at {}".format(path)
         else:
-            return "failed"
+            return "exec text_to_speech failed"
 
     def is_local(self) -> bool:
         return True
