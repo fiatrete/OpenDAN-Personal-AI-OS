@@ -3,9 +3,11 @@ import os
 import asyncio
 from asyncio import Queue
 import logging
+from typing import Optional
 
 from google.cloud import texttospeech
 
+from .storage import AIStorage
 from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
 from .compute_node import ComputeNode
 
@@ -31,8 +33,7 @@ class GoogleTextToSpeechNode(ComputeNode):
         super().__init__()
         self.node_id = "google_text_to_speech_node"
         self.task_queue = Queue()
-
-        self.client = texttospeech.TextToSpeechClient()
+        self.client: Optional[texttospeech.TextToSpeechClient] = None
 
         self.language_list = {
             "cnm-CN": {
@@ -85,6 +86,14 @@ class GoogleTextToSpeechNode(ComputeNode):
             }
         }
         self.start()
+
+    def init(self):
+        user_config = AIStorage.get_instance().get_user_config()
+        google_application_credentials = user_config.get_value("google_application_credentials")
+        if google_application_credentials is None:
+            raise Exception("google_application_credentials is None!")
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = google_application_credentials
+        self.client = texttospeech.TextToSpeechClient()
 
     def start(self):
         async def _run_task_loop():
@@ -161,3 +170,11 @@ class GoogleTextToSpeechNode(ComputeNode):
 
     def is_local(self) -> bool:
         return False
+
+    def declare_user_config(self):
+        if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") is None:
+            user_config = AIStorage.get_instance().get_user_config()
+            user_config.add_user_config("google_application_credentials",
+                                        "google application credentials, please visit:https://cloud.google.com/text-to-speech/docs/before-you-begin",
+                                        False,
+                                        None)

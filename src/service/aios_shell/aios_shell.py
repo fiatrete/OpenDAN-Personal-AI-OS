@@ -59,6 +59,9 @@ class AIOS_Shell:
         user_config.add_user_config("shell.current","last opened target and topic",True,"default@Jarvis")
         proxy.declare_user_config()
 
+        google_text_to_speech = GoogleTextToSpeechNode.get_instance()
+        google_text_to_speech.declare_user_config()
+
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
         target_id = msg.target.split(".")[0]
@@ -97,8 +100,13 @@ class AIOS_Shell:
             return False
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
 
-        google_text_to_speech_node = GoogleTextToSpeechNode.get_instance()
-        ComputeKernel.get_instance().add_compute_node(google_text_to_speech_node)
+        try:
+            google_text_to_speech_node = GoogleTextToSpeechNode.get_instance()
+            google_text_to_speech_node.init()
+            ComputeKernel.get_instance().add_compute_node(google_text_to_speech_node)
+        except Exception as e:
+            logger.error(f"google text to speech node initial failed! {e}")
+            return False
 
         llama_ai_node = LocalLlama_ComputeNode()
         await llama_ai_node.start()
@@ -116,7 +124,7 @@ class AIOS_Shell:
         contact_config_path =os.path.abspath(f"{user_data_dir}/contacts.toml")
         cm = ContactManager.get_instance(contact_config_path)
         cm.load_data()
-        
+
         tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
         tunnel_config = None
         try:
@@ -125,10 +133,10 @@ class AIOS_Shell:
                 await AgentTunnel.load_all_tunnels_from_config(tunnel_config)
         except Exception as e:
             logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
-        
+
         KnowledgePipline.get_instance().initial()
-        return True 
-        
+        return True
+
 
     def get_version(self) -> str:
         return "0.5.1"
@@ -169,10 +177,10 @@ class AIOS_Shell:
             user_input = await try_get_input(f"{key} : {item.desc}")
             if user_input is None:
                 return None
-            
-            tunnel_config[key] = user_input   
 
-        return tunnel_config        
+            tunnel_config[key] = user_input
+
+        return tunnel_config
 
     async def append_tunnel_config(self,tunnel_config):
         user_data_dir = AIStorage.get_instance().get_myai_dir()
@@ -235,7 +243,7 @@ class AIOS_Shell:
             prompt.messages.append({"role": "user", "content":" ".join(args[1:])})
             result = await KnowledgeBase().query_prompt(prompt)
             print_formatted_text(result.as_str())
-            
+
     async def call_func(self,func_name, args):
         match func_name:
             case 'send':
@@ -252,7 +260,7 @@ class AIOS_Shell:
                     key = args[0]
                     config_item = AIStorage.get_instance().get_user_config().get_config_item(key)
                     old_value = AIStorage.get_instance().get_user_config().get_value(key)
-                    
+
                     if config_item is not None:
                         value = await session.prompt_async(f"{key} : {config_item.desc} \nCurrent : {old_value}\nPlease input new value:",style=shell_style)
                         AIStorage.get_instance().get_user_config().set_value(key,value)
@@ -459,7 +467,7 @@ async def main():
                                '/history $num $offset',
                                '/login $username',
                                '/connect $target',
-                               '/knowledge add email | dir', 
+                               '/knowledge add email | dir',
                                '/knowledge journal [$topn]',
                                '/knowledge query $query' 
                                '/set_config $key',
