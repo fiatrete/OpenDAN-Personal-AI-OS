@@ -26,7 +26,7 @@ class AgentPrompt:
         self.system_message = None
 
     def as_str(self)->str:
-        result_str = "" 
+        result_str = ""
         if self.system_message:
             result_str += self.system_message.get("role") + ":" + self.system_message.get("content") + "\n"
         if self.messages:
@@ -34,18 +34,18 @@ class AgentPrompt:
                 result_str += msg.get("role") + ":" + msg.get("content") + "\n"
 
         return result_str
-    
+
     def to_message_list(self):
         result = []
         if self.system_message:
             result.append(self.system_message)
         result.extend(self.messages)
         return result
-    
+
     def append(self,prompt):
         if prompt is None:
             return
-        
+
         if prompt.system_message is not None:
             if self.system_message is None:
                 self.system_message = prompt.system_message
@@ -99,9 +99,9 @@ class AIAgentTemplete:
                 logger.error("load prompt from config failed!")
                 return False
 
-        
+
         return True
-    
+
 
 class AIAgent:
     def __init__(self) -> None:
@@ -111,7 +111,7 @@ class AIAgent:
         self.agent_id:str = None
         self.template_id:str = None
         self.fullname:str = None
-        self.powerby = None  
+        self.powerby = None
         self.enable = True
         self.enable_kb = False
         self.enable_timestamp = False
@@ -124,7 +124,7 @@ class AIAgent:
         self.owner_env : Environment = None
         self.owenr_bus = None
         self.enable_function_list = []
-        
+
     @classmethod
     def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
         # Agent just inherit from templete on craete,if template changed,agent will not change
@@ -137,7 +137,7 @@ class AIAgent:
         result_agent.powerby = templete.author
         result_agent.prompt = templete.prompt
         return result_agent
-    
+
     def load_from_config(self,config:dict) -> bool:
         if config.get("instance_id") is None:
             logger.error("agent instance_id is None!")
@@ -190,7 +190,7 @@ class AIAgent:
         if llm_result_str == "ignore":
             r.state = "ignore"
             return r
-        
+
         lines = llm_result_str.splitlines()
         is_need_wait = False
 
@@ -207,7 +207,7 @@ class AIAgent:
 
                     r.send_msgs.append(new_msg)
                     is_need_wait = True
-                    
+
                 case "post_msg":# postmsg($target_id,$msg_content)
                     if len(func_args) != 1:
                         logger.error(f"parse postmsg failed! {func_call}")
@@ -217,22 +217,22 @@ class AIAgent:
                     msg_content = func_item.body
                     new_msg.set(self.agent_id,target_id,msg_content)
                     r.post_msgs.append(new_msg)
-                    
+
                 case "call":# call($func_name,$args_str)
                     r.calls.append(func_item)
                     is_need_wait = True
                     return True
                 case "post_call": # post_call($func_name,$args_str)
                     r.post_calls.append(func_item)
-                    return True    
-                
+                    return True
+
         current_func : FunctionItem = None
         for line in lines:
             if line.startswith("##/"):
                 if current_func:
                     if check_args(current_func) is False:
                         r.resp += current_func.dumps()
-               
+
                 func_name,func_args = AgentMsg.parse_function_call(line[3:])
                 current_func = FunctionItem(func_name,func_args)
             else:
@@ -240,11 +240,11 @@ class AIAgent:
                     current_func.append_body(line + "\n")
                 else:
                     r.resp += line + "\n"
-        
+
         if current_func:
             if check_args(current_func) is False:
                 r.resp += current_func.dumps()
-                
+
         if len(r.send_msgs) > 0 or len(r.calls) > 0:
             r.state = "waiting"
         else:
@@ -281,21 +281,22 @@ class AIAgent:
     def _get_inner_functions(self) -> dict:
         if self.owner_env is None:
             return None
-        
+
         all_inner_function = self.owner_env.get_all_ai_functions()
         if all_inner_function is None:
             return None
-        
+
         result_func = []
         result_len = 0
         for inner_func in all_inner_function:
             func_name = inner_func.get_name()
-            if self.enable_function_list:
+            if self.enable_function_list is not None:
                 if len(self.enable_function_list) > 0:
                     if func_name not in self.enable_function_list:
                         logger.debug(f"ageint {self.agent_id} ignore inner func:{func_name}")
                         continue
-
+                else:
+                    continue
             this_func = {}
             this_func["name"] = func_name
             this_func["description"] = inner_func.get_description()
@@ -315,28 +316,29 @@ class AIAgent:
         func_node : AIFunction = self.owner_env.get_ai_function(func_name)
         if func_node is None:
             return "execute failed,function not found"
-        
+
         ineternal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
         try:
             result_str:str = await func_node.execute(**arguments)
         except Exception as e:
-            result_str = "call error:" + str(e)  
+            result_str = "call error:" + str(e)
             logger.error(f"llm execute inner func:{func_name} error:{e}")
-            
 
+
+        logger.info("llm execute inner func result:" + result_str)
         inner_functions,inner_function_len = self._get_inner_functions()
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
         task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
-        
+
         ineternal_call_record.result_str = task_result.result_str
         ineternal_call_record.done_time = time.time()
         org_msg.inner_call_chain.append(ineternal_call_record)
 
         if stack_limit > 0:
             inner_func_call_node = task_result.result_message.get("function_call")
-            
+
         if inner_func_call_node:
-            return await self._execute_func(inner_func_call_node,prompt,org_msg,stack_limit-1)      
+            return await self._execute_func(inner_func_call_node,prompt,org_msg,stack_limit-1)
         else:
             return task_result.result_str
 
@@ -346,7 +348,7 @@ class AIAgent:
     def _format_msg_by_env_value(self,prompt:AgentPrompt):
         if self.owner_env is None:
             return
-        
+
         for msg in prompt.messages:
             old_content = msg.get("content")
             msg["content"] = old_content.format_map(self.owner_env)
@@ -382,7 +384,7 @@ class AIAgent:
        
             system_prompt_len = prompt.get_prompt_token_len()
             input_len = len(msg.body)
-            
+
             history_prmpt,history_token_len = await self._get_prompt_from_session(chatsession,system_prompt_len + function_token_len,input_len)
             prompt.append(history_prmpt) # chat context
             
@@ -399,7 +401,7 @@ class AIAgent:
             if inner_func_call_node:
                 #TODO to save more token ,can i use msg_prompt?
                 final_result = await self._execute_func(inner_func_call_node,prompt,msg)
-            
+
             llm_result : LLMResult = self._get_llm_result_type(final_result)
             is_ignore = False
             result_prompt_str = ""
@@ -417,21 +419,21 @@ class AIAgent:
                             agent_sesion = AIChatSession.get_session(self.agent_id,f"{sendmsg.target}#{sendmsg.topic}",self.chat_db)
                             agent_sesion.append(sendmsg)
                             agent_sesion.append(send_resp)
-                    
+
                     final_result = llm_result.resp + result_prompt_str
 
             if is_ignore is not True:
                 resp_msg = msg.create_resp_msg(final_result)
                 chatsession.append(msg)
                 chatsession.append(resp_msg)
-                
+
                 return resp_msg
-            
+
             return None
-        
+
     def get_id(self) -> str:
         return self.agent_id
-    
+
     def get_fullname(self) -> str:
         return self.fullname
 
@@ -440,14 +442,14 @@ class AIAgent:
 
     def get_llm_model_name(self) -> str:
         return self.llm_model_name
-    
+
     def get_max_token_size(self) -> int:
         return self.max_token_size
-    
+
     async def _get_prompt_from_session(self,chatsession:AIChatSession,system_token_len,input_token_len,is_groupchat=False) -> AgentPrompt:
         # TODO: get prompt from group chat is different from single chat
         history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
-        messages = chatsession.read_history() # read 
+        messages = chatsession.read_history() # read
         result_token_len = 0
         result_prompt = AgentPrompt()
         read_history_msg = 0

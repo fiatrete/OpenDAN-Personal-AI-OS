@@ -20,7 +20,7 @@ class OpenAI_ComputeNode(ComputeNode):
         if cls._instance is None:
             cls._instance = OpenAI_ComputeNode()
         return cls._instance
-    
+
     @classmethod
     def declare_user_config(cls):
         if os.getenv("OPENAI_API_KEY_") is None:
@@ -46,7 +46,7 @@ class OpenAI_ComputeNode(ComputeNode):
         if self.openai_api_key is None:
             logger.error("openai_api_key is None!")
             return False
-        
+
         openai.api_key = self.openai_api_key
         self.start()
         return True
@@ -68,7 +68,7 @@ class OpenAI_ComputeNode(ComputeNode):
 
                 resp = openai.Embedding.create(model=model_name,
                                                 input=input)
-                
+
                 # resp = {
                 # "object": "list",
                 # "data": [
@@ -86,7 +86,7 @@ class OpenAI_ComputeNode(ComputeNode):
 
                 logger.info(f"openai response: {resp}")
 
-                result = ComputeTaskResult()    
+                result = ComputeTaskResult()
                 result.set_from_task(task)
                 result.worker_id = self.node_id
                 result.result = resp["data"][0]["embedding"]
@@ -100,23 +100,23 @@ class OpenAI_ComputeNode(ComputeNode):
                 if max_token_size is None:
                     max_token_size = 4000
 
-                result_token = int(max_token_size * 0.4)
-                    
-                logger.info(f"call openai {mode_name} prompts: {prompts}")
+                result_token = max_token_size
 
                 if llm_inner_functions is None:
+                    logger.info(f"call openai {mode_name} prompts: {prompts}")
                     resp = openai.ChatCompletion.create(model=mode_name,
                                                     messages=prompts,
                                                     max_tokens=result_token,
                                                     temperature=0.7)
                 else:
+                    logger.info(f"call openai {mode_name} prompts: {prompts} functions: {json.dumps(llm_inner_functions)}")
                     resp = openai.ChatCompletion.create(model=mode_name,
                                                         messages=prompts,
                                                         functions=llm_inner_functions,
                                                         max_tokens=result_token,
                                                         temperature=0.7) # TODO: add temperature to task params?
 
-            
+
                 logger.info(f"openai response: {json.dumps(resp, indent=4)}")
 
                 result = ComputeTaskResult()
@@ -139,6 +139,7 @@ class OpenAI_ComputeNode(ComputeNode):
                 result.result_message = resp["choices"][0]["message"]
                 if token_usage:
                     result.result_refers["token_usage"] = token_usage
+                logger.info(f"openai success response: {result.result_str}")
                 return result
             case _:
                 task.state = ComputeTaskState.ERROR
@@ -148,7 +149,7 @@ class OpenAI_ComputeNode(ComputeNode):
         if self.is_start is True:
             return
         self.is_start = True
-        
+
         async def _run_task_loop():
             while True:
                 task = await self.task_queue.get()
@@ -171,13 +172,13 @@ class OpenAI_ComputeNode(ComputeNode):
 
 
     def is_support(self, task: ComputeTask) -> bool:
-        if task.task_type == ComputeTaskType.LLM_COMPLETION: 
+        if task.task_type == ComputeTaskType.LLM_COMPLETION:
             if not task.params["model_name"]:
                 return True
             model_name : str = task.params["model_name"]
             if model_name.startswith("gpt-"):
                 return True
-            
+
         if task.task_type == ComputeTaskType.TEXT_EMBEDDING:
             if task.params["model_name"] == "text-embedding-ada-002":
                 return True

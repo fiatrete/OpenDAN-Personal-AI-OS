@@ -7,6 +7,8 @@ from sqlite3 import Error
 import threading
 import logging
 from typing import Optional
+
+from .text_to_speech_function import TextToSpeechFunction
 from .environment import Environment,EnvironmentEvent
 from .ai_function import SimpleAIFunction
 from .storage import AIStorage
@@ -23,8 +25,8 @@ class CalenderEvent(EnvironmentEvent):
         self.data = data
 
     def display(self) -> str:
-        return f"#event timer:{self.data}"    
-    
+        return f"#event timer:{self.data}"
+
 # AI Calender GOAL: Let user use "create notify after 2 days" to create a timer event
 class CalenderEnvironment(Environment):
     def __init__(self, env_id: str) -> None:
@@ -39,7 +41,7 @@ class CalenderEnvironment(Environment):
         #self.add_ai_function(SimpleAIFunction("serach_events",
         #                                "search events in calender",
         #                                self._search_events))
-        
+
         get_param = {
             "start_time": "start time (UTC) of event",
             "end_time": "end time (UTC) of event"
@@ -59,14 +61,14 @@ class CalenderEnvironment(Environment):
         self.add_ai_function(SimpleAIFunction("add_event",
                                         "add event to calender",
                                         self._add_event,add_param))
-        
+
         delete_param = {
             "event_id": "id of event"
         }
         self.add_ai_function(SimpleAIFunction("delete_event",
                                         "delete event from calender",
                                         self._delete_event,delete_param))
-        
+
         update_param = {
             "event_id": "id of event",
             "new_title": "new title of event",
@@ -79,7 +81,7 @@ class CalenderEnvironment(Environment):
         self.add_ai_function(SimpleAIFunction("update_event",
                                         "update event in calender",
                                         self._update_event,update_param))
-        
+
         #self.add_ai_function(SimpleAIFunction("user_confirm",
         #                                      "user confirm",
         #                                      self._user_confirm))
@@ -98,7 +100,7 @@ class CalenderEnvironment(Environment):
                 );
             """)
             await db.commit()
-        
+
     async def _add_event(self,title, start_time, end_time, participants=None, location=None, details=None):
         async with aiosqlite.connect(self.db_file) as db:
             await db.execute("""
@@ -127,7 +129,7 @@ class CalenderEnvironment(Environment):
                 _event["details"] = row[6]
                 result[row[0]] = _event
             return json.dumps(result, indent=4, sort_keys=True)
-        
+
     async def _get_events_by_time_range(self,start_time, end_time):
         async with aiosqlite.connect(self.db_file) as db:
             cursor = await db.execute("""
@@ -153,7 +155,7 @@ class CalenderEnvironment(Environment):
                 return "No event."
             
             return json.dumps(result, indent=4, sort_keys=True)
-       
+
     async def _update_event(self,event_id, new_title=None, new_participants=None, new_location=None, new_details=None ,start_time=None, end_time=None):
         fields_to_update = []
         values = []
@@ -191,8 +193,8 @@ class CalenderEnvironment(Environment):
             WHERE id = ?;
         """
 
-        values.append(event_id)       
-       
+        values.append(event_id)
+
         async with aiosqlite.connect(self.db_file) as db:
             await db.execute(sql_update_query, values)
             await db.commit()
@@ -212,16 +214,16 @@ class CalenderEnvironment(Environment):
 
     async def start(self) -> None:
         if self.is_run:
-            return 
+            return
         self.is_run = True
         await self.init_db()
-        
+
         self.register_get_handler("now",self.get_now)
         async def timer_loop():
             while True:
                 if self.is_run == False:
                     break
-                
+
                 await asyncio.sleep(1.0)
                 now = datetime.now()
                 formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
@@ -238,13 +240,13 @@ class CalenderEnvironment(Environment):
     def get_now(self)->str:
         now = datetime.now()
         formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
-        return formatted_time     
+        return formatted_time
 
     async def _get_now(self) -> str:
         now = datetime.now()
         formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
         return formatted_time
-    
+
 # Default Workflow Environment(Context)
 class WorkflowEnvironment(Environment):
     def __init__(self, env_id: str,db_file:str) -> None:
@@ -252,6 +254,7 @@ class WorkflowEnvironment(Environment):
         self.db_file = db_file
         self.local = threading.local()
         self.table_name = "WorkflowEnv_" + env_id
+        self.add_ai_function(TextToSpeechFunction())
 
 
     def _get_conn(self):
@@ -259,7 +262,7 @@ class WorkflowEnvironment(Environment):
         if not hasattr(self.local, 'conn'):
             self.local.conn = self._create_connection()
         return self.local.conn
-    
+
     def _create_connection(self):
         """ create a database connection to a SQLite database """
         conn = None
@@ -273,10 +276,10 @@ class WorkflowEnvironment(Environment):
             self._create_table(conn)
 
         return conn
-    
+
     def close(self):
         if not hasattr(self.local, 'conn'):
-            return 
+            return
         self.local.conn.close()
 
     def _create_table(self, conn):
@@ -293,7 +296,7 @@ class WorkflowEnvironment(Environment):
             conn.commit()
         except Error as e:
             logging.error("Error occurred while creating tables: %s", e)
-    
+
     def _do_get_value(self, key: str) -> str | None:
         try:
             conn = self._get_conn()
@@ -311,7 +314,7 @@ class WorkflowEnvironment(Environment):
         super().set_value(key,str_value)
         if is_storage is False:
             return
-        
+
         try:
             conn = self._get_conn()
             conn.execute("""

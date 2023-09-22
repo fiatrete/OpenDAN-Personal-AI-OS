@@ -35,10 +35,10 @@ class ChatSessionDB:
             self._create_table(conn)
 
         return conn
-    
+
     def close(self):
         if not hasattr(self.local, 'conn'):
-            return 
+            return
         self.local.conn.close()
 
     def _create_table(self, conn):
@@ -56,7 +56,7 @@ class ChatSessionDB:
 
             # create messages table
             # reciver_id could be None
-        
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS Messages (
                     MessageID TEXT PRIMARY KEY,
@@ -142,7 +142,7 @@ class ChatSessionDB:
         except Error as e:
             logging.error("Error occurred while inserting message: %s", e)
             return -1  # return -1 if an error occurs
-    
+
     def get_chatsession_by_id(self, session_id):
         """Get a message by its ID"""
         conn = self._get_conn()
@@ -150,7 +150,7 @@ class ChatSessionDB:
         c.execute("SELECT * FROM ChatSessions WHERE SessionID = ?", (session_id,))
         chatsession = c.fetchone()
         return chatsession
-    
+
     def get_chatsession_by_owner_topic(self, owner_id, topic):
         """Get a chatsession by its owner and topic"""
         conn = self._get_conn()
@@ -175,7 +175,7 @@ class ChatSessionDB:
         except Error as e:
             logging.error("Error occurred while getting sessions: %s", e)
             return -1, None  # return -1 and None if an error occurs
-        
+
     def get_message_by_id(self, message_id):
         """Get a message by its ID"""
         conn =self._get_conn()
@@ -216,7 +216,7 @@ class ChatSessionDB:
         except Error as e:
             logging.error("Error occurred while updating message status: %s", e)
             return -1  # return -1 if an error occurs
-        
+
 
 # chat session store the chat history between owner and agent
 # chat session might be large, so can read / write at stream mode.
@@ -230,7 +230,7 @@ class AIChatSession:
     #        cls._dbs[db_path] = db
     #    db.get_chatsession_by_id(session_id)
     #    #result = AIChatSession()
-    
+
     @classmethod
     def get_session(cls,owner_id:str,session_topic:str,db_path:str,auto_create = True) -> str:
         db = cls._dbs.get(db_path)
@@ -249,21 +249,22 @@ class AIChatSession:
             result = AIChatSession(owner_id,session[0],db)
             result.topic = session_topic
 
-        return result          
-    
+        return result
+
 
     def __init__(self,owner_id:str, session_id:str, db:ChatSessionDB) -> None:
         self.owner_id :str = owner_id
         self.session_id : str = session_id
         self.db : ChatSessionDB = db
-        
+
         self.topic : str = None
         self.start_time : str = None
 
     def get_owner_id(self) -> str:
         return self.owner_id
-    
+
     def read_history(self, number:int=10,offset=0) -> [AgentMsg]:
+        return []
         msgs = self.db.get_messages(self.session_id, number, offset)
         result = []
         for msg in msgs:
@@ -298,4 +299,4 @@ class AIChatSession:
     #    """chat session changed event handler"""
     #    pass
 
-    #TODO : add iterator interface for read chat history 
+    #TODO : add iterator interface for read chat history
