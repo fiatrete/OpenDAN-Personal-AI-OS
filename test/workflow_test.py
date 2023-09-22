@@ -1,9 +1,22 @@
+import os
+import sys
+import asyncio
 
+directory = os.path.dirname(__file__)
+sys.path.append(directory + '/../src')
+from aios_kernel import WorkspaceEnvironment
 
-def test_workflow():
+async def test_workflow():
+    env = WorkspaceEnvironment("test")
+
+    test_code ="""
+import toml
+print("hello world")
+print(100+23)
+toml.dump({"abc":"123"},open("test.toml","w"))
+    """
+    await env.run_code(test_code)
     
-    
-    pass
 
 
 async def _test_llm_parser():
@@ -40,3 +53,8 @@ sfsadfasdf
     assert len(llm_result.calls) == 1
     assert len(llm_result.send_msgs) == 1
     print(llm_result)
+
+if __name__ == "__main__":
+    asyncio.run(test_workflow())
+    print("OK!")
+
