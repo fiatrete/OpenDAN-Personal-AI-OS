@@ -1,4 +1,4 @@
-instance_id = "studio_director"
+instance_id = "speecher"
 fullname = "tracy wang"
 llm_model_name = "gpt-3.5-turbo-16k-0613"
 enable_function = ["text_to_speech"]
