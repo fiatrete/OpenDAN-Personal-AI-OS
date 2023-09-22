@@ -390,9 +390,9 @@ class Workflow:
             return result_func
         return None 
     
-    async def _role_execute_func(self,the_role:AIRole,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg) -> str:
+    async def _role_execute_func(self,the_role:AIRole,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> str:
         from .compute_kernel import ComputeKernel
-
+      
         func_name = inenr_func_call_node.get("name")
         arguments = json.loads(inenr_func_call_node.get("arguments"))
 
@@ -413,10 +413,10 @@ class Workflow:
         ineternal_call_record.result_str = task_result.result_str
         ineternal_call_record.done_time = time.time()
         org_msg.inner_call_chain.append(ineternal_call_record)
-
-        inner_func_call_node = task_result.result_message.get("function_call")
+        if stack_limit > 0:
+            inner_func_call_node = task_result.result_message.get("function_call")
         if inner_func_call_node:
-            return await self._role_execute_func(the_role,inner_func_call_node,prompt,org_msg)      
+            return await self._role_execute_func(the_role,inner_func_call_node,prompt,org_msg,stack_limit-1)      
         else:
             return task_result.result_str
     

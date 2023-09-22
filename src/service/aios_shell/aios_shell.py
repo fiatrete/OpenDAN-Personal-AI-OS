@@ -27,7 +27,6 @@ import proxy
 from aios_kernel import *
 
 
-
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
@@ -87,7 +86,8 @@ class AIOS_Shell:
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
-        
+
+
         await AgentManager.get_instance().initial()
         await WorkflowManager.get_instance().initial()
 
@@ -110,6 +110,10 @@ class AIOS_Shell:
         EmailTunnel.register_to_loader()
 
         user_data_dir = AIStorage.get_instance().get_myai_dir()
+        contact_config_path =os.path.abspath(f"{user_data_dir}/contacts.toml")
+        cm = ContactManager.get_instance(contact_config_path)
+        cm.load_data()
+        
         tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
         tunnel_config = None
         try: 
@@ -138,8 +142,6 @@ class AIOS_Shell:
 
     async def _user_process_msg(self,msg:AgentMsg) -> AgentMsg:
         pass
-
-
 
     async def get_tunnel_config_from_input(self,tunnel_target,tunnel_type):
         tunnel_config = {}

@@ -14,8 +14,9 @@ from telegram.ext import Updater
 from telegram.error import Forbidden, NetworkError
 
 from .tunnel import AgentTunnel
-from .contact_manager import ContactManager
+from .contact_manager import ContactManager,Contact,FamilyMember
 from .agent_message import AgentMsg
+
 
 logger = logging.getLogger(__name__)
 
@@ -116,16 +117,31 @@ class TelegramTunnel(AgentTunnel):
 
 
     async def on_message(self, bot:Bot, update: Update) -> None:
-        cm = ContactManager.get_instance()
+        if update.effective_user.is_bot:
+            logger.warning(f"ignore message from telegram bot {update.effective_user.id}")
+            return None
+        
+        cm : ContactManager = ContactManager.get_instance()
         reomte_user_name = f"{update.effective_user.id}@telegram"
-        #contact = cm.get_by_name(update.effective_user.username)
-        #if contact is not None:
-        #    reomte_user_name = contact.get_name()
-        #if contact is None:
-        #    update.message.reply_text(f"{self.target_id} process message error, unknown user!")
-        #if not contact.is_zone_owner():
-        #    update.message.reply_text(f"{self.target_id} process message error, you are not my owner!")
+        contact : Contact = cm.find_contact_by_telegram(update.effective_user.username)
+        if contact is None:
+            contact = cm.find_contact_by_telegram(str(update.effective_user.id))
 
+        if contact is not None:
+            reomte_user_name = contact.name
+        else:
+            if cm.is_auto_create_contact_from_telegram:
+                contact_name = update.effective_user.first_name
+                if update.effective_user.last_name is not None:
+                    contact_name += " " + update.effective_user.last_name
+
+                contact = Contact(contact_name)
+                contact.telegram = update.effective_user.username if update.effective_user.username is not None else str(update.effective_user.id)
+                contact.added_by = self.target_id
+                cm.add_contact(contact.name, contact)
+                reomte_user_name = contact.name
+
+        # create gust account?
         agent_msg = await self.conver_tg_msg_to_agent_msg(update)
         agent_msg.sender = reomte_user_name
         self.ai_bus.register_message_handler(reomte_user_name, self._process_message)

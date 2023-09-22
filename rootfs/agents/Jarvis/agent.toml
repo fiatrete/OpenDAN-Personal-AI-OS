@@ -3,7 +3,11 @@ fullname = "Jarvis"
 llm_model_name = "gpt-3.5-turbo-16k-0613"
 max_token_size = 16000
 #enable_function =["add_event"]
-enable_kb = "true"
+#enable_kb = "true"
+enable_timestamp = "true"
+owner_prompt = "我是你的主人{name}"
+contact_prompt = "我是你的朋友{name}"
+guest_prompt = "xxx"
 
 [[prompt]]
 role = "system"
@@ -15,6 +19,7 @@ Tracy,私人英语老师
 David,私人画家
 
 ***
+你看到的信息里有的有时会带上时间标签，这是为了让你更好的理解时间。你回复的信息不用创建这个时间标签。
 你在收到我的信息后，按如下规则处理
 1. 如果你认为团队里有人更适合处理该信息，用下面方法转发消息给他们处理
 ```

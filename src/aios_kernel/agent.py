@@ -7,18 +7,22 @@ import uuid
 import time
 import json
 import shlex
+import datetime
 
 from .agent_message import AgentMsg, AgentMsgStatus, AgentMsgType,FunctionItem,LLMResult
 from .chatsession import AIChatSession
 from .compute_task import ComputeTaskResult
 from .ai_function import AIFunction
 from .environment import Environment
+from .contact_manager import ContactManager,Contact,FamilyMember
 
 logger = logging.getLogger(__name__)
 
 class AgentPrompt:
-    def __init__(self) -> None:
+    def __init__(self,prompt_str = None) -> None:
         self.messages = []
+        if prompt_str:
+            self.messages.append({"role":"user","content":prompt_str})
         self.system_message = None
 
     def as_str(self)->str:
@@ -110,6 +114,10 @@ class AIAgent:
         self.powerby = None  
         self.enable = True
         self.enable_kb = False
+        self.enable_timestamp = False
+        self.guest_prompt_str = None 
+        self.owner_promp_str = None
+        self.contact_prompt_str = None
 
         self.chat_db = None
         self.unread_msg = Queue() # msg from other agent
@@ -145,6 +153,16 @@ class AIAgent:
             self.prompt = AgentPrompt()
             self.prompt.load_from_config(config["prompt"])
 
+        if config.get("guest_prompt") is not None:
+            self.guest_prompt_str = config["guest_prompt"]
+
+        if config.get("owner_prompt") is not None:
+            self.owner_promp_str = config["owner_prompt"]
+        
+        if config.get("contact_prompt") is not None:
+            self.contact_prompt_str = config["contact_prompt"]
+
+
         if config.get("powerby") is not None:
             self.powerby = config["powerby"]
         if config.get("template_id") is not None:
@@ -157,6 +175,8 @@ class AIAgent:
             self.enable_function_list = config["enable_function"]
         if config.get("enable_kb") is not None:
             self.enable_kb = bool(config["enable_kb"])
+        if config.get("enable_timestamp") is not None:
+            self.enable_timestamp = bool(config["enable_timestamp"])
         return True
 
 
@@ -230,6 +250,32 @@ class AIAgent:
 
         return r
     
+    def _get_remote_user_prompt(self,remote_user:str) -> AgentPrompt:
+        cm = ContactManager.get_instance()
+        contact = cm.find_contact_by_name(remote_user)
+        if contact is None:
+            #create guest prompt
+            if self.guest_prompt_str is not None:
+                prompt = AgentPrompt()
+                prompt.system_message = {"role":"system","content":self.guest_prompt_str}
+                return prompt
+            return None
+        else:
+            if contact.is_family_member:
+                if self.owner_promp_str is not None:
+                    real_str = self.owner_promp_str.format_map(contact.to_dict())
+                    prompt = AgentPrompt()
+                    prompt.system_message = {"role":"system","content":real_str}
+                    return prompt
+            else:
+                if self.contact_prompt_str is not None:
+                    real_str = self.contact_prompt_str.format_map(contact.to_dict())
+                    prompt = AgentPrompt()
+                    prompt.system_message = {"role":"system","content":real_str}
+                    return prompt
+                
+        return None
+
     def _get_inner_functions(self) -> dict:
         if self.owner_env is None:
             return None
@@ -259,7 +305,7 @@ class AIAgent:
 
     async def _execute_func(self,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> str:
         from .compute_kernel import ComputeKernel
-
+ 
         func_name = inenr_func_call_node.get("name")
         arguments = json.loads(inenr_func_call_node.get("arguments"))
         logger.info(f"llm execute inner func:{func_name} ({json.dumps(arguments)})")
@@ -314,8 +360,6 @@ class AIAgent:
             from .compute_kernel import ComputeKernel
             from .bus import AIBus
             
-
-
             session_topic = msg.get_sender() + "#" + msg.topic
             chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
             if msg.mentions is not None:
@@ -330,6 +374,7 @@ class AIAgent:
             prompt = AgentPrompt()
             prompt.append(await self._get_agent_prompt())
             self._format_msg_by_env_value(prompt)
+            prompt.append(self._get_remote_user_prompt(msg.sender))
 
             inner_functions,function_token_len = self._get_inner_functions()
        
@@ -406,11 +451,21 @@ class AIAgent:
         read_history_msg = 0
         for msg in reversed(messages):
             read_history_msg += 1
+            dt = datetime.datetime.fromtimestamp(float(msg.create_time))
+            formatted_time = dt.strftime('%m-%d %H:%M:%S')
+
             if msg.sender == self.agent_id:
-                result_prompt.messages.append({"role":"assistant","content":msg.body})
+
+                if self.enable_timestamp:
+                    result_prompt.messages.append({"role":"assistant","content":f"(create on {formatted_time}) {msg.body} "})
+                else:
+                    result_prompt.messages.append({"role":"assistant","content":msg.body})
                 
             else:
-                result_prompt.messages.append({"role":"user","content":msg.body})
+                if self.enable_timestamp:
+                    result_prompt.messages.append({"role":"user","content":f"(create on {formatted_time}) {msg.body} "})
+                else:
+                    result_prompt.messages.append({"role":"user","content":msg.body})
 
             history_len -= len(msg.body)
             result_token_len += len(msg.body)

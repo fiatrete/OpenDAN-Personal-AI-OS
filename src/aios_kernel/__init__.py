@@ -18,6 +18,7 @@ from .tunnel import AgentTunnel
 from .tg_tunnel import TelegramTunnel
 from .email_tunnel import EmailTunnel
 from .storage import ResourceLocation,AIStorage,UserConfig,UserConfigItem
+from .contact_manager import ContactManager,Contact,FamilyMember  
 
 AIOS_Version = "0.5.1, build 2023-9-17"
 
