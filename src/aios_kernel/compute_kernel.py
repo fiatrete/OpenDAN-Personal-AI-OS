@@ -197,3 +197,35 @@ class ComputeKernel:
             raise Exception("do_text_to_speech failed!")
 
 
+    def text_2_image(self, prompt:str, model_name:Optional[str] = None):
+        task = ComputeTask()
+        task.set_text_2_image_params(prompt,model_name)
+        self.run(task)
+        return task
+
+    async def do_text_2_image(self, prompt:str, model_name:Optional[str] = None) -> [str, ComputeTaskResult]:
+        task_req = self.text_2_image(prompt,model_name)
+        async def check_timer():
+            check_times = 0
+            while True:
+                if task_req.state == ComputeTaskState.DONE:
+                    break
+
+                if task_req.state == ComputeTaskState.ERROR:
+                    break
+
+                #may be it will take a long time to generate a image
+                if check_times >=  60:
+                    task_req.state = ComputeTaskState.ERROR
+                    break
+
+                await asyncio.sleep(0.5)
+                check_times += 1
+
+        await asyncio.create_task(check_timer())
+
+        if task_req.state == ComputeTaskState.DONE:
+            return None, task_req.result
+
+        return task_req.error_str, None
+

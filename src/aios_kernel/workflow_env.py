@@ -9,6 +9,7 @@ import logging
 from typing import Optional
 
 from .text_to_speech_function import TextToSpeechFunction
+from .compute_kernel import ComputeKernel
 from .environment import Environment,EnvironmentEvent
 from .ai_function import SimpleAIFunction
 from .storage import AIStorage
@@ -82,6 +83,16 @@ class CalenderEnvironment(Environment):
                                         "update event in calender",
                                         self._update_event,update_param))
 
+        
+        #maybe this function should be in other env?
+        paint_param = {
+            "prompt": "A description of the content of the painting",
+            "model_name": "Which model to use to draw the picture, can be None"
+        }
+        self.add_ai_function(SimpleAIFunction("paint",
+                                        "Draw a picture according to the description",
+                                        self._paint,paint_param))
+        
         #self.add_ai_function(SimpleAIFunction("user_confirm",
         #                                      "user confirm",
         #                                      self._user_confirm))
@@ -247,6 +258,14 @@ class CalenderEnvironment(Environment):
         formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
         return formatted_time
 
+    
+    async def _paint(self, prompt, model_name = None) -> str:
+        err, result = await ComputeKernel.get_instance().do_text_2_image(prompt, model_name)
+        if err is not None:
+            return f"exec paint failed. err:{err}"
+        else:
+            return f'exec paint OK, saved as a local file, path is: {result.result["file"]}'
+
 # Default Workflow Environment(Context)
 class WorkflowEnvironment(Environment):
     def __init__(self, env_id: str,db_file:str) -> None:
@@ -328,4 +347,3 @@ class WorkflowEnvironment(Environment):
 
     def get_functions(self):
         pass
-
