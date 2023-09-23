@@ -63,6 +63,8 @@ class AIOS_Shell:
         google_text_to_speech = GoogleTextToSpeechNode.get_instance()
         google_text_to_speech.declare_user_config()
 
+        Local_Stability_ComputeNode.declare_user_config()
+
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
         target_id = msg.target.split(".")[0]
@@ -86,10 +88,6 @@ class AIOS_Shell:
             return False
 
     async def initial(self) -> bool:
-        os.environ["LOCAL_STABILITY_URL"] = "http://192.168.100.79:7866"
-        os.environ["TEXT2IMG_DEFAULT_MODEL"] = "v1-5-pruned-emaonly"
-        os.environ["TEXT2IMG_OUTPUT_DIR"] = "./"
-
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)

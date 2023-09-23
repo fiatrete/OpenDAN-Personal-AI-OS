@@ -106,14 +106,14 @@ class OpenAI_ComputeNode(ComputeNode):
                     logger.info(f"call openai {mode_name} prompts: {prompts}")
                     resp = openai.ChatCompletion.create(model=mode_name,
                                                     messages=prompts,
-                                                    max_tokens=result_token,
+                                                    #max_tokens=result_token,
                                                     temperature=0.7)
                 else:
                     logger.info(f"call openai {mode_name} prompts: {prompts} functions: {json.dumps(llm_inner_functions)}")
                     resp = openai.ChatCompletion.create(model=mode_name,
                                                         messages=prompts,
                                                         functions=llm_inner_functions,
-                                                        max_tokens=result_token,
+                                                        #max_tokens=result_token,
                                                         temperature=0.7) # TODO: add temperature to task params?
 
 

@@ -7,6 +7,7 @@ import base64
 from PIL import Image
 import requests
 from typing import Tuple
+from pathlib import Path
 
 from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
 from .compute_node import ComputeNode
@@ -27,12 +28,18 @@ class Local_Stability_ComputeNode(ComputeNode):
     @classmethod
     def declare_user_config(cls):
         user_config = AIStorage.get_instance().get_user_config()
-        user_config.add_user_config(
-            "local_stability_url", "local stability url", False, None)
-        user_config.add_user_config(
-            "text2img_output_dir", "output dir", True, "./")
-        user_config.add_user_config(
-            "text2img_default_model", "text2img default model", True, "v1-5-pruned-emaonly")
+        if os.getenv("LOCAL_STABILITY_URL") is None:
+            user_config.add_user_config(
+                "local_stability_url", "local stability url", False, None)
+        if os.getenv("TEXT2IMG_OUTPUT_DIR") is None:
+            home_dir = Path.home()
+            output_dir = Path.joinpath(home_dir, "text2img_output")
+            Path.mkdir(output_dir, exist_ok=True)
+            user_config.add_user_config(
+                "text2img_output_dir", "text2image output dir", True, output_dir)
+        if os.getenv("TEXT2IMG_DEFAULT_MODEL") is None:
+            user_config.add_user_config(
+                "text2img_default_model", "text2img default model", True, "v1-5-pruned-emaonly")
 
     def __init__(self) -> None:
         super().__init__()
