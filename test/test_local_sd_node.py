@@ -30,7 +30,7 @@ async def test_local_sd_node(propmt, model):
     task.create_time = time.time()
     task.task_id = uuid.uuid4().hex
     task.params['model_name'] = model
-    task.params['prompts'] = propmt
+    task.params['prompt'] = propmt
     await node.push_task(task)
 
     while True:

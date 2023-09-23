@@ -123,7 +123,7 @@ class AIAgent:
         self.unread_msg = Queue() # msg from other agent
         self.owner_env : Environment = None
         self.owenr_bus = None
-        self.enable_function_list = []
+        self.enable_function_list = None
 
     @classmethod
     def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
@@ -392,7 +392,7 @@ class AIAgent:
             prompt.append(msg_prompt)
 
 
-            logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}，totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
+            logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
             task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
             final_result = task_result.result_str
 

@@ -21,6 +21,7 @@ from .storage import ResourceLocation,AIStorage,UserConfig,UserConfigItem
 from .contact_manager import ContactManager,Contact,FamilyMember  
 from .text_to_speech_function import TextToSpeechFunction
 from .workspace_env import WorkspaceEnvironment
+from .local_stability_node import Local_Stability_ComputeNode
 
 AIOS_Version = "0.5.1, build 2023-9-17"
 

@@ -6,6 +6,8 @@ import logging
 import base64
 from PIL import Image
 import requests
+from typing import Tuple
+from pathlib import Path
 
 from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
 from .compute_node import ComputeNode
@@ -26,12 +28,18 @@ class Local_Stability_ComputeNode(ComputeNode):
     @classmethod
     def declare_user_config(cls):
         user_config = AIStorage.get_instance().get_user_config()
-        user_config.add_user_config(
-            "local_stability_url", "local stability url", False, None)
-        user_config.add_user_config(
-            "text2img_output_dir", "output dir", True, "./")
-        user_config.add_user_config(
-            "text2img_default_model", "text2img default model", True, "v1-5-pruned-emaonly")
+        if os.getenv("LOCAL_STABILITY_URL") is None:
+            user_config.add_user_config(
+                "local_stability_url", "local stability url", False, None)
+        if os.getenv("TEXT2IMG_OUTPUT_DIR") is None:
+            home_dir = Path.home()
+            output_dir = Path.joinpath(home_dir, "text2img_output")
+            Path.mkdir(output_dir, exist_ok=True)
+            user_config.add_user_config(
+                "text2img_output_dir", "text2image output dir", True, output_dir)
+        if os.getenv("TEXT2IMG_DEFAULT_MODEL") is None:
+            user_config.add_user_config(
+                "text2img_default_model", "text2img default model", True, "v1-5-pruned-emaonly")
 
     def __init__(self) -> None:
         super().__init__()
@@ -73,6 +81,8 @@ class Local_Stability_ComputeNode(ComputeNode):
 
         if self.output_dir is None:
             self.output_dir = "./"
+        
+        self.output_dir = os.path.abspath(self.output_dir)
 
         self.start()
 
@@ -85,36 +95,53 @@ class Local_Stability_ComputeNode(ComputeNode):
     async def remove_task(self, task_id: str):
         pass
 
+    def _make_post_request(self, url, json) -> Tuple[str, requests.Response]:
+        try:
+            response = requests.post(url, json=json)
+            if response.status_code != 200:
+                return f'{response.status_code}, {response.json()}', None
+            return None, response
+        except Exception as e:
+            return f"{e}", None
+
+
     def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
         model_name = task.params["model_name"]
-        prompts = task.params["prompts"]
+        prompt = task.params["prompt"]
 
-        logging.info(f"call local stability {model_name} prompts: {prompts}")
+        logging.info(f"call local stability {model_name} prompts: {prompt}")
 
         if model_name is not None:
             payload = {
                 "sd_model_checkpoint": model_name,
             }
-            # {'error': 'RuntimeError', 'detail': '', 'body': '', 'errors': "model 'xxx' not found"}
-            response = requests.post(
-                url=f'{self.url}/sdapi/v1/options', json=payload)
-            if response.status_code != 200:
+            err, resp = self._make_post_request(f'{self.url}/sdapi/v1/options', payload)
+
+            if err is not None:
                 task.state = ComputeTaskState.ERROR
-                logger.error(
-                    f"set local stability model failed. err:{response.json()['errors']}")
+                err_msg = f"Set local stability model failed. err:{err}"
+                logger.error(err_msg)
+                task.error_str = err_msg
                 return None
 
+            logging.info(f"set local stability model {model_name} success")
+
         payload = {
-            "prompt": prompts,
+            "prompt": prompt,
             "steps": 20
         }
 
-        response = requests.post(
-            url=f'{self.url}/sdapi/v1/txt2img', json=payload)
-        r = response.json()
+        err, resp = self._make_post_request(f'{self.url}/sdapi/v1/txt2img', payload)
+        if err is not None:
+            task.state = ComputeTaskState.ERROR
+            err_msg = f"Failed. err:{err}"
+            logger.error(err_msg)
+            task.error_str = err_msg
+            return None
+        
+        r = resp.json()
 
-        print(len(r['images']))
         for i in r['images']:
             image = Image.open(io.BytesIO(
                 base64.b64decode(i.split(",", 1)[0])))
@@ -128,6 +155,8 @@ class Local_Stability_ComputeNode(ComputeNode):
 
             return result
 
+        task.error_str = "Unknown error!"
+        task.state = ComputeTaskState.ERROR
         return None
 
     def start(self):

@@ -23,6 +23,7 @@ directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
 
+from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode,Local_Stability_ComputeNode
 import proxy
 from aios_kernel import *
 
@@ -61,6 +62,8 @@ class AIOS_Shell:
 
         google_text_to_speech = GoogleTextToSpeechNode.get_instance()
         google_text_to_speech.declare_user_config()
+
+        Local_Stability_ComputeNode.declare_user_config()
 
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
@@ -113,6 +116,12 @@ class AIOS_Shell:
         llama_ai_node = LocalLlama_ComputeNode()
         await llama_ai_node.start()
         # ComputeKernel.get_instance().add_compute_node(llama_ai_node)
+
+        local_sd_node = Local_Stability_ComputeNode.get_instance()
+        if await local_sd_node.initial() is not True:
+            logger.error("local stability node initial failed!")
+            return False
+        ComputeKernel.get_instance().add_compute_node(local_sd_node)
 
         await ComputeKernel.get_instance().start()
 
