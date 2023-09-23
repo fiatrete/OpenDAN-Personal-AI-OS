@@ -264,7 +264,6 @@ class AIChatSession:
         return self.owner_id
 
     def read_history(self, number:int=10,offset=0) -> [AgentMsg]:
-        return []
         msgs = self.db.get_messages(self.session_id, number, offset)
         result = []
         for msg in msgs:
