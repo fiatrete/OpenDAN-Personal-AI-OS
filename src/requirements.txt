@@ -30,8 +30,8 @@ google-auth==2.23.0
 google-cloud==0.34.0
 google-cloud-texttospeech==2.14.1
 googleapis-common-protos==1.60.0
-grpcio==1.58.0
-grpcio-status==1.58.0
+grpcio
+grpcio-status
 h11==0.14.0
 httpcore==0.17.3
 httptools==0.6.0
@@ -58,7 +58,7 @@ posthog==3.0.2
 proglog==0.1.10
 prompt-toolkit==3.0.39
 proto-plus==1.22.3
-protobuf==4.24.3
+protobuf
 pulsar-client==3.3.0
 pyasn1==0.5.0
 pyasn1-modules==0.3.0
@@ -81,4 +81,9 @@ sympy==1.12
 telegram==0.0.1
 tokenizers==0.14.0
 toml==0.10.0
+pysocks
 chardet
+pydub
+aiosqlite
+python-telegram-bot
+pydub

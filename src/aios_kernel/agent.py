@@ -280,11 +280,11 @@ class AIAgent:
 
     def _get_inner_functions(self) -> dict:
         if self.owner_env is None:
-            return None
+            return None,0
 
         all_inner_function = self.owner_env.get_all_ai_functions()
         if all_inner_function is None:
-            return None
+            return None,0
 
         result_func = []
         result_len = 0
@@ -295,8 +295,7 @@ class AIAgent:
                     if func_name not in self.enable_function_list:
                         logger.debug(f"ageint {self.agent_id} ignore inner func:{func_name}")
                         continue
-                else:
-                    continue
+
             this_func = {}
             this_func["name"] = func_name
             this_func["description"] = inner_func.get_description()
