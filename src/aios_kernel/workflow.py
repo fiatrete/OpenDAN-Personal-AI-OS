@@ -390,11 +390,11 @@ class Workflow:
             result_func.append(this_func)
         if len(result_func) > 0:
             return result_func
-        return None 
-    
+        return None
+
     async def _role_execute_func(self,the_role:AIRole,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> str:
         from .compute_kernel import ComputeKernel
-      
+
         func_name = inenr_func_call_node.get("name")
         arguments = json.loads(inenr_func_call_node.get("arguments"))
 
@@ -418,7 +418,7 @@ class Workflow:
         if stack_limit > 0:
             inner_func_call_node = task_result.result_message.get("function_call")
         if inner_func_call_node:
-            return await self._role_execute_func(the_role,inner_func_call_node,prompt,org_msg,stack_limit-1)      
+            return await self._role_execute_func(the_role,inner_func_call_node,prompt,org_msg,stack_limit-1)
         else:
             return task_result.result_str
 
@@ -440,7 +440,7 @@ class Workflow:
         prompt.append(await self._get_prompt_from_session(workflow_chat_session))
 
         msg_prompt = AgentPrompt()
-        msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
+        msg_prompt.messages = [{"role":"user","content":f"user name is {msg.sender}, his question is :{msg.body}"}]
         prompt.append(msg_prompt)
 
         self._format_msg_by_env_value(prompt)
