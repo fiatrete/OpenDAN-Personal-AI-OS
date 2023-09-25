@@ -23,6 +23,7 @@ from .text_to_speech_function import TextToSpeechFunction
 from .workspace_env import WorkspaceEnvironment
 from .local_stability_node import Local_Stability_ComputeNode
 from .stability_node import Stability_ComputeNode
+from .local_st_compute_node import LocalSentenceTransformer_ComputeNode
 
 AIOS_Version = "0.5.1, build 2023-9-26"
 
