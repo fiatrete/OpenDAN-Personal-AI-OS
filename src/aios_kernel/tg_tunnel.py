@@ -26,10 +26,10 @@ class TelegramTunnel(AgentTunnel):
                 return result_tunnel
             else:
                 return None
-            
+
         AgentTunnel.register_loader("TelegramTunnel",load_tg_tunnel)
 
-        
+
     async def load_from_config(self,config:dict)->bool:
         self.tg_token = config["token"]
         self.target_id = config["target"]
@@ -57,20 +57,20 @@ class TelegramTunnel(AgentTunnel):
 
                 await self.on_message(bot,update)
             return next_update_id
-        
+
         return update_id
 
     async def start(self) -> bool:
         if self.is_start:
             logger.warning(f"tunnel {self.tunnel_id} is already started")
             return False
-        self.is_start = True   
+        self.is_start = True
         logger.info(f"tunnel {self.tunnel_id} is starting...")
 
         self.bot = Bot(self.tg_token)
         self.update_queue = asyncio.Queue()
         self.bot_updater = Updater(self.bot,update_queue=self.update_queue)
-       
+
 
         async def _run_app():
             try:
@@ -116,7 +116,7 @@ class TelegramTunnel(AgentTunnel):
         if update.effective_user.is_bot:
             logger.warning(f"ignore message from telegram bot {update.effective_user.id}")
             return None
-        
+
         cm : ContactManager = ContactManager.get_instance()
         reomte_user_name = f"{update.effective_user.id}@telegram"
         contact : Contact = cm.find_contact_by_telegram(update.effective_user.username)
@@ -148,6 +148,14 @@ class TelegramTunnel(AgentTunnel):
             await update.message.reply_text(f"{self.target_id} process message error")
         else:
             if resp_msg.body_mime is None:
+                if resp_msg.body is not None:
+                    pos = resp_msg.body.find("audio file")
+                    if pos != -1:
+                        audio_file = resp_msg.body[pos+11:].strip()
+                        if audio_file.startswith("\""):
+                            audio_file = audio_file[1:-1]
+                        await update.message.reply_voice(audio_file)
+                        return
                 await update.message.reply_text(resp_msg.body)
             else:
                 if resp_msg.body_mime.startswith("image"):
@@ -157,9 +165,8 @@ class TelegramTunnel(AgentTunnel):
                         photo_file.close()
                     else:
                         await update.message.reply_text(resp_msg.body)
-                    
+
                 else:
                     await update.message.reply_text(resp_msg.body)
-            
-        
-        
+
+
