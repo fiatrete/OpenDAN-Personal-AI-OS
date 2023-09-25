@@ -58,7 +58,7 @@ class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
                 logger.debug(
                     f"LocalSentenceTransformer_Text_ComputeNode task input: {input}"
                 )
-                sentence_embeddings = self.model.encode(input).tolist()
+                sentence_embeddings = self.model.encode(input, show_progress_bar=False).tolist()
                 # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task sentence_embeddings: {sentence_embeddings}")
                 return {
                     "state": ComputeTaskState.DONE,
@@ -87,7 +87,7 @@ class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
         pass
 
     def is_support(self, task: ComputeTask) -> bool:
-        return task.task_type == ComputeTaskType.TEXT_EMBEDDING
+        return task.task_type == ComputeTaskType.TEXT_EMBEDDING and task.params["model_name"] == "all-MiniLM-L6-v2"
 
     def is_local(self) -> bool:
         return True
@@ -187,7 +187,7 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
                 logger.debug(
                     f"LocalSentenceTransformer_Text_ComputeNode task text input: {input}"
                 )
-                sentence_embeddings = self.multi_model.encode(input)
+                sentence_embeddings = self.multi_model.encode(input, show_progress_bar=False).tolist()
                 # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task sentence_embeddings: {sentence_embeddings}")
                 return {
                     "state": ComputeTaskState.DONE,
@@ -238,7 +238,7 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
 
     def is_support(self, task: ComputeTask) -> bool:
         return (
-            task.task_type == ComputeTaskType.TEXT_EMBEDDING
+            (task.task_type == ComputeTaskType.TEXT_EMBEDDING and task.params["model_name"] == "clip-ViT-B-32")
             or task.task_type == ComputeTaskType.IMAGE_EMBEDDING
         )
 

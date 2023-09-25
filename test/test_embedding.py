@@ -67,10 +67,12 @@ def test_st():
     ]
 
     # Compute embeddings
+
     #embeddings = model.encode(sentences, convert_to_tensor=True)
     embeddings = model.encode(sentences)
     print("embeddings as follows: ")
     print(embeddings)
+
 
     # Compute cosine-similarities for each sentence with each other sentence
     cosine_scores = util.cos_sim(embeddings, embeddings)
