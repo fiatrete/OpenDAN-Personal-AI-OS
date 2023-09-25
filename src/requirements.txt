@@ -136,4 +136,4 @@ aiosqlite
 python-telegram-bot
 pydub
 stability_sdk
-sentence-transformers==2.2
+sentence-transformers==2.2.2
