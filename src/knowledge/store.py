@@ -4,7 +4,7 @@ from .object import ObjectStore, ObjectRelationStore
 from .data import ChunkStore, ChunkTracker, ChunkListWriter, ChunkReader
 from .vector import ChromaVectorStore, VectorBase
 import logging
-import aios_kernel
+
 
 # KnowledgeStore class, which aggregates ChunkStore, ChunkTracker, and ObjectStore, and is a global singleton that makes it easy to use these three built-in store examples
 class KnowledgeStore:
@@ -13,6 +13,8 @@ class KnowledgeStore:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+            
+            import aios_kernel
             knowledge_dir = aios_kernel.storage.AIStorage().get_myai_dir() / "knowledge"
 
             if not os.path.exists(knowledge_dir):
