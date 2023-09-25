@@ -24,6 +24,7 @@ from knowledge import (
     ObjectRelationStore,
     KnowledgeStore,
     EmailObject,
+    ImageObject,
 )
 import asyncio
 import unittest
@@ -56,6 +57,22 @@ class TestVectorSTorage(unittest.TestCase):
         
         ret2 = obj.encode()
         self.assertEqual(ret, ret2)
+        
+        images = email_object.get_rich_text().get_images()
+        image_keys = list(images.keys())
+        print("got image list: ", image_keys)
+        
+        image_id = images[image_keys[1]]
+        print(f"got image object: {image_keys[1]} {image_id.to_base58()}")
+        
+        buf = KnowledgeStore().get_object_store().get_object(image_id)
+        image_obj= ImageObject.decode(buf)
+        file_size = image_obj.get_file_size()
+        print(f"got image object: {image_id.to_base58()}, size: {file_size}")
+        
+     
+        image_data = KnowledgeStore().get_chunk_reader().read_chunk_list_to_single_bytes(image_obj.get_chunk_list())
+        self.assertEqual(file_size, len(image_data))
         
 
     def test_relation(self):

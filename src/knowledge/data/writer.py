@@ -27,6 +27,8 @@ class ChunkListWriter:
                 chunk = file.read(chunk_size)
                 if not chunk:
                     break
+                
+                chunk_len = len(chunk)
                 chunk_id = ChunkID.hash_data(chunk)
                 chunk_list.append(chunk_id)
 
@@ -38,8 +40,9 @@ class ChunkListWriter:
                     )
                     self.chunk_store.put_chunk(chunk_id, chunk)
                 else:
+                    pos = file.tell()
                     file_range = PositionFileRange(
-                        file_path, file.tell() - chunk_size, chunk_size
+                        file_path, pos - chunk_len, pos
                     )
                     self.chunk_tracker.add_position(
                         chunk_id, str(file_range), PositionType.FileRange

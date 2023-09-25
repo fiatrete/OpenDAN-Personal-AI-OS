@@ -12,7 +12,7 @@ class Chunk:
         self.range_start = range_start
         self.size = size
 
-    def read(self):
+    def read(self) -> bytes:
         with open(self.file_path, 'rb') as f:
             f.seek(self.range_start)
             return f.read(self.size)
@@ -26,6 +26,8 @@ class ChunkReader:
 
     def get_chunk(self, chunk_id: ChunkID) -> Chunk:
         positions = self.chunk_tracker.get_position(chunk_id)
+        logging.info(f"chunk positions: {chunk_id}, {positions}")
+        
         if positions is None:
             logging.warning(f"chunk not found: {chunk_id}")
             return None 
@@ -54,15 +56,23 @@ class ChunkReader:
     def get_chunk_list(self, chunk_list: List[ChunkID]) -> List[Chunk]:
         return [self.get_chunk(chunk_id) for chunk_id in chunk_list]
         
-    def read_chunk_list(self, chunk_ids: List[ChunkID]):
+    def read_chunk_list(self, chunk_ids: List[ChunkID]) -> bytes:
         for chunk_id in chunk_ids:
             chunk = self.get_chunk(chunk_id)
             if chunk is None:
                 raise ValueError(f"chunk not found: {chunk_id}")
             
-            yield from chunk.read()
+            yield chunk.read()
     
-    def read_text_chunk_list(self, chunk_ids: List[ChunkID]):
+    def read_chunk_list_to_single_bytes(self, chunk_ids: List[ChunkID]) -> bytes:
+        chunks = []
+        for chunk in self.read_chunk_list(chunk_ids):
+            chunks.append(chunk)
+            
+        image_data = b''.join(chunks)
+        return image_data
+    
+    def read_text_chunk_list(self, chunk_ids: List[ChunkID]) -> str:
         for chunk_id in chunk_ids:
             chunk = self.get_chunk(chunk_id)
             if chunk is None:
