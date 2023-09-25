@@ -137,6 +137,7 @@ class AIOS_Shell:
             return False
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
 
+
         if await AIStorage.get_instance().is_feature_enable("llama"):
             llama_ai_node = LocalLlama_ComputeNode()
             if await llama_ai_node.initial() is True:
@@ -160,12 +161,20 @@ class AIOS_Shell:
             #     logger.error("stability api node initial failed!")
             # ComputeKernel.get_instance().add_compute_node(stability_api_node)
 
-            local_sd_node = Local_Stability_ComputeNode.get_instance()
-            if await local_sd_node.initial() is True:
-                ComputeKernel.get_instance().add_compute_node(local_sd_node)
-            else:
-                logger.error("local stability node initial failed!")
-                await AIStorage.get_instance.set_feature_init_result("aigc",False)
+        local_sd_node = Local_Stability_ComputeNode.get_instance()
+        if await local_sd_node.initial() is True:
+            ComputeKernel.get_instance().add_compute_node(local_sd_node)
+        else:
+            logger.error("local stability node initial failed!")
+            await AIStorage.get_instance.set_feature_init_result("aigc",False)
+
+
+    
+        local_st_compute_node = LocalSentenceTransformer_ComputeNode()
+        if local_st_compute_node.initial() is not True:
+            logger.error("local sentence transformer node initial failed!")
+        else:
+        	ComputeKernel.get_instance().add_compute_node(local_st_compute_node)
 
 
         await ComputeKernel.get_instance().start()

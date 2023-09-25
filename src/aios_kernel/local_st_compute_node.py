@@ -17,18 +17,27 @@ class LocalSentenceTransformer_ComputeNode(Queue_ComputeNode):
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         super().__init__()
 
-        logger.info(
-            f"LocalSentenceTransformer_ComputeNode init, model_name: {model_name}"
-        )
+        self.node_id = "local_sentence_transformer_node"
         self.model_name = model_name
+        self.model = None
 
+    def initial(self) -> bool:
+        logger.info(
+            f"LocalSentenceTransformer_ComputeNode init, model_name: {self.model_name}"
+        )
+        
+        assert self.model_name is not None
+        assert self.model is None
         try:
             from sentence_transformers import SentenceTransformer
 
             self.model = SentenceTransformer(self.model)
         except Exception as err:
             logger.error(f"load model {self.model} failed: {err}")
-
+            return False
+        
+        return True
+    
     async def execute_task(
         self, task: ComputeTask
     ) -> {

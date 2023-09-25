@@ -157,7 +157,7 @@ class KnowledgeEmailSource:
         for uid in email_list:
             _uid = int.from_bytes(uid)
             if _uid > latest_uid:
-            email_dir = self.check_email_saved(uid)
+                email_dir = self.check_email_saved(uid)
             if email_dir is not None:
                 logging.info(f"email uid {uid} already saved")
             else:
