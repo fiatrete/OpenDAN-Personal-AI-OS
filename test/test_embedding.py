@@ -20,6 +20,7 @@ root.addHandler(handler)
 
 
 def test_st():
+    image_model = SentenceTransformer('clip-ViT-B-32-multilingual-v1')
     model = SentenceTransformer("all-MiniLM-L6-v2")
 
     # Our sentences we like to encode

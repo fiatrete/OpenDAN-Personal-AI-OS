@@ -1,6 +1,8 @@
 import os
 import shutil
 from .object import ObjectID
+import logging
+logger = logging.getLogger(__name__)
 
 
 class FileBlobStorage:
@@ -38,16 +40,23 @@ class FileBlobStorage:
 
     def put(self, object_id: ObjectID, contents: bytes):
         full_path = self.get_full_path(object_id)
+        if os.path.exists(full_path):
+            logger.warning(f"will replace object: {object_id}")
+            
         self.write_sync(full_path, contents)
 
     def get(self, object_id: ObjectID) -> bytes:
         full_path = self.get_full_path(object_id)
+        if not os.path.exists(full_path):
+            return None
+        
         with open(full_path, "rb") as f:
             return f.read()
 
     def delete(self, object_id: ObjectID):
         full_path = self.get_full_path(object_id)
-        os.remove(full_path)
+        if os.path.exists(full_path):
+            os.remove(full_path)
 
     def exists(self, object_id: ObjectID) -> bool:
         full_path = self.get_full_path(object_id)

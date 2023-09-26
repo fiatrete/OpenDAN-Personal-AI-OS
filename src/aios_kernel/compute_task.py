@@ -25,6 +25,7 @@ class ComputeTaskType(Enum):
     VOICE_2_TEXT = "voice_2_text"
     TEXT_2_VOICE = "text_2_voice"
     TEXT_EMBEDDING ="text_embedding"
+    IMAGE_EMBEDDING ="image_embedding"
 
 
 class ComputeTask:

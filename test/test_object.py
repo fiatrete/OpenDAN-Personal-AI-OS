@@ -74,6 +74,15 @@ class TestVectorSTorage(unittest.TestCase):
         image_data = KnowledgeStore().get_chunk_reader().read_chunk_list_to_single_bytes(image_obj.get_chunk_list())
         self.assertEqual(file_size, len(image_data))
         
+        from PIL import Image
+        import io
+        image = Image.open(io.BytesIO(image_data))
+        image.show()
+        
+        from sentence_transformers import SentenceTransformer
+        #model = SentenceTransformer('clip-ViT-B-32-multilingual-v1')
+        model = SentenceTransformer('clip-ViT-B-32')
+        model.encode(image, convert_to_tensor=True)
 
     def test_relation(self):
         obj1 = ObjectID.hash_data("12345".encode("utf-8"))
