@@ -14,7 +14,7 @@ from aios_kernel.compute_task import ComputeTaskType, ComputeTask, ComputeTaskSt
 #to launch a local stability node, please check:
 #https://github.com/glen0125/stable-diffusion-webui-docker
 
-os.environ["LOCAL_STABILITY_URL"] = "http://192.168.100.79:7860"
+os.environ["LOCAL_STABILITY_URL"] = ""
 os.environ["TEXT2IMG_DEFAULT_MODEL"] = "v1-5-pruned-emaonly"
 os.environ["TEXT2IMG_OUTPUT_DIR"] = "./"
 
