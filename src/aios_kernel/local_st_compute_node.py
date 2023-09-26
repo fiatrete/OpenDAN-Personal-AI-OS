@@ -2,16 +2,15 @@ import logging
 import requests
 from typing import Optional, List
 from pydantic import BaseModel
-
+from typing import Union
+from PIL import Image
+import io
 from .compute_task import ComputeTask, ComputeTaskState, ComputeTaskType
 from .queue_compute_node import Queue_ComputeNode
 from knowledge import ObjectID
 
 logger = logging.getLogger(__name__)
 
-"""
-This is a custom implementation, it should be redesigned.
-"""
 
 
 class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
@@ -88,20 +87,19 @@ class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
         pass
 
     def is_support(self, task: ComputeTask) -> bool:
-        return task.task_type == ComputeTaskType.TEXT_EMBEDDING and (
-            not task.params["model_name"] or task.params["model_name"] == "llama"
-        )
+        return task.task_type == ComputeTaskType.TEXT_EMBEDDING
 
     def is_local(self) -> bool:
         return True
 
-from typing import Union
-from PIL import Image
-import io
-            
+
 class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
     # For valid pretrained models, see https://www.sbert.net/docs/pretrained_models.html
-    def __init__(self, model_name: str = "clip-ViT-B-32", multi_model_name: str = "clip-ViT-B-32-multilingual-v1"):
+    def __init__(
+        self,
+        model_name: str = "clip-ViT-B-32",
+        multi_model_name: str = "clip-ViT-B-32-multilingual-v1",
+    ):
         super().__init__()
 
         self.node_id = "local_sentence_transformer_image_embedding_node"
@@ -119,7 +117,7 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
         assert self.multi_model_name is not None
         assert self.model is None
         assert self.multi_model is None
-        
+
         try:
             from sentence_transformers import SentenceTransformer
 
@@ -131,42 +129,45 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
 
         return True
 
-    def _load_image(self, source: Union[ObjectID, bytes] ) -> Optional[Image]:
+    def _load_image(self, source: Union[ObjectID, bytes]) -> Optional[Image]:
         image_data = None
         if isinstance(source, ObjectID):
             from knowledge import KnowledgeStore, ImageObject
-            
+
             buf = KnowledgeStore().get_object_store().get_object(source)
             if buf is None:
                 logger.error(f"load image object but not found! {source}")
                 return None
-            
+
             try:
-                image_obj= ImageObject.decode(buf)
+                image_obj = ImageObject.decode(buf)
             except Exception as err:
                 logger.error(f"decode ImageObject from buffer failed: {source}, {err}")
                 return None
-            
+
             file_size = image_obj.get_file_size()
             print(f"got image object: {source.to_base58()}, size: {file_size}")
-            
-            image_data = KnowledgeStore().get_chunk_reader().read_chunk_list_to_single_bytes(image_obj.get_chunk_list())
-        
+
+            image_data = (
+                KnowledgeStore()
+                .get_chunk_reader()
+                .read_chunk_list_to_single_bytes(image_obj.get_chunk_list())
+            )
+
         elif isinstance(source, bytes):
             image_data = source
         else:
             logger.error(f"unsupport image source type: {type(source)}, {source}")
             return None
-        
+
         try:
-            
             img = Image.open(io.BytesIO(image_data))
-        
+
             return img
         except Exception as err:
             logger.error(f"load image from buffer failed: {source}, {err}")
             return None
-        
+
     async def execute_task(
         self, task: ComputeTask
     ) -> {
@@ -198,16 +199,16 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
                 logger.debug(
                     f"LocalSentenceTransformer_Image_ComputeNode task image input: {input}"
                 )
-                
+
                 img = self._load_image(input)
                 if img is None:
                     return {
                         "state": ComputeTaskState.ERROR,
                         "error": {"code": -1, "message": "load image failed"},
                     }
-                
-                sentence_embeddings = self.model.encode(img, convert_to_tensor=True)
-                
+
+                sentence_embeddings = self.model.encode(img)
+
                 # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task sentence_embeddings: {sentence_embeddings}")
                 return {
                     "state": ComputeTaskState.DONE,
