@@ -20,6 +20,7 @@ class KnowledgeBase:
     def __singleton_init__(self) -> None:
         self.store = KnowledgeStore()
         self.compute_kernel = ComputeKernel.get_instance()
+        self._default_text_model = "all-MiniLM-L6-v2"
 
     async def __embedding_document(self, document: DocumentObject):
         for chunk_id in document.get_chunk_list():
@@ -28,8 +29,8 @@ class KnowledgeBase:
                 raise ValueError(f"text chunk not found: {chunk_id}")
         
             text = chunk.read().decode("utf-8")
-            vector = await self.compute_kernel.do_text_embedding(text)
-            await self.store.get_vector_store("default").insert(vector, chunk_id)
+            vector = await self.compute_kernel.do_text_embedding(text, self._default_text_model)
+            await self.store.get_vector_store(self._default_text_model).insert(vector, chunk_id)
 
     async def __embedding_image(self, image: ImageObject):
         desc = {}
@@ -39,8 +40,8 @@ class KnowledgeBase:
             desc["exif"] = image.get_exif()
         if not not image.get_tags():
             desc["tags"] = image.get_tags()
-        vector = await self.compute_kernel.do_text_embedding(json.dumps(desc))
-        await self.store.get_vector_store("default").insert(vector, image.calculate_id())
+        vector = await self.compute_kernel.do_text_embedding(json.dumps(desc), self._default_text_model)
+        await self.store.get_vector_store(self._default_text_model).insert(vector, image.calculate_id())
 
     async def __embedding_video(self, vedio: VideoObject):
         desc = {}
@@ -50,8 +51,8 @@ class KnowledgeBase:
             desc["info"] = vedio.get_info()
         if not not vedio.get_tags():
             desc["tags"] = vedio.get_tags()
-        vector = await self.compute_kernel.do_text_embedding(json.dumps(desc))
-        await self.store.get_vector_store("default").insert(vector, vedio.calculate_id())
+        vector = await self.compute_kernel.do_text_embedding(json.dumps(desc), self._default_text_model)
+        await self.store.get_vector_store(self._default_text_model).insert(vector, vedio.calculate_id())
 
     async def __embedding_rich_text(self, rich_text: RichTextObject):
         for document_id in rich_text.get_documents().values():
@@ -68,8 +69,8 @@ class KnowledgeBase:
             await self.__embedding_rich_text(rich_text)
 
     async def __embedding_email(self, email: EmailObject):
-        vector = await self.compute_kernel.do_text_embedding(json.dumps(email.get_desc()))
-        await self.store.get_vector_store("default").insert(vector, email.calculate_id())
+        vector = await self.compute_kernel.do_text_embedding(json.dumps(email.get_desc()), self._default_text_model)
+        await self.store.get_vector_store(self._default_text_model).insert(vector, email.calculate_id())
         await self.__embedding_rich_text(email.get_rich_text())
 
 
@@ -172,8 +173,8 @@ class KnowledgeBase:
         results = []
         for msg in prompt.messages:
             if msg["role"] == "user":
-                vector = await self.compute_kernel.do_text_embedding(msg["content"])
-                object_ids = await self.store.get_vector_store("default").query(vector, 10)
+                vector = await self.compute_kernel.do_text_embedding(msg["content"], self._default_text_model)
+                object_ids = await self.store.get_vector_store(self._default_text_model).query(vector, 10)
                 results.extend(object_ids)
         return results
 

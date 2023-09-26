@@ -89,7 +89,7 @@ class LocalSentenceTransformer_ComputeNode(Queue_ComputeNode):
 
     def is_support(self, task: ComputeTask) -> bool:
         return task.task_type == ComputeTaskType.TEXT_EMBEDDING and (
-            not task.params["model_name"] or task.params["model_name"] == "llama"
+            not task.params["model_name"] or task.params["model_name"] == "all-MiniLM-L6-v2"
         )
 
     def is_local(self) -> bool:

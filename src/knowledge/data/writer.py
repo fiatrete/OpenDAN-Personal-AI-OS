@@ -3,14 +3,14 @@ import hashlib
 import re
 import tiktoken
 import logging
-from typing import Tuple, List
+from typing import Callable, Iterable, Optional, Tuple, List
 from .chunk_store import ChunkStore
 from .chunk import ChunkID, PositionFileRange, PositionType
 from ..object import HashValue
 from .tracker import ChunkTracker
 from .chunk_list import ChunkList
 
-def _join_docs(self, docs: List[str], separator: str) -> Optional[str]:
+def _join_docs(docs: List[str], separator: str) -> Optional[str]:
     text = separator.join(docs)
     text = text.strip()
     if text == "":
@@ -19,7 +19,6 @@ def _join_docs(self, docs: List[str], separator: str) -> Optional[str]:
         return text
 
 def _merge_splits(
-        self, 
         splits: Iterable[str], 
         separator: str, 
         chunk_size: int, 
