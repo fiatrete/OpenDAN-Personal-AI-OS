@@ -158,14 +158,14 @@ class KnowledgeEmailSource:
             _uid = int.from_bytes(uid)
             if _uid > latest_uid:
                 email_dir = self.check_email_saved(uid)
-            if email_dir is not None:
-                logging.info(f"email uid {uid} already saved")
-            else:
-                email_dir = self.read_and_save_email(uid)
-                logging.info(f"email uid {uid} saved")
-            email_object = EmailObjectBuilder({}, email_dir).build()
-            await KnowledgeBase().insert_object(email_object)
-            journal_client.insert(KnowledgeJournal("email", self.id(), str(int.from_bytes(uid)), str(email_object.calculate_id())))
+                if email_dir is not None:
+                    logging.info(f"email uid {uid} already saved")
+                else:
+                    email_dir = self.read_and_save_email(uid)
+                    logging.info(f"email uid {uid} saved")
+                email_object = EmailObjectBuilder({}, email_dir).build()
+                await KnowledgeBase().insert_object(email_object)
+                journal_client.insert(KnowledgeJournal("email", self.id(), str(int.from_bytes(uid)), str(email_object.calculate_id())))
 
 
     def read_and_save_email(self, uid: str) -> str:
