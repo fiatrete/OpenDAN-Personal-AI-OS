@@ -317,6 +317,32 @@ class CalenderEnvironment(Environment):
         else:
             return f'exec paint OK, saved as a local file, path is: {result.result["file"]}'
 
+
+class PaintEnvironment(Environment):
+    def __init__(self, env_id: str) -> None:
+        super().__init__(env_id)
+        self.is_run = False
+
+        paint_param = {
+            "prompt": "A description of the content of the painting",
+            "model_name": "Which model to use to draw the picture, can be None"
+        }
+        self.add_ai_function(SimpleAIFunction("paint",
+                                        "Draw a picture according to the description",
+                                        self._paint,paint_param))
+
+    def _do_get_value(self,key:str) -> Optional[str]:
+        return None
+
+
+    async def _paint(self, prompt, model_name = None) -> str:
+        err, result = await ComputeKernel.get_instance().do_text_2_image(prompt, model_name)
+        if err is not None:
+            return f"exec paint failed. err:{err}"
+        else:
+            return f'exec paint OK, saved as a local file, path is: {result.result["file"]}'
+
+
 # Default Workflow Environment(Context)
 class WorkflowEnvironment(Environment):
     def __init__(self, env_id: str,db_file:str) -> None:

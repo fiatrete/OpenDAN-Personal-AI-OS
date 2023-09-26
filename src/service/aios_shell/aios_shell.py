@@ -24,7 +24,7 @@ directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
 
-from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode,Local_Stability_ComputeNode
+from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode,Local_Stability_ComputeNode,Stability_ComputeNode,PaintEnvironment
 from aios_kernel import ContactManager,Contact
 import proxy
 from aios_kernel import *
@@ -77,7 +77,7 @@ class AIOS_Shell:
 
         Local_Stability_ComputeNode.declare_user_config()
 
-        
+        #Stability_ComputeNode.declare_user_config()
 
 
 
@@ -121,6 +121,9 @@ class AIOS_Shell:
         workspace_env = WorkspaceEnvironment("bash")
         Environment.set_env_by_id("bash",workspace_env)
 
+        paint_env = PaintEnvironment("paint")
+        Environment.set_env_by_id("paint",paint_env)
+
         if await AgentManager.get_instance().initial() is not True:
             logger.error("agent manager initial failed!")
             return False
@@ -152,6 +155,10 @@ class AIOS_Shell:
                 logger.error(f"google text to speech node initial failed! {e}")
                 await AIStorage.get_instance.set_feature_init_result("aigc",False)
 
+            # stability_api_node = Stability_ComputeNode()
+            # if await stability_api_node.initial() is not True:
+            #     logger.error("stability api node initial failed!")
+            # ComputeKernel.get_instance().add_compute_node(stability_api_node)
 
             local_sd_node = Local_Stability_ComputeNode.get_instance()
             if await local_sd_node.initial() is True:

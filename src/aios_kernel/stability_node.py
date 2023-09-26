@@ -3,6 +3,7 @@ import io
 import asyncio
 from asyncio import Queue
 import logging
+from pathlib import Path
 
 from PIL import Image
 from stability_sdk import client
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class Stability_ComputeNode(ComputeNode):
-    _instanace = None
+    _instance = None
 
     @classmethod
     def get_instance(cls):
@@ -31,6 +32,15 @@ class Stability_ComputeNode(ComputeNode):
             "stability_api_key", "stability api key", False, None)
         user_config.add_user_config(
             "stability_model", "stability model name", True, "stable-diffusion-512-v2-1")
+        if os.getenv("TEXT2IMG_OUTPUT_DIR") is None:
+            home_dir = Path.home()
+            output_dir = Path.joinpath(home_dir, "text2img_output")
+            Path.mkdir(output_dir, exist_ok=True)
+            user_config.add_user_config(
+                "text2img_output_dir", "text2image output dir", True, output_dir)
+        if os.getenv("STABILITY_DEFAULT_MODEL") is None:
+            user_config.add_user_config(
+                "stability_default_model", "stability default model", True, "stable-diffusion-512-v2-1")
 
     def __init__(self):
         super().__init__()
@@ -38,10 +48,11 @@ class Stability_ComputeNode(ComputeNode):
         self.is_start = False
         self.node_id = "stability_node"
         self.api_key = ""
-        self.model = ""
+        self.default_model = ""
 
         self.task_queue = Queue()
 
+    async def initial(self):
         if os.getenv("STABILITY_API_KEY") is not None:
             self.api_key = os.getenv("STABILITY_API_KEY")
         else:
@@ -53,16 +64,23 @@ class Stability_ComputeNode(ComputeNode):
             return False
 
         # Check out the following link for a list of available engines: https://platform.stability.ai/docs/features/api-parameters#engine
-        if os.getenv("STABILITY_MODEL") is not None:
-            self.model = os.getenv("STABILITY_MODEL")
+        if os.getenv("STABILITY_DEFAULT_MODEL") is not None:
+            self.default_model = os.getenv("STABILITY_DEFAULT_MODEL")
         else:
-            self.model = AIStorage.get_instance().get_user_config().get_value("stability_model")
+            self.default_model = AIStorage.get_instance().get_user_config().get_value("stability_default_model")
+        
+        if self.default_model is None:
+            self.default_model = "stable-diffusion-512-v2-1"
 
-        self.client = client.StabilityInference(
-            key=self.api_key,
-            verbose=True,  # Print debug messages.
-            engine=self.model,
-        )
+        if os.getenv("TEXT2IMG_OUTPUT_DIR") is not None:
+            self.output_dir = os.getenv("TEXT2IMG_OUTPUT_DIR")
+        else:
+            self.output_dir = AIStorage.get_instance(
+            ).get_user_config().get_value("text2img_output_dir")
+
+        if self.output_dir is None:
+            self.output_dir = "./"
+            self.output_dir = os.path.abspath(self.output_dir)
 
         self.start()
 
@@ -77,12 +95,26 @@ class Stability_ComputeNode(ComputeNode):
 
     def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
-        # model_name && max_token_size not used here
-        prompts = task.params["prompts"]
+        model_name = task.params["model_name"]
+        prompt = task.params["prompt"]
 
-        logging.info(f"call stability {self.model} prompts: {prompts}")
-        answers = self.client.generate(
-            prompt=prompts,
+        logging.info(f"call stability {self.default_model} prompts: {prompt}")
+
+        api = None
+        try:
+            api = client.StabilityInference(
+                key=self.api_key,
+                verbose=True,  # Print debug messages.
+                engine=model_name,
+            )
+        except Exception as e:
+            task.error_str = f"create stability client failed: {e}"
+            logging.warn(task.error_str)
+            task.state = ComputeTaskState.ERROR
+            return None
+
+        answers = api.generate(
+            prompt=prompt,
             # If a seed is provided, the resulting generated image will be deterministic.
             seed=0,
             # What this means is that as long as all generation parameters remain the same, you can always recall the same image simply by generating it again.
@@ -105,15 +137,16 @@ class Stability_ComputeNode(ComputeNode):
 
         for resp in answers:
             for artifact in resp.artifacts:
-                logger.info(
-                    f"artifact:{artifact.id},{artifact.type},{artifact.finish_reason}")
-
                 if artifact.finish_reason == generation.FILTER:
-                    logging.warn("request activated the API's safety filters")
+                    err_msg = "request activated the API's safety filters"
+                    logging.warn(err_msg)
+                    task.error_str = err_msg
+                    task.state = ComputeTaskState.ERROR
+                    return None
                 if artifact.type == generation.ARTIFACT_IMAGE:
                     img = Image.open(io.BytesIO(artifact.binary))
                     # Save our generated images with the task_id as the filename.
-                    file_name = task.task_id + ".png"  # which dir to save?
+                    file_name = os.path.join(self.output_dir, task.task_id + ".png")
                     img.save(file_name)
 
                     result = ComputeTaskResult()
@@ -123,6 +156,8 @@ class Stability_ComputeNode(ComputeNode):
 
                     return result
 
+        task.error_str = "Unknown error!"
+        task.state = ComputeTaskState.ERROR
         return None
 
     def start(self):
