@@ -10,7 +10,7 @@ from .knowledge_pipeline import KnowledgeEmailSource, KnowledgeDirSource, Knowle
 from .role import AIRole,AIRoleGroup
 from .workflow import Workflow
 from .bus import AIBus
-from .workflow_env import WorkflowEnvironment,CalenderEnvironment,CalenderEvent
+from .workflow_env import WorkflowEnvironment,CalenderEnvironment,CalenderEvent,PaintEnvironment
 from .local_llama_compute_node import LocalLlama_ComputeNode
 from .whisper_node import WhisperComputeNode
 from .google_text_to_speech_node import GoogleTextToSpeechNode
@@ -22,6 +22,7 @@ from .contact_manager import ContactManager,Contact,FamilyMember
 from .text_to_speech_function import TextToSpeechFunction
 from .workspace_env import WorkspaceEnvironment
 from .local_stability_node import Local_Stability_ComputeNode
+from .stability_node import Stability_ComputeNode
 
 AIOS_Version = "0.5.1, build 2023-9-17"
 
