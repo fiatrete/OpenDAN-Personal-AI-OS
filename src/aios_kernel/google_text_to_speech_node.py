@@ -176,5 +176,5 @@ class GoogleTextToSpeechNode(ComputeNode):
             user_config = AIStorage.get_instance().get_user_config()
             user_config.add_user_config("google_application_credentials",
                                         "google application credentials, please visit:https://cloud.google.com/text-to-speech/docs/before-you-begin",
-                                        False,
+                                        True,
                                         None)

@@ -24,6 +24,7 @@ sys.path.append(directory + '/../../')
 
 
 from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode,Local_Stability_ComputeNode
+from aios_kernel import ContactManager,Contact
 import proxy
 from aios_kernel import *
 
@@ -51,8 +52,14 @@ class AIOS_Shell:
         self.is_working = True
 
     def declare_all_user_config(self):
+        cm_path = AIStorage.get_instance().get_myai_dir() / "contacts.toml"
+        cm = ContactManager.get_instance(cm_path)
+        cm.load_data()
+
         user_config = AIStorage.get_instance().get_user_config()
-        user_config.add_user_config("username","username is your full name when using AIOS",False,None,)
+        user_config.add_user_config("username","username is your full name when using AIOS",False,None)
+        user_config.add_user_config("telegram","Your telgram username",False,None)
+        user_config.add_user_config("email","Your email",False,None)
 
         openai_node = OpenAI_ComputeNode.get_instance()
         openai_node.declare_user_config()
@@ -88,6 +95,17 @@ class AIOS_Shell:
             return False
 
     async def initial(self) -> bool:
+        cm = ContactManager.get_instance()
+        owenr = cm.find_contact_by_name(self.username)
+        if owenr is None:
+            owenr = Contact(self.username)
+            owenr.added_by = self.username
+            owenr.is_family_member = True
+            owenr.email = AIStorage.get_instance().get_user_config().get_value("email")
+            owenr.telegram = AIStorage.get_instance().get_user_config().get_value("telegram")
+
+            cm.add_contact(self.username,owenr)
+
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
@@ -99,6 +117,7 @@ class AIOS_Shell:
         await AgentManager.get_instance().initial()
         await WorkflowManager.get_instance().initial()
 
+        
         open_ai_node = OpenAI_ComputeNode.get_instance()
         if await open_ai_node.initial() is not True:
             logger.error("openai node initial failed!")
@@ -120,7 +139,7 @@ class AIOS_Shell:
         local_sd_node = Local_Stability_ComputeNode.get_instance()
         if await local_sd_node.initial() is not True:
             logger.error("local stability node initial failed!")
-            return False
+            
         ComputeKernel.get_instance().add_compute_node(local_sd_node)
 
         await ComputeKernel.get_instance().start()
@@ -164,6 +183,7 @@ class AIOS_Shell:
 
     async def _user_process_msg(self,msg:AgentMsg) -> AgentMsg:
         pass
+    
 
     async def get_tunnel_config_from_input(self,tunnel_target,tunnel_type):
         tunnel_config = {}
@@ -206,6 +226,59 @@ class AIOS_Shell:
         except Exception as e:
             logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
 
+    async def handle_contact_commands(self,args):
+        cm = ContactManager.get_instance()
+        if len(args) < 1:
+            return FormattedText([("class:error", f'/contact $contact_name,  Like /contact "Jim Green"')])
+        contact_name = args[0]
+        contact = cm.find_contact_by_name(contact_name)
+        is_update = False
+        if contact is not None:
+            #show old info and ask user to update or remove
+            is_update = True
+            op_str = await try_get_input(f"Contact {contact_name} already exist, update or remove? (u/r)")
+            if op_str is None:
+                return None
+            if op_str == "r":
+                cm.remove_contact(contact_name)
+                return FormattedText([("class:title", f"remove {contact_name} success!")])
+            else:
+                print(f"old info: {contact}")
+        else:
+            contact = Contact(contact_name)
+
+        contact.is_family_member = False
+        is_family_member = await try_get_input(f"Is {contact_name} your family member? (y/n)")
+        if is_family_member is not None:
+            if is_family_member == "y" or is_family_member == "Y":
+                contact.is_family_member = True
+        else:
+            return None
+
+        contact_telegram = await try_get_input(f"Input {contact_name}'s telegram username:")
+        if contact_telegram is None:
+            return None
+        contact.telegram = contact_telegram
+        
+        contact_email = await try_get_input(f"Input {contact_name}'s email:")
+        if contact_email is None:
+            return None
+        contact.email = contact_email
+        
+        contact_phone = await try_get_input(f"Input {contact_name}'s phone (optional):")
+        if contact_phone is not None:
+            contact.phone = contact_phone
+
+        contact_note = await try_get_input(f"Input {contact_name}'s note (optional):")
+        if contact_note is not None:
+            contact.note = contact_note
+        
+        contact.added_by = self.username
+        if is_update:
+            cm.set_contact(contact_name,contact)
+        else:
+            cm.add_contact(contact_name,contact)
+    
     async def handle_knowledge_commands(self, args):
         show_text = FormattedText([("class:title", "sub command not support!\n" 
                               "/knowledge add email | dir\n"
@@ -228,7 +301,7 @@ class AIOS_Shell:
                 if error is not None:
                     return FormattedText([("class:title", f"/knowledge add email failed {error}\n")])
                 else:
-                    KnowledgePipline.get_instance().save_config()
+                    KnowledgePipline.get_instance().save_cosnfig()
             if args[1] == "dir":
                 config = dict()
                 for key, item in KnowledgeDirSource.user_config_items():
@@ -299,11 +372,19 @@ class AIOS_Shell:
                 return show_text
             case 'knowledge':
                 return await self.handle_knowledge_commands(args)
+            case 'contact':
+                return await self.handle_contact_commands(args)
             case 'open':
                 if len(args) >= 1:
                     target_id = args[0]
+                else:
+                    show_text = FormattedText([("class:error", "/open Need Target Agent/Workflow ID! like /open Jarvis default")])
+                    return show_text
+                
                 if len(args) >= 2:
                     topic = args[1]
+                else:
+                    topic = "default"
 
                 self.current_target = target_id
                 self.current_topic = topic
@@ -382,6 +463,12 @@ async def try_get_input(desc:str,check_func:callable = None) -> str:
 async def get_user_config_from_input(check_result:dict) -> bool:
     for key,item in check_result.items():
         user_input = await try_get_input(f"System config {key} ({item.desc}) not define!")
+        if user_input is None:
+            if item.is_optional:
+                continue
+            else:
+                True
+
         if len(user_input) > 0:
             AIStorage.get_instance().get_user_config().set_value(key,user_input)
 
@@ -478,6 +565,7 @@ async def main():
                                '/history $num $offset',
                                '/login $username',
                                '/connect $target',
+                               '/contact $name',
                                '/knowledge add email | dir',
                                '/knowledge journal [$topn]',
                                '/knowledge query $query' 

@@ -10,6 +10,7 @@ from telegram.ext import Updater
 from telegram.error import Forbidden, NetworkError
 
 from .tunnel import AgentTunnel
+from .storage import AIStorage
 from .contact_manager import ContactManager,Contact,FamilyMember
 from .agent_message import AgentMsg
 
@@ -119,6 +120,10 @@ class TelegramTunnel(AgentTunnel):
 
         cm : ContactManager = ContactManager.get_instance()
         reomte_user_name = f"{update.effective_user.id}@telegram"
+        #owner_tg_username = AIStorage.get_instance().get_user_config().get_value("telegram")
+        #owner_name = AIStorage.get_instance().get_user_config().get_value("username")
+
+
         contact : Contact = cm.find_contact_by_telegram(update.effective_user.username)
         if contact is None:
             contact = cm.find_contact_by_telegram(str(update.effective_user.id))
@@ -136,8 +141,7 @@ class TelegramTunnel(AgentTunnel):
                 contact.added_by = self.target_id
                 cm.add_contact(contact.name, contact)
                 reomte_user_name = contact.name
-
-        # create gust account?
+             
         agent_msg = await self.conver_tg_msg_to_agent_msg(update)
         agent_msg.sender = reomte_user_name
         self.ai_bus.register_message_handler(reomte_user_name, self._process_message)

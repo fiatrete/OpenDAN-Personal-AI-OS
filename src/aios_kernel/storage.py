@@ -13,6 +13,10 @@ class ResourceLocation:
     def __init__(self) -> None:
         pass
 
+class FeatureItem:
+    def __init__(self) -> None:
+        pass
+
 class UserConfigItem:
     def __init__(self,desc:str=None) -> None:
         self.default_value = None 
@@ -141,6 +145,18 @@ class AIStorage:
         self.user_config.user_config_path = str(self.get_myai_dir() / "etc/system.cfg.toml")
         await self.user_config.load_value_from_file(self.get_system_dir() + "/system.cfg.toml")
         await self.user_config.load_value_from_file(self.user_config.user_config_path,True)
+
+    async def enable_feature(self,feature_name:str) -> None:
+        pass
+
+    async def disable_feature(self,feature_name:str) -> None:
+        pass
+    
+    async def set_feature_init_result(self,feature_name:str,result:bool) -> None:
+        pass
+
+    async def is_feature_enable(self,feature_name:str) -> bool:
+        pass
 
     def get_user_config(self) -> UserConfig:
         return self.user_config

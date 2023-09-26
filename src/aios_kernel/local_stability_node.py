@@ -30,7 +30,7 @@ class Local_Stability_ComputeNode(ComputeNode):
         user_config = AIStorage.get_instance().get_user_config()
         if os.getenv("LOCAL_STABILITY_URL") is None:
             user_config.add_user_config(
-                "local_stability_url", "local stability url", False, None)
+                "local_stability_url", "local stability url", True, None)
         if os.getenv("TEXT2IMG_OUTPUT_DIR") is None:
             home_dir = Path.home()
             output_dir = Path.joinpath(home_dir, "text2img_output")

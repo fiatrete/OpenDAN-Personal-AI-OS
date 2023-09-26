@@ -13,6 +13,7 @@ from .compute_kernel import ComputeKernel
 from .environment import Environment,EnvironmentEvent
 from .ai_function import SimpleAIFunction
 from .storage import AIStorage
+from .contact_manager import ContactManager,Contact,FamilyMember
 
 import aiosqlite
 
@@ -92,6 +93,17 @@ class CalenderEnvironment(Environment):
         self.add_ai_function(SimpleAIFunction("paint",
                                         "Draw a picture according to the description",
                                         self._paint,paint_param))
+        
+        self.add_ai_function(SimpleAIFunction("get_contact",
+                                        "get contact info",
+                                        self._get_contact,{"name":"name of contact"}))
+        
+        self.add_ai_function(SimpleAIFunction("set_contact",
+                                        "set contact info",
+                                        self._set_contact,{"name":"name of contact","contact_info":"A json to descrpit contact"}))
+                                        
+        
+        
         
         #self.add_ai_function(SimpleAIFunction("user_confirm",
         #                                      "user confirm",
@@ -222,6 +234,45 @@ class CalenderEnvironment(Environment):
 
     def _do_get_value(self,key:str) -> Optional[str]:
         return None
+    
+    async def _get_contact(self,name:str) -> str:
+        cm = ContactManager.get_instance()
+        contact : Contact = cm.find_contact_by_name(name)
+        if contact:
+            s = json.dumps(contact.to_dict())
+            return f"Execute get_contact OK , contact {name} is {s}"
+        else:
+            return f"Execute get_contact OK , contact {name} not found!"
+
+    async def _set_contact(self,name:str,contact_info:str) -> str:
+        cm = ContactManager.get_instance()
+        contact = cm.find_contact_by_name(name)
+        contact_info = json.loads(contact_info)
+        if contact is None:
+            contact = Contact(name)
+            contact.email = contact_info.get("email")
+            contact.telegram = contact_info.get("telegram")
+            contact.notes = contact_info.get("notes")
+            contact.added_by = self.env_id
+
+            cm.add_contact(name,contact)
+
+            return f"Execute set_contact OK , new contact {name} added!"
+        else:
+            if contact_info.get("email") is not None:
+                contact.email = contact_info.get("email")
+            if contact_info.get("telegram") is not None:
+                contact.telegram = contact_info.get("telegram")
+            if contact_info.get("notes") is not None:
+                contact.notes = contact_info.get("notes")
+
+            contact.added_by = self.env_id
+            cm.set_contact(name,contact)
+
+            return f"Execute set_contact OK , contact {name} updated!"
+
+            
+
 
     async def start(self) -> None:
         if self.is_run:

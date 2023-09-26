@@ -49,7 +49,7 @@ class ContactManager:
     @classmethod
     def get_instance(cls,filename=None) -> "ContactManager":
         if cls._instance is None:
-            cls._instance = ContactManager(filename)
+            cls._instance = ContactManager(str(filename))
         return cls._instance
 
     def __init__(self, filename="contacts.toml"):
@@ -78,6 +78,21 @@ class ContactManager:
         }
         with open(self.filename, "w") as f:
             toml.dump(data, f)
+
+    def set_contact(self, name:str, new_contact:Contact):
+        assert name == new_contact.name
+        for i, contact in enumerate(self.contacts):
+            if contact.name == name:
+                self.contacts[i] = new_contact
+                self.save_data()
+                return True
+        for i, member in enumerate(self.family_members):
+            if member.name == name:
+                self.family_members[i] = new_contact
+                self.save_data()
+                return True
+            
+        return False
 
     def add_contact(self, name:str, new_contact:Contact):
         assert name == new_contact.name
