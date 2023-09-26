@@ -59,7 +59,7 @@ class TestChunk(unittest.TestCase):
         with open(text_file, "r", encoding="utf-8") as file:
             text = file.read()
 
-        gen.create_chunk_list_from_text(text, 1024)
+        gen.create_chunk_list_from_text(text)
 
 
 if __name__ == "__main__":
