@@ -78,6 +78,9 @@ class LocalLlama_ComputeNode(Queue_ComputeNode):
                 }
             }
 
+    async def initial(self) -> bool:
+        return True
+
     def display(self) -> str:
         return f"LocalLlama_ComputeNode: {self.node_id}"
 

@@ -322,6 +322,8 @@ class KnowledgePipline:
                 if source_config['type'] == 'dir':
                     self.add_dir_source(KnowledgeDirSource(source_config))
 
+        return True
+
     def __singleton_init__(self):
         self.knowledge_base = KnowledgeBase()
         self.email_sources = dict()

@@ -140,6 +140,7 @@ class AIStorage:
     def __init__(self) -> None:
         self.is_dev_mode = False
         self.user_config = UserConfig()
+        self.feature_init_results = {}
 
     async def initial(self)->bool:
         self.user_config.user_config_path = str(self.get_myai_dir() / "etc/system.cfg.toml")
@@ -147,16 +148,30 @@ class AIStorage:
         await self.user_config.load_value_from_file(self.user_config.user_config_path,True)
 
     async def enable_feature(self,feature_name:str) -> None:
-        pass
+        self.user_config.set_value(f"feature.{feature_name}","True")
+        await self.user_config.save_to_user_config()
+        
 
     async def disable_feature(self,feature_name:str) -> None:
-        pass
+        self.user_config.set_value(f"feature.{feature_name}","False")
+        await self.user_config.save_to_user_config()
     
     async def set_feature_init_result(self,feature_name:str,result:bool) -> None:
-        pass
+        self.feature_init_results[feature_name] = result
 
     async def is_feature_enable(self,feature_name:str) -> bool:
-        pass
+        is_enable = self.user_config.get_value(f"feature.{feature_name}")
+        if is_enable is None:
+            return False
+        
+        init_result = self.feature_init_results.get(feature_name)
+        if init_result:
+            if init_result is False:
+                return False
+        
+        if is_enable == "True":
+            return True
+        return False
 
     def get_user_config(self) -> UserConfig:
         return self.user_config

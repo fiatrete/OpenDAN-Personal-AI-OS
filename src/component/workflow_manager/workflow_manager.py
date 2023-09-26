@@ -36,7 +36,10 @@ class WorkflowManager:
 
         self.db_file = os.path.abspath(f"{user_data_dir}/messages.db")
         if self.workflow_env is None:
-            raise Exception("WorkflowManager initial failed")
+            logger.error(f"load workflow env failed!")
+            return False
+        
+        return True
         
     async def get_agent_default_workflow(self,agent_id:str) -> Workflow:
         pass

@@ -171,7 +171,7 @@ class GoogleTextToSpeechNode(ComputeNode):
     def is_local(self) -> bool:
         return False
 
-    def declare_user_config(self):
+    def declare_user_config(self,is_optional:bool = False):
         if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") is None:
             user_config = AIStorage.get_instance().get_user_config()
             user_config.add_user_config("google_application_credentials",

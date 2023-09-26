@@ -6,6 +6,7 @@ import logging
 import re
 import toml
 import shlex
+from logging.handlers import RotatingFileHandler
 
 from typing import Any, Optional, TypeVar, Tuple, Sequence
 import argparse
@@ -52,14 +53,18 @@ class AIOS_Shell:
         self.is_working = True
 
     def declare_all_user_config(self):
-        cm_path = AIStorage.get_instance().get_myai_dir() / "contacts.toml"
-        cm = ContactManager.get_instance(cm_path)
+        user_data_dir = AIStorage.get_instance().get_myai_dir()
+        contact_config_path =os.path.abspath(f"{user_data_dir}/contacts.toml")
+        cm = ContactManager.get_instance(contact_config_path)
         cm.load_data()
 
         user_config = AIStorage.get_instance().get_user_config()
         user_config.add_user_config("username","username is your full name when using AIOS",False,None)
         user_config.add_user_config("telegram","Your telgram username",False,None)
         user_config.add_user_config("email","Your email",False,None)
+
+        user_config.add_user_config("feature.llama","enable Local-llama feature",True,"False")
+        user_config.add_user_config("feature.aigc","enable AIGC feature",True,"False")
 
         openai_node = OpenAI_ComputeNode.get_instance()
         openai_node.declare_user_config()
@@ -71,6 +76,9 @@ class AIOS_Shell:
         google_text_to_speech.declare_user_config()
 
         Local_Stability_ComputeNode.declare_user_config()
+
+        
+
 
 
     async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
@@ -113,48 +121,55 @@ class AIOS_Shell:
         workspace_env = WorkspaceEnvironment("bash")
         Environment.set_env_by_id("bash",workspace_env)
 
+        if await AgentManager.get_instance().initial() is not True:
+            logger.error("agent manager initial failed!")
+            return False
+        if await WorkflowManager.get_instance().initial() is not True:
+            logger.error("workflow manager initial failed!")
+            return False
 
-        await AgentManager.get_instance().initial()
-        await WorkflowManager.get_instance().initial()
-
-        
         open_ai_node = OpenAI_ComputeNode.get_instance()
         if await open_ai_node.initial() is not True:
             logger.error("openai node initial failed!")
             return False
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
 
-        try:
-            google_text_to_speech_node = GoogleTextToSpeechNode.get_instance()
-            google_text_to_speech_node.init()
-            ComputeKernel.get_instance().add_compute_node(google_text_to_speech_node)
-        except Exception as e:
-            logger.error(f"google text to speech node initial failed! {e}")
-            return False
+        if await AIStorage.get_instance().is_feature_enable("llama"):
+            llama_ai_node = LocalLlama_ComputeNode()
+            if await llama_ai_node.initial() is True:
+                await llama_ai_node.start()
+                ComputeKernel.get_instance().add_compute_node(llama_ai_node)
+            else:
+                logger.error("llama node initial failed!")
+                await AIStorage.get_instance().set_feature_init_result("llama",False)
 
-        llama_ai_node = LocalLlama_ComputeNode()
-        await llama_ai_node.start()
-        # ComputeKernel.get_instance().add_compute_node(llama_ai_node)
+        if await AIStorage.get_instance().is_feature_enable("aigc"):
+            try:
+                google_text_to_speech_node = GoogleTextToSpeechNode.get_instance()
+                google_text_to_speech_node.init()
+                ComputeKernel.get_instance().add_compute_node(google_text_to_speech_node)
+            except Exception as e:
+                logger.error(f"google text to speech node initial failed! {e}")
+                await AIStorage.get_instance.set_feature_init_result("aigc",False)
 
-        local_sd_node = Local_Stability_ComputeNode.get_instance()
-        if await local_sd_node.initial() is not True:
-            logger.error("local stability node initial failed!")
-            
-        ComputeKernel.get_instance().add_compute_node(local_sd_node)
+
+            local_sd_node = Local_Stability_ComputeNode.get_instance()
+            if await local_sd_node.initial() is True:
+                ComputeKernel.get_instance().add_compute_node(local_sd_node)
+            else:
+                logger.error("local stability node initial failed!")
+                await AIStorage.get_instance.set_feature_init_result("aigc",False)
+
 
         await ComputeKernel.get_instance().start()
 
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+        KnowledgePipline.get_instance().initial()
 
         TelegramTunnel.register_to_loader()
         EmailTunnel.register_to_loader()
-
-        user_data_dir = AIStorage.get_instance().get_myai_dir()
-        contact_config_path =os.path.abspath(f"{user_data_dir}/contacts.toml")
-        cm = ContactManager.get_instance(contact_config_path)
-        cm.load_data()
-
+        user_data_dir = str(AIStorage.get_instance().get_myai_dir())
         tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
         tunnel_config = None
         try:
@@ -164,7 +179,7 @@ class AIOS_Shell:
         except Exception as e:
             logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
 
-        KnowledgePipline.get_instance().initial()
+
         return True
 
 
@@ -392,6 +407,34 @@ class AIOS_Shell:
                 AIStorage.get_instance().get_user_config().set_value("shell.current",f"{self.current_topic}@{self.current_target}")
                 await AIStorage.get_instance().get_user_config().save_to_user_config()
                 return show_text
+            case 'enable':
+                if len(args) >= 1:
+                    feature = args[0]
+                else:
+                    show_text = FormattedText([("class:error", "/enable Need Feature Name! like /enable llama")])
+                    return show_text
+
+                if await AIStorage.get_instance().is_feature_enable(feature):
+                    show_text = FormattedText([("class:title", f"Feature {feature} already enabled!")])
+                    return show_text
+
+                AIStorage.get_instance().enable_feature(feature)
+                show_text = FormattedText([("class:title", f"Feature {feature} enabled!")])
+                return show_text
+            case 'disable':
+                if len(args) >= 1:
+                    feature = args[0]
+                else:
+                    show_text = FormattedText([("class:error", "/disable Need Feature Name! like /disable llama")])
+                    return show_text
+                
+                if not await AIStorage.get_instance().is_feature_enable(feature):
+                    show_text = FormattedText([("class:title", f"Feature {feature} already disabled!")])
+                    return show_text
+                
+                AIStorage.get_instance().disable_feature(feature)
+                show_text = FormattedText([("class:title", f"Feature {feature} disabled!")])
+                return show_text
             case 'login':
                 if len(args) >= 1:
                     self.username = args[0]
@@ -518,15 +561,25 @@ def print_welcome_screen():
 async def main():
     print_welcome_screen()
     print("Booting...")
-    logging.basicConfig(filename="aios_shell.log",filemode="w",encoding='utf-8',force=True,
-                        level=logging.INFO,
-                        format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
 
     if os.path.isdir(f"{directory}/../../../rootfs"):
         AIStorage.get_instance().is_dev_mode = True
     else:
         AIStorage.get_instance().is_dev_mode = False
 
+
+    if AIStorage.get_instance().is_dev_mode:
+        logging.basicConfig(filename="aios_shell.log",filemode="w",encoding='utf-8',force=True,
+                            level=logging.INFO,
+                            format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
+    else:
+        log_file = f"{AIStorage.get_instance().get_myai_dir()}/logs/aios_shell.log"
+        handler = RotatingFileHandler(log_file, maxBytes=50*1024*1024, backupCount=100)
+
+        logging.basicConfig(handlers=[handler],
+                            level=logging.INFO,
+                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')    
+    
     is_daemon = False
     if os.name != 'nt':
         if os.getppid() == 1:
@@ -552,6 +605,7 @@ async def main():
             return 1
         else:
             print("aios shell initial failed!")
+            return 1
 
     print(f"aios shell {shell.get_version()} ready.")
     if is_daemon:
@@ -559,7 +613,6 @@ async def main():
 
     proxy.apply_storage()
 
-    #TODO: read last input config
     completer = WordCompleter(['/send $target $msg $topic',
                                '/open $target $topic',
                                '/history $num $offset',
@@ -570,6 +623,8 @@ async def main():
                                '/knowledge journal [$topn]',
                                '/knowledge query $query' 
                                '/set_config $key',
+                               '/enable $feature',
+                               '/disable $feature',
                                '/list_config',
                                '/show',
                                '/exit',

@@ -4,11 +4,14 @@ import os
 import logging
 import socket
 import socks
+import logging
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
 from aios_kernel import AIStorage
+
+logger = logging.getLogger(__name__)
 
 def apply_storage():
     proxy_cfg = AIStorage.get_instance().get_user_config().get_config_item("proxy")
@@ -31,9 +34,10 @@ def apply_storage():
                 (host, port) = host.split(":")
                 socks.set_default_proxy(socks.SOCKS5, host, int(port), username = username, password = password)
                 socket.socket = socks.socksocket
-                print(f"proxy {host_url} will be used.")
+                logger.info(f"proxy {host_url} will be used.")
             case _:
-                print(f"the proxy type ({proxy_type}) has not support.")
+                logger.error(f"the proxy type ({proxy_type}) has not support. proxy will not be used.")
+                
 
 def declare_user_config():
     user_config = AIStorage.get_instance().get_user_config()

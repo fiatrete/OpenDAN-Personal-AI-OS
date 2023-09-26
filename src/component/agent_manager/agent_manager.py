@@ -41,8 +41,8 @@ class AgentManager:
 
         self.db_path = f"{user_data_dir}/messages.db"
         self.loaded_agent_instance = {}
-        if self.agent_templete_env is None:
-            raise Exception("agent_manager initial failed")
+        
+        return True
     
     async def scan_all_agent(self)->None:
         pass
