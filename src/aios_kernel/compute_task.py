@@ -71,12 +71,13 @@ class ComputeTask:
             self.params["model_name"] = "text-embedding-ada-002"
         self.params["input"] = input
     
-    def set_text_2_image_params(self, prompt: str, model_name, callchain_id=None):
+    def set_text_2_image_params(self, prompt: str, model_name, negative_prompt="", callchain_id=None):
         self.task_type = ComputeTaskType.TEXT_2_IMAGE
         self.create_time = time.time()
         self.task_id = uuid.uuid4().hex
         self.callchain_id = callchain_id
         self.params["prompt"] = prompt
+        self.params["negative_prompt"] = negative_prompt
         if model_name is not None:
             self.params["model_name"] = model_name
         else:
