@@ -112,7 +112,7 @@ class AIOS_Shell:
             owenr.email = AIStorage.get_instance().get_user_config().get_value("email")
             owenr.telegram = AIStorage.get_instance().get_user_config().get_value("telegram")
 
-            cm.add_contact(self.username,owenr)
+            cm.add_family_member(self.username,owenr)
 
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()
