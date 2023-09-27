@@ -9,7 +9,7 @@ from PIL import Image
 from stability_sdk import client
 import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
 
-from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
+from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType, ComputeTaskResultCode
 from .compute_node import ComputeNode
 from .storage import AIStorage, UserConfig
 
@@ -95,10 +95,15 @@ class Stability_ComputeNode(ComputeNode):
 
     def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
+        result = ComputeTaskResult()
+        result.result_code = ComputeTaskResultCode.ERROR
+        result.set_from_task(task)
+        
         model_name = task.params["model_name"]
         prompt = task.params["prompt"]
+        negative_prompt = task.params["negative_prompt"]
 
-        logging.info(f"call stability {self.default_model} prompts: {prompt}")
+        logging.info(f"call stability {self.default_model} prompts: {prompt}, negative_prompt: {negative_prompt}")
 
         api = None
         try:
@@ -109,9 +114,10 @@ class Stability_ComputeNode(ComputeNode):
             )
         except Exception as e:
             task.error_str = f"create stability client failed: {e}"
+            result.error_str = f"create stability client failed: {e}"
             logging.warn(task.error_str)
             task.state = ComputeTaskState.ERROR
-            return None
+            return result
 
         answers = api.generate(
             prompt=prompt,
@@ -141,24 +147,26 @@ class Stability_ComputeNode(ComputeNode):
                     err_msg = "request activated the API's safety filters"
                     logging.warn(err_msg)
                     task.error_str = err_msg
+                    result.error_str = err_msg
                     task.state = ComputeTaskState.ERROR
-                    return None
+                    return result
                 if artifact.type == generation.ARTIFACT_IMAGE:
                     img = Image.open(io.BytesIO(artifact.binary))
                     # Save our generated images with the task_id as the filename.
                     file_name = os.path.join(self.output_dir, task.task_id + ".png")
                     img.save(file_name)
 
-                    result = ComputeTaskResult()
-                    result.set_from_task(task)
+                    task.state = ComputeTaskState.DONE
+                    result.result_code = ComputeTaskResultCode.OK
                     result.worker_id = self.node_id
                     result.result = {"file": file_name}
 
                     return result
 
         task.error_str = "Unknown error!"
+        result.error_str = "Unknown error!"
         task.state = ComputeTaskState.ERROR
-        return None
+        return result
 
     def start(self):
         if self.is_start:
@@ -171,9 +179,9 @@ class Stability_ComputeNode(ComputeNode):
                 task = await self.task_queue.get()
                 logger.info(f"stability_node get task: {task.display()}")
                 result = self._run_task(task)
-                if result is not None:
-                    task.state = ComputeTaskState.DONE
-                    task.result = result
+                # if result is not None:
+                #     task.state = ComputeTaskState.DONE
+                #     task.result = result
 
         asyncio.create_task(_run_task_loop())
 

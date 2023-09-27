@@ -9,7 +9,7 @@ import logging
 from typing import Optional
 
 from .text_to_speech_function import TextToSpeechFunction
-from .compute_kernel import ComputeKernel
+from .compute_kernel import ComputeKernel, ComputeTaskResultCode
 from .environment import Environment,EnvironmentEvent
 from .ai_function import SimpleAIFunction
 from .storage import AIStorage
@@ -311,9 +311,9 @@ class CalenderEnvironment(Environment):
 
     
     async def _paint(self, prompt, model_name = None) -> str:
-        err, result = await ComputeKernel.get_instance().do_text_2_image(prompt, model_name)
-        if err is not None:
-            return f"exec paint failed. err:{err}"
+        result = await ComputeKernel.get_instance().do_text_2_image(prompt, model_name)
+        if result.result_code == ComputeTaskResultCode.ERROR:
+            return f"exec paint failed. err:{result.error_str}"
         else:
             return f'exec paint OK, saved as a local file, path is: {result.result["file"]}'
 
@@ -324,19 +324,20 @@ class PaintEnvironment(Environment):
         self.is_run = False
 
         paint_param = {
-            "prompt": "A description of the content of the painting",
-            "model_name": "Which model to use to draw the picture, can be None"
+            "prompt": "Keywords of the content of the painting",
+            "model_name": "Which model to use to draw the picture, can be None",
+            "negative_prompt": "Keywords that describe what is not to be drawn, can be None"
         }
         self.add_ai_function(SimpleAIFunction("paint",
-                                        "Draw a picture according to the description",
+                                        "Draw a picture according to the keywords",
                                         self._paint,paint_param))
 
     def _do_get_value(self,key:str) -> Optional[str]:
         return None
 
 
-    async def _paint(self, prompt, model_name = None) -> str:
-        err, result = await ComputeKernel.get_instance().do_text_2_image(prompt, model_name)
+    async def _paint(self, prompt, model_name = None, negative_prompt = None) -> str:
+        err, result = await ComputeKernel.get_instance().do_text_2_image(prompt, model_name, negative_prompt)
         if err is not None:
             return f"exec paint failed. err:{err}"
         else:
