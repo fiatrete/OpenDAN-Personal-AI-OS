@@ -9,7 +9,7 @@ import requests
 from typing import Tuple
 from pathlib import Path
 
-from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
+from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType, ComputeTaskResultCode
 from .compute_node import ComputeNode
 from .storage import AIStorage, UserConfig
 
@@ -107,10 +107,19 @@ class Local_Stability_ComputeNode(ComputeNode):
 
     def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
+        result = ComputeTaskResult()
+        result.result_code = ComputeTaskResultCode.ERROR
+        result.set_from_task(task)
+        
         model_name = task.params["model_name"]
         prompt = task.params["prompt"]
+        negative_prompt = task.params["negative_prompt"]
+        if negative_prompt == None or negative_prompt == "":
+            negative_prompt = "sketches, (worst quality:2), (low quality:2), (normal quality:2), lowres, duplicate, mutated hands, mutated legs, (blurry:1.3), (bad anatomy:1.2), bad proportions, extra limbs, more than 2 nipples, extra legs, fused fingers, missing fingers, jpeg artifacts, signature, watermark, username, artist name, heterochromia, muscular legs, monochrome, grayscale, skin spots, acnes, skin blemishes, age spot, skin spots, acnes, logo, badhandv4, easynegative, cropped image, patreon,lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, ng_deepnegative_v1_75t, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry,(Tiptoe:1.3),looking at viewer, Twisted eyes"
 
-        logging.info(f"call local stability {model_name} prompts: {prompt}")
+        prompt += ",masterpiece, best quality:1.3"
+
+        logging.info(f"call local stability {model_name} prompts: {prompt}, nagative_prompt: {negative_prompt}")
 
         if model_name is not None:
             payload = {
@@ -123,12 +132,14 @@ class Local_Stability_ComputeNode(ComputeNode):
                 err_msg = f"Set local stability model failed. err:{err}"
                 logger.error(err_msg)
                 task.error_str = err_msg
-                return None
+                result.error_str = err_msg
+                return result
 
             logging.info(f"set local stability model {model_name} success")
 
         payload = {
             "prompt": prompt,
+            "negative_prompt": negative_prompt,
             "steps": 20
         }
 
@@ -138,7 +149,8 @@ class Local_Stability_ComputeNode(ComputeNode):
             err_msg = f"Failed. err:{err}"
             logger.error(err_msg)
             task.error_str = err_msg
-            return None
+            result.error_str = err_msg
+            return result
         
         r = resp.json()
 
@@ -148,16 +160,17 @@ class Local_Stability_ComputeNode(ComputeNode):
             file_name = os.path.join(self.output_dir, task.task_id + ".png")
             image.save(file_name)
 
-            result = ComputeTaskResult()
-            result.set_from_task(task)
+            task.state = ComputeTaskState.DONE
+            result.result_code = ComputeTaskResultCode.OK
             result.worker_id = self.node_id
             result.result = {"file": file_name}
 
             return result
 
         task.error_str = "Unknown error!"
+        result.error_str = "Unknown error!"
         task.state = ComputeTaskState.ERROR
-        return None
+        return result
 
     def start(self):
         if self.is_start:
@@ -170,9 +183,9 @@ class Local_Stability_ComputeNode(ComputeNode):
                 task = await self.task_queue.get()
                 logger.info(f"stability_node get task: {task.display()}")
                 result = self._run_task(task)
-                if result is not None:
-                    task.state = ComputeTaskState.DONE
-                    task.result = result
+                # if result is not None:
+                #     task.state = ComputeTaskState.DONE
+                #     task.result = result
 
         asyncio.create_task(_run_task_loop())
 
