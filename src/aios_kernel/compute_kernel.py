@@ -148,7 +148,7 @@ class ComputeKernel:
         task_result = await self._send_task(task_req)
 
         if task_req.state == ComputeTaskState.DONE:
-            return task_result.result
+            return task_result.result_str
 
         return "error!"
 

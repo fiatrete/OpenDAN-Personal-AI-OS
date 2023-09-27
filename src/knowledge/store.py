@@ -62,5 +62,5 @@ class KnowledgeStore:
     
     def get_vector_store(self, model_name: str) -> VectorBase:
         if model_name not in self.vector_store:
-            self.vector_store[model_name] = ChromaVectorStore(model_name)
+            self.vector_store[model_name] = ChromaVectorStore(self.root, model_name)
         return self.vector_store[model_name]

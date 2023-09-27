@@ -36,7 +36,7 @@ class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
         except Exception as err:
             logger.error(f"load model {self.model} failed: {err}")
             return False
-
+        self.start()
         return True
 
     async def execute_task(
@@ -126,7 +126,7 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
         except Exception as err:
             logger.error(f"load model {self.model} failed: {err}")
             return False
-
+        self.start()
         return True
 
     def _load_image(self, source: Union[ObjectID, bytes]) -> Optional[Image]:

@@ -98,7 +98,7 @@ class OpenAI_ComputeNode(ComputeNode):
                 task.state = ComputeTaskState.DONE
                 result.result_code = ComputeTaskResultCode.OK
                 result.worker_id = self.node_id
-                result.result = resp["data"][0]["embedding"]
+                result.result_str = resp["data"][0]["embedding"]
 
                 return result
             case ComputeTaskType.LLM_COMPLETION:
