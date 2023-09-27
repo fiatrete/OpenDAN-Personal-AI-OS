@@ -25,9 +25,9 @@ If there is no api token, you can apply for [here] (https://beta.openai.com/)
 
 ### Install OpenDan
 After executing the following command, you can install the Docker Image of OpenDan
-`` `
+```
 docker pull paios/aios:latest
-`` `
+```
 
 ## Run
 The first Run of OpenDAN needs to be initialized. You need to enter some information in the process of initialization. Therefore, when starting the docker, remember to bring the -it parameter.
@@ -78,7 +78,7 @@ P.S:
 The above configuration will be saved in the `/your/local/myai/etc/system.cfg.toml`, if you want to modify the configuration, you can directly modify this file.If you want to adjust the configuration, you can edit this file directly.
 
 
-## (optional) Install the local LLM kernel
+## (Optional) Install the local LLM kernel
 For the first time quickly experience OpenDan, we strongly recommend you to use GPT4. Although he is very slow and expensive, he is also the most powerful and stable LLM core at present.OpenDan In the architecture design, different agents are allowed to choose different LLM kernels (but at least one available LLM kernel in the system should be available in the system). If you cannot use GPT4 for various reasons, you can use the Local LLM.
 At present, we only adapt to LOCAL LLM based on LLaMa.CPP, and use the following method to install
 
@@ -90,7 +90,7 @@ The current user "username" is communicating with the name "Agent/Workflow of Ja
 
 Say Hello to your private AI assistant Jarvis !
 
-*** If everything is OK, you will get a reply from Jarvis after a moment .At this time, the OpenDAN system is running .***
+**If everything is OK, you will get a reply from Jarvis after a moment .At this time, the OpenDAN system is running .**
 
 ## Give a Telegram account to Jarvis
 
@@ -126,7 +126,7 @@ In fact, OpenDAN is a quintessential Personal OS, operating atop a Personal Serv
 Much of our ongoing research and development work aims to provide an easy setup for a Personal Server equipped with AIOS. Compared to a PC, we're coining this new device as PI (Personal Intelligence), with OpenDAN being the premier OS tailored for the PI.
 
 ## Introducing Jarvis: Your Personal Butler!
-Now you can communicate with Jarvis anytime, anywhere via Telegram. However, merely seeing him as a more accessible ChatGPT doesn't do justice to his capabilities. Let's dive in and see what new tricks Jarvis, running on OpenDAN, brings to the table!
+Now you can talk with Jarvis anytime, anywhere via Telegram. However, merely seeing him as a more accessible ChatGPT doesn't do justice to his capabilities. Let's dive in and see what new tricks Jarvis, running on OpenDAN, brings to the table!
 
 ## Let Jarvis Plan Your Schedule
 
@@ -224,3 +224,5 @@ We believe:
  
 1. Cost is a significant determinant. LLM (Large Language Model) offers potent, well-defined capabilities. It's the new-age CPU. From a product and business perspective, products like ChatGTP only allow effective, constrained usage of this power. It's reminiscent of the early days of minicomputers when systems were time-shared: useful but limited. To truly harness the potential of LLM, we need to ensure that every individual owns their LLM. They should freely utilize the LLM as a foundational component for any application. This necessitates an operating system constructed on the principles of LLM.
 2. Once you possess an LLM, you'll realize the vastness of possibilities! The current capabilities of ChatGPT, even with plugins extending LLM's functionalities, are considerably limited. This limitation stems both from commercial considerations and the legal constraints traditional cloud services face. The platforms bear too much responsibility. But, with LLM in AIOS, you can seamlessly integrate natural language, LLM, existing services, and smart devices. You no longer have to fret about privacy breaches or liability concerns – you assume responsibility for the outcomes once you grant access to LLM!
+
+OpenDAN is an open-source project, let's define the future of Humans and AI together!
