@@ -191,19 +191,19 @@ class Workflow:
                 else:
                     return result_str
 
-    async def _process_msg(self,msg:AgentMsg):
+    async def _process_msg(self,msg:AgentMsg) -> AgentMsg:
         real_target = msg.target.split(".")[0]
         targets = self._parse_msg_target(msg.target)
         if len(targets) > 1:
             return await self._forword_msg(targets,msg)
+        
         #0 we don't support workflow join a group right now, this cloud be a feture in future
         if msg.mentions is not None:
             logger.warn(f"workflow {self.workflow_id} recv a group chat message,not support ignore!")
-            return None
+            error_resp = msg.create_error_resp(f"workflow {self.workflow_id} recv a group chat message,not support ignore!")
+            return error_resp
 
         #1. workflow start process message
-        final_result = None
-
         # this is workflow's group_chat session
         session_topic = msg.sender + "#" + msg.topic
         chatsesssion = AIChatSession.get_session(self.workflow_id,session_topic,self.db_file)
@@ -233,8 +233,10 @@ class Workflow:
                 logger.error(f"input_filter return None for :{msg.body}")
                 return None
 
-        logger.error(f"{self.workflow_id}:no role can process this msg:{msg.body}")
-        return final_result
+        err_str = f"{self.workflow_id}:no role can process this msg:{msg.body}"
+        logger.error(err_str)
+        error_resp = msg.create_error_resp(err_str)
+        return error_resp
 
     @classmethod
     def prase_llm_result(cls,llm_result_str:str)->LLMResult:
@@ -432,7 +434,7 @@ class Workflow:
     def _is_in_same_workflow(self,msg) -> bool:
         pass
 
-    async def role_process_msg(self,msg:AgentMsg,the_role:AIRole,workflow_chat_session:AIChatSession):
+    async def role_process_msg(self,msg:AgentMsg,the_role:AIRole,workflow_chat_session:AIChatSession) -> AgentMsg:
         msg.target = the_role.get_role_id()
 
 
@@ -473,7 +475,7 @@ class Workflow:
                     error_resp = msg.create_error_resp(result_str)
                     return error_resp
 
-            result = Workflow.prase_llm_result(result_str)
+            result : LLMResult = Workflow.prase_llm_result(result_str)
             for postmsg in result.post_msgs:
                 postmsg.prev_msg_id = msg.get_msg_id()
                 # might be craete a new msg.topic for this postmsg
@@ -506,15 +508,14 @@ class Workflow:
                     workflow_chat_session.append(resp_msg)
                     #await self.get_bus().resp_message(resp_msg)
                     return resp_msg
-                case "waiting":
-                    # TODO: Use role:"function" would be better
+                case "waiting":        
                     for sendmsg in result.send_msgs:
                         target = sendmsg.target
                         sendmsg.topic = msg.topic
                         sendmsg.prev_msg_id = msg.get_msg_id()
                         send_resp = await self.role_send_msg(sendmsg,the_role,workflow_chat_session)
                         if send_resp is not None:
-                            result_prompt_str += f"\n{target} response is :{send_resp.body}"
+                            result_prompt_str += f"\n# {target} response is : \n{send_resp.body}"
 
                         if not self._is_in_same_workflow(sendmsg):
                             role_sesion = AIChatSession.get_session(the_role.get_role_id(),f"{sendmsg.target}#{sendmsg.topic}",self.db_file)
@@ -523,22 +524,15 @@ class Workflow:
                         else:
                              # message will be saved in role.process_message
                             pass
-
-                    for call in result.calls:
-                        action_msg = msg.create_action_msg(call[0],call[1],call_result,the_role.get_role_id)
-                        call_result = await self.role_call(call,the_role)
-
-                        if call_result is not None:
-                            result_prompt_str += f"\ncall {call[0]} result is :{call_result}"
-                            #save action
-                            action_msg.result_str = call_result
-                            workflow_chat_session.append(action_msg)
+                    
+                    this_llm_resp_prompt = AgentPrompt()
+                    this_llm_resp_prompt.messages = [{"role":"assistant","content":result_str}]
+                    prompt.append(this_llm_resp_prompt)
 
                     result_prompt = AgentPrompt()
                     result_prompt.messages = [{"role":"user","content":result_prompt_str}]
                     prompt.append(result_prompt)
-                    r = await _do_process_msg()
-                    return r
+                    return await _do_process_msg()
 
         return await _do_process_msg()
 
