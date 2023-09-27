@@ -6,7 +6,8 @@ import time
 class ComputeTaskResultCode(Enum):
     OK = 0
     TIMEOUT = 1
-    NO_WORK = 2
+    NO_WORKER = 2
+    ERROR = 3
 
 
 class ComputeTaskState(Enum):
@@ -91,6 +92,7 @@ class ComputeTaskResult:
         self.task_id: str = None
         self.callchain_id: str = None
         self.worker_id: str = None
+        self.error_str : str = None 
         self.result_code: int = 0
         self.result_str: str = None # easy to use,can read from result
         self.result_message: dict = {}

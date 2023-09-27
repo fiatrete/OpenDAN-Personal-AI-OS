@@ -601,11 +601,9 @@ async def main():
                             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')    
     
     is_daemon = False
+    logger.info(f"Check Host OS :{os.name}")
     if os.name != 'nt':
-        if os.getppid() == 1:
-            is_daemon = True
-        if not sys.stdout.isatty(): 
-            is_daemon = True
+        is_daemon = os.fstat(0) != os.fstat(1) or os.fstat(0) != os.fstat(2)
 
     shell = AIOS_Shell("user")
     shell.declare_all_user_config()

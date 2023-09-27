@@ -11,7 +11,7 @@ import datetime
 
 from .agent_message import AgentMsg, AgentMsgStatus, AgentMsgType,FunctionItem,LLMResult
 from .chatsession import AIChatSession
-from .compute_task import ComputeTaskResult
+from .compute_task import ComputeTaskResult,ComputeTaskResultCode
 from .ai_function import AIFunction
 from .environment import Environment
 from .contact_manager import ContactManager,Contact,FamilyMember
@@ -305,7 +305,7 @@ class AIAgent:
 
         return result_func,result_len
 
-    async def _execute_func(self,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> str:
+    async def _execute_func(self,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> [str,int]:
         from .compute_kernel import ComputeKernel
  
         func_name = inenr_func_call_node.get("name")
@@ -314,21 +314,24 @@ class AIAgent:
 
         func_node : AIFunction = self.owner_env.get_ai_function(func_name)
         if func_node is None:
-            return "execute failed,function not found"
-
-        ineternal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
-        try:
-            result_str:str = await func_node.execute(**arguments)
-        except Exception as e:
-            result_str = "call error:" + str(e)
-            logger.error(f"llm execute inner func:{func_name} error:{e}")
+            result_str = f"execute {func_name} error,function not found"
+        else:
+            ineternal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
+            try:
+                result_str:str = await func_node.execute(**arguments)
+            except Exception as e:
+                result_str = f"execute {func_name} error:{str(e)}"
+                logger.error(f"llm execute inner func:{func_name} error:{e}")
 
 
         logger.info("llm execute inner func result:" + result_str)
         inner_functions,inner_function_len = self._get_inner_functions()
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
         task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
-
+        if task_result.result_code != ComputeTaskResultCode.OK:
+            logger.error(f"llm compute error:{task_result.error_str}")
+            return task_result.error_str,1
+        
         ineternal_call_record.result_str = task_result.result_str
         ineternal_call_record.done_time = time.time()
         org_msg.inner_call_chain.append(ineternal_call_record)
@@ -339,7 +342,7 @@ class AIAgent:
         if inner_func_call_node:
             return await self._execute_func(inner_func_call_node,prompt,org_msg,stack_limit-1)
         else:
-            return task_result.result_str
+            return task_result.result_str,0
 
     async def _get_agent_prompt(self) -> AgentPrompt:
         return self.prompt
@@ -394,12 +397,20 @@ class AIAgent:
 
             logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
             task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
+            if task_result.result_code != ComputeTaskResultCode.OK:
+                logger.error(f"llm compute error:{task_result.error_str}")
+                error_resp = msg.create_error_resp(task_result.error_str)
+                return error_resp
+            
             final_result = task_result.result_str
 
             inner_func_call_node = task_result.result_message.get("function_call")
             if inner_func_call_node:
                 #TODO to save more token ,can i use msg_prompt?
-                final_result = await self._execute_func(inner_func_call_node,prompt,msg)
+                final_result,error_code = await self._execute_func(inner_func_call_node,prompt,msg)
+                if error_code != 0:
+                    error_resp = msg.create_error_resp(final_result)
+                    return error_resp
 
             llm_result : LLMResult = self._get_llm_result_type(final_result)
             is_ignore = False
@@ -455,7 +466,7 @@ class AIAgent:
         for msg in reversed(messages):
             read_history_msg += 1
             dt = datetime.datetime.fromtimestamp(float(msg.create_time))
-            formatted_time = dt.strftime('%m-%d %H:%M:%S')
+            formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
 
             if msg.sender == self.agent_id:
 

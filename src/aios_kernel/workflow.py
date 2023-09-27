@@ -14,7 +14,7 @@ from .chatsession import AIChatSession
 from .role import AIRole,AIRoleGroup
 from .ai_function import AIFunction,FunctionItem
 from .compute_kernel import ComputeKernel
-from .compute_task import ComputeTask,ComputeTaskResult,ComputeTaskState
+from .compute_task import ComputeTask,ComputeTaskResult,ComputeTaskState,ComputeTaskResultCode
 from .bus import AIBus
 from .workflow_env import WorkflowEnvironment
 
@@ -392,25 +392,32 @@ class Workflow:
             return result_func
         return None
 
-    async def _role_execute_func(self,the_role:AIRole,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> str:
+    async def _role_execute_func(self,the_role:AIRole,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> [str,int]:
         from .compute_kernel import ComputeKernel
 
         func_name = inenr_func_call_node.get("name")
         arguments = json.loads(inenr_func_call_node.get("arguments"))
-
-        func_node : AIFunction = self.workflow_env.get_ai_function(func_name)
-        if func_node is None:
-            return "execute failed,function not found"
-
         ineternal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
+        func_node : AIFunction = self.workflow_env.get_ai_function(func_name)
+        result_str : str = ""
+        if func_node is None:
+            result_str = f"execute {func_name} failed,function not found"
+        else:
+            try:
+                result_str = await func_node.execute(**arguments)
+            except Exception as e:
+                result_str = f"execute {func_name} error:{str(e)}"
+                logger.error(f"llm execute inner func:{func_name} error:{e}")
 
-        result_str:str = await func_node.execute(**arguments)
 
         inner_functions = self._get_inner_functions(the_role)
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
         task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,
                                                                                 the_role.agent.llm_model_name,the_role.agent.max_token_size,
                                                                                 inner_functions)
+        if task_result.result_code != ComputeTaskResultCode.OK:
+            logger.error(f"llm compute error:{task_result.error_str}")
+            return task_result.error_str,1
 
         ineternal_call_record.result_str = task_result.result_str
         ineternal_call_record.done_time = time.time()
@@ -420,7 +427,7 @@ class Workflow:
         if inner_func_call_node:
             return await self._role_execute_func(the_role,inner_func_call_node,prompt,org_msg,stack_limit-1)
         else:
-            return task_result.result_str
+            return task_result.result_str,0
 
     def _is_in_same_workflow(self,msg) -> bool:
         pass
@@ -449,6 +456,11 @@ class Workflow:
         async def _do_process_msg():
             #TODO: send msg to agent might be better?
             task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,the_role.agent.get_llm_model_name(),the_role.agent.get_max_token_size(),inner_functions)
+            if task_result.result_code != ComputeTaskResultCode.OK:
+                logger.error(f"llm compute error:{task_result.error_str}")
+                error_resp = msg.create_error_resp(task_result.error_str)
+                return error_resp
+            
             result_str = task_result.result_str
             logger.info(f"{the_role.role_id} process {msg.sender}:{msg.body},llm str is :{result_str}")
 
@@ -456,7 +468,10 @@ class Workflow:
 
             if inner_func_call_node:
                 #TODO to save more token ,can i use msg_prompt?
-                result_str = await self._role_execute_func(the_role,inner_func_call_node,prompt,msg)
+                result_str,r_code = await self._role_execute_func(the_role,inner_func_call_node,prompt,msg)
+                if r_code != 0:
+                    error_resp = msg.create_error_resp(result_str)
+                    return error_resp
 
             result = Workflow.prase_llm_result(result_str)
             for postmsg in result.post_msgs:

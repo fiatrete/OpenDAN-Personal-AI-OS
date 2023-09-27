@@ -167,7 +167,7 @@ class TelegramTunnel(AgentTunnel):
         resp_msg = await self.ai_bus.send_message(agent_msg)
         logger.info(f"process message {agent_msg.msg_id} from {agent_msg.sender} to {agent_msg.target}")
         if resp_msg is None:
-            await update.message.reply_text(f"{self.target_id} process message error")
+            await update.message.reply_text(f"System Error: Timeout,{self.target_id}  no resopnse! Please check logs/aios.log for more details!")
         else:
             if resp_msg.body_mime is None:
                 if resp_msg.body is not None:

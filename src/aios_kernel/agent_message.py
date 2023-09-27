@@ -88,6 +88,18 @@ class AgentMsg:
         msg.sender = caller
         return msg
     
+    def create_error_resp(self,error_msg:str):
+        resp_msg = AgentMsg(AgentMsgType.TYPE_SYSTEM)
+        resp_msg.create_time = time.time()
+        
+        resp_msg.rely_msg_id = self.msg_id
+        resp_msg.body = error_msg
+        resp_msg.topic  = self.topic
+        resp_msg.sender = self.target
+        resp_msg.target = self.sender
+
+        return resp_msg
+
     def create_resp_msg(self,resp_body):
         resp_msg = AgentMsg()
         resp_msg.create_time = time.time()

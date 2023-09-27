@@ -1,4 +1,3 @@
-
 import openai
 import os
 import asyncio
@@ -6,7 +5,7 @@ from asyncio import Queue
 import logging
 import json
 
-from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType
+from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType,ComputeTaskResultCode
 from .compute_node import ComputeNode
 from .storage import AIStorage,UserConfig
 
@@ -60,15 +59,26 @@ class OpenAI_ComputeNode(ComputeNode):
 
     def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
+        
+        result = ComputeTaskResult()
+        result.result_code = ComputeTaskResultCode.ERROR
+        result.set_from_task(task)
+
         match task.task_type:
             case ComputeTaskType.TEXT_EMBEDDING:
                 model_name = task.params["model_name"]
                 input = task.params["input"]
                 logger.info(f"call openai {model_name} input: {input}")
-
-                resp = openai.Embedding.create(model=model_name,
+                try:
+                    resp = openai.Embedding.create(model=model_name,
                                                 input=input)
-
+                except Exception as e:
+                    logger.error(f"openai run TEXT_EMBEDDING task error: {e}")
+                    task.state = ComputeTaskState.ERROR
+                    task.error_str = str(e)
+                    result.error_str = str(e)
+                    return result
+                
                 # resp = {
                 # "object": "list",
                 # "data": [
@@ -85,9 +95,8 @@ class OpenAI_ComputeNode(ComputeNode):
                 # }
 
                 logger.info(f"openai response: {resp}")
-
-                result = ComputeTaskResult()
-                result.set_from_task(task)
+                task.state = ComputeTaskState.DONE
+                result.result_code = ComputeTaskResultCode.OK
                 result.worker_id = self.node_id
                 result.result = resp["data"][0]["embedding"]
 
@@ -101,26 +110,28 @@ class OpenAI_ComputeNode(ComputeNode):
                     max_token_size = 4000
 
                 result_token = max_token_size
-
-                if llm_inner_functions is None:
-                    logger.info(f"call openai {mode_name} prompts: {prompts}")
-                    resp = openai.ChatCompletion.create(model=mode_name,
-                                                    messages=prompts,
-                                                    #max_tokens=result_token,
-                                                    temperature=0.7)
-                else:
-                    logger.info(f"call openai {mode_name} prompts: {prompts} functions: {json.dumps(llm_inner_functions)}")
-                    resp = openai.ChatCompletion.create(model=mode_name,
+                try:
+                    if llm_inner_functions is None:
+                        logger.info(f"call openai {mode_name} prompts: {prompts}")
+                        resp = openai.ChatCompletion.create(model=mode_name,
                                                         messages=prompts,
-                                                        functions=llm_inner_functions,
                                                         #max_tokens=result_token,
-                                                        temperature=0.7) # TODO: add temperature to task params?
-
+                                                        temperature=0.7)
+                    else:
+                        logger.info(f"call openai {mode_name} prompts: {prompts} functions: {json.dumps(llm_inner_functions)}")
+                        resp = openai.ChatCompletion.create(model=mode_name,
+                                                            messages=prompts,
+                                                            functions=llm_inner_functions,
+                                                            #max_tokens=result_token,
+                                                            temperature=0.7) # TODO: add temperature to task params?
+                except Exception as e:
+                    logger.error(f"openai run LLM_COMPLETION task error: {e}")
+                    task.state = ComputeTaskState.ERROR
+                    task.error_str = str(e)
+                    result.error_str = str(e)
+                    return result
 
                 logger.info(f"openai response: {json.dumps(resp, indent=4)}")
-
-                result = ComputeTaskResult()
-                result.set_from_task(task)
 
                 status_code = resp["choices"][0]["finish_reason"]
                 token_usage = resp.get("usage")
@@ -132,8 +143,11 @@ class OpenAI_ComputeNode(ComputeNode):
                     case _:
                         task.state = ComputeTaskState.ERROR
                         task.error_str = f"The status code was {status_code}."
-                        return None
+                        result.error_str = f"The status code was {status_code}."
+                        result.result_code = ComputeTaskResultCode.ERROR
+                        return result
 
+                result.result_code = ComputeTaskResultCode.OK
                 result.worker_id = self.node_id
                 result.result_str = resp["choices"][0]["message"]["content"]
                 result.result_message = resp["choices"][0]["message"]
@@ -143,6 +157,8 @@ class OpenAI_ComputeNode(ComputeNode):
                 return result
             case _:
                 task.state = ComputeTaskState.ERROR
+                task.error_str = f"ComputeTask's TaskType : {task.task_type} not support!"
+                result.error_str = f"ComputeTask's TaskType : {task.task_type} not support!"
                 return None
 
     def start(self):

@@ -137,7 +137,6 @@ class ComputeKernel:
         return await self._send_task(task_req)
 
 
-    
     def text_embedding(self,input:str,model_name:Optional[str] = None):
         task_req = ComputeTask()
         task_req.set_text_embedding_params(input,model_name)
