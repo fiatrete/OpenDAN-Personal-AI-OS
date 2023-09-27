@@ -4,6 +4,8 @@ import logging
 from .agent import AgentPrompt
 from .compute_kernel import ComputeKernel 
 from .storage import AIStorage
+from .environment import Environment
+from .ai_function import SimpleAIFunction
 from knowledge import *
 
 
@@ -160,23 +162,10 @@ class KnowledgeBase:
     async def insert_object(self, object: KnowledgeObject):
         self.store.get_object_store().put_object(object.calculate_id(), object.encode())
         await self.__do_embedding(object)
-
-    async def query_prompt(self, prompt: AgentPrompt):
-        logging.info(f"query_prompt: {prompt}")
-        objects = await self.query_objects(prompt)
-        knowledge_prompt = self.prompt_from_objects(objects)
-        logging.info(f"prompt_from_objects result: {knowledge_prompt.as_str()}")
-       
-        return knowledge_prompt
-
-    async def query_objects(self, prompt: AgentPrompt) -> [ObjectID]:
-        results = []
-        for msg in prompt.messages:
-            if msg["role"] == "user":
-                vector = await self.compute_kernel.do_text_embedding(msg["content"], self._default_text_model)
-                object_ids = await self.store.get_vector_store(self._default_text_model).query(vector, 10)
-                results.extend(object_ids)
-        return results
+    
+    async def query_objects(self, tokens: str) -> [ObjectID]:
+        vector = await self.compute_kernel.do_text_embedding(tokens, self._default_text_model)
+        return await self.store.get_vector_store(self._default_text_model).query(vector, 10)
 
     def __load_object(self, object_id: ObjectID) -> KnowledgeObject:
         if object_id.get_object_type() == ObjectType.Document:
@@ -193,7 +182,7 @@ class KnowledgeBase:
             pass
         
 
-    def prompt_from_objects(self, object_ids: [ObjectID]) -> AgentPrompt:
+    def tokens_from_objects(self, object_ids: [ObjectID]) -> list[str]:
         results = dict()
         for object_id in object_ids:
             parents = self.store.get_relation_store().get_related_root_objects(object_id)
@@ -237,12 +226,24 @@ class KnowledgeBase:
                 else:
                     pass
         content += json.dumps(result_desc)
-        content += ".\n"
+        content += ".\n"  
 
-        prompt = AgentPrompt()
-        prompt.messages.append({"role": "user", "content": content})    
-
-        return prompt
+        return content
 
 
-    
+class KnowledgeEnvironment(Environment):
+    def __init__(self, env_id: str) -> None:
+        super().__init__(env_id)
+
+        query_param = {
+            "tokens": "tokens to query", 
+            "index": "index of query result"
+        }
+        self.add_ai_function(SimpleAIFunction("query_knowledge", 
+                                            "vector query content from local knowledge base",
+                                            self._query, 
+                                            query_param))
+        
+    async def _query(tokens: str, index: int):
+        object_ids = await KnowledgeBase().query_objects(tokens)
+        KnowledgeBase().tokens_from_objects(object_ids)

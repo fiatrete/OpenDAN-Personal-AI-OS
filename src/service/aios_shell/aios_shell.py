@@ -24,8 +24,7 @@ directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
 
-from aios_kernel import AIOS_Version,AgentMsgType,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode,Local_Stability_ComputeNode,Stability_ComputeNode,PaintEnvironment
-from aios_kernel import ContactManager,Contact
+
 import proxy
 from aios_kernel import *
 
@@ -113,6 +112,10 @@ class AIOS_Shell:
             owenr.telegram = AIStorage.get_instance().get_user_config().get_value("telegram")
 
             cm.add_contact(self.username,owenr)
+
+
+        knowledge_env = KnowledgeEnvironment("knowledge")
+        Environment.set_env_by_id("knowledge",knowledge_env)
 
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()

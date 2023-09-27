@@ -5,7 +5,7 @@ from .agent import AIAgent,AIAgentTemplete,AgentPrompt
 from .compute_kernel import ComputeKernel,ComputeTask,ComputeTaskResult,ComputeTaskState,ComputeTaskType
 from .compute_node import ComputeNode,LocalComputeNode
 from .open_ai_node import OpenAI_ComputeNode
-from .knowledge_base import KnowledgeBase 
+from .knowledge_base import KnowledgeBase, KnowledgeEnvironment
 from .knowledge_pipeline import KnowledgeEmailSource, KnowledgeDirSource, KnowledgePipline
 from .role import AIRole,AIRoleGroup
 from .workflow import Workflow
