@@ -26,12 +26,13 @@ from knowledge import (
     EmailObject,
     ImageObject,
 )
+from aios_kernel import LocalSentenceTransformer_Image_ComputeNode, ComputeTask
 import asyncio
 import unittest
 
 
-class TestVectorSTorage(unittest.TestCase):
-    def test_object(self):
+class TestVectorSTorage(unittest.IsolatedAsyncioTestCase):
+    async def test_object(self):
         data = HashValue.hash_data("1233".encode("utf-8"))
         print(data.to_base58())
         print(data.to_base36())
@@ -65,6 +66,15 @@ class TestVectorSTorage(unittest.TestCase):
         image_id = images[image_keys[1]]
         print(f"got image object: {image_keys[1]} {image_id.to_base58()}")
         
+        node = LocalSentenceTransformer_Image_ComputeNode();
+        ret = node.initial()
+        self.assertEqual(ret, True)
+        
+        task = ComputeTask()
+        task.set_image_embedding_params(image_id)
+        ret = await node.execute_task(task)
+        print(ret)
+        '''
         buf = KnowledgeStore().get_object_store().get_object(image_id)
         image_obj= ImageObject.decode(buf)
         file_size = image_obj.get_file_size()
@@ -83,6 +93,7 @@ class TestVectorSTorage(unittest.TestCase):
         #model = SentenceTransformer('clip-ViT-B-32-multilingual-v1')
         model = SentenceTransformer('clip-ViT-B-32')
         model.encode(image, convert_to_tensor=True)
+        '''
 
     def test_relation(self):
         obj1 = ObjectID.hash_data("12345".encode("utf-8"))

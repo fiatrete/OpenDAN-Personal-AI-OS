@@ -137,3 +137,4 @@ python-telegram-bot
 pydub
 stability_sdk
 sentence-transformers==2.2.2
+tiktoken
