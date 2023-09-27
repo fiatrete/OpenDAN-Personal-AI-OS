@@ -32,7 +32,7 @@ class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
         try:
             from sentence_transformers import SentenceTransformer
 
-            self.model = SentenceTransformer(self.model)
+            self.model = SentenceTransformer(self.model_name)
         except Exception as err:
             logger.error(f"load model {self.model} failed: {err}")
             return False
