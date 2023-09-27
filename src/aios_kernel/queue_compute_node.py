@@ -56,7 +56,7 @@ class Queue_ComputeNode(ComputeNode):
 
         return result
 
-    async def start(self):
+    def start(self):
         if self.is_start is True:
             return
         self.is_start = True
@@ -65,7 +65,7 @@ class Queue_ComputeNode(ComputeNode):
             while True:
                 task = await self.task_queue.get()
                 logger.info(f"openai_node get task: {task.display()}")
-                self._run_task(task)
+                await self._run_task(task)
 
         asyncio.create_task(_run_task_loop())
 
