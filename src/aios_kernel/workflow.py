@@ -446,7 +446,7 @@ class Workflow:
         # prompt.append(self._get_knowlege_prompt(the_role.get_name()))
 
         #support group chat, user content include sender name!
-        prompt.append(await self._get_prompt_from_session(workflow_chat_session))
+        prompt.append(await self._get_prompt_from_session(the_role,workflow_chat_session))
 
         msg_prompt = AgentPrompt()
         msg_prompt.messages = [{"role":"user","content":f"user name is {msg.sender}, his question is :{msg.body}"}]
@@ -536,8 +536,8 @@ class Workflow:
 
         return await _do_process_msg()
 
-    async def _get_prompt_from_session(self,chatsession:AIChatSession) -> AgentPrompt:
-        messages = chatsession.read_history() # read last 10 message
+    async def _get_prompt_from_session(self,the_role:AIRole,chatsession:AIChatSession) -> AgentPrompt:
+        messages = chatsession.read_history(the_role.history_len) # read last 10 message
         result_prompt = AgentPrompt()
         for msg in reversed(messages):
             if msg.sender == chatsession.owner_id:

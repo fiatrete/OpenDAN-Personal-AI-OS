@@ -13,6 +13,7 @@ class AIRole:
         self.introduce : str = None
         self.agent = None
         self.enable_function_list : list[str] = None
+        self.history_len = 10
 
     def load_from_config(self,config:dict) -> bool:
         name_node = config.get("name")
@@ -38,6 +39,10 @@ class AIRole:
         intro_node = config.get("intro")
         if intro_node is not None:
             self.introduce = intro_node
+
+        history_node = config.get("history_len")
+        if history_node:
+            self.history_len = int(history_node)
 
         if config.get("enable_function") is not None:
             self.enable_function_list = config["enable_function"]

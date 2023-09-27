@@ -118,6 +118,7 @@ class AIAgent:
         self.guest_prompt_str = None 
         self.owner_promp_str = None
         self.contact_prompt_str = None
+        self.history_len = 10
 
         self.chat_db = None
         self.unread_msg = Queue() # msg from other agent
@@ -179,6 +180,8 @@ class AIAgent:
             self.enable_kb = bool(config["enable_kb"])
         if config.get("enable_timestamp") is not None:
             self.enable_timestamp = bool(config["enable_timestamp"])
+        if config.get("history_len"):
+            self.history_len = int(config.get("history_len"))
         return True
 
 
@@ -459,7 +462,7 @@ class AIAgent:
     async def _get_prompt_from_session(self,chatsession:AIChatSession,system_token_len,input_token_len,is_groupchat=False) -> AgentPrompt:
         # TODO: get prompt from group chat is different from single chat
         history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
-        messages = chatsession.read_history() # read
+        messages = chatsession.read_history(self.history_len) # read
         result_token_len = 0
         result_prompt = AgentPrompt()
         read_history_msg = 0

@@ -401,3 +401,5 @@ class KnowledgePipline:
         #     await source.run_once()
         for source in self.source_queue:
             await source.run_once()
+        
+        logging.info(f"knowledge pipeline finished") 
