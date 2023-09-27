@@ -67,7 +67,6 @@ def test_st():
     ]
 
     # Compute embeddings
-
     #embeddings = model.encode(sentences, convert_to_tensor=True)
     embeddings = model.encode(sentences)
     print("embeddings as follows: ")
