@@ -1,8 +1,8 @@
 from .environment import Environment,EnvironmentEvent
-from .agent_message import AgentMsg,AgentMsgStatus
+from .agent_message import AgentMsg,AgentMsgStatus,AgentMsgType
 from .chatsession import AIChatSession
 from .agent import AIAgent,AIAgentTemplete,AgentPrompt
-from .compute_kernel import ComputeKernel,ComputeTask
+from .compute_kernel import ComputeKernel,ComputeTask,ComputeTaskResult,ComputeTaskState,ComputeTaskType
 from .compute_node import ComputeNode,LocalComputeNode
 from .open_ai_node import OpenAI_ComputeNode
 from .knowledge_base import KnowledgeBase 
@@ -24,5 +24,5 @@ from .workspace_env import WorkspaceEnvironment
 from .local_stability_node import Local_Stability_ComputeNode
 from .stability_node import Stability_ComputeNode
 
-AIOS_Version = "0.5.1, build 2023-9-17"
+AIOS_Version = "0.5.1, build 2023-9-26"
 

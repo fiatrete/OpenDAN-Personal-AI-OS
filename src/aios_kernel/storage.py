@@ -92,14 +92,16 @@ class UserConfig:
     def get_config_item(self,key:str) -> Any:
         config_item = self.config_table.get(key)
         if config_item is None:
-            raise Exception("user config key %s not exist",key)
+            logger.warning(f"user config key {key} not exist")
+            return None
 
         return config_item
     
     def get_value(self,key:str)->Any:
         config_item = self.config_table.get(key)
         if config_item is None:
-            raise Exception("user config key %s not exist",key)
+            logger.warning(f"user config key {key} not exist")
+            return None
         
         if config_item.value is None:
             return config_item.default_value

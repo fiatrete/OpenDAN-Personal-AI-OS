@@ -11,6 +11,7 @@ class AgentMsgType(Enum):
     TYPE_INTERNAL_CALL = 1
     TYPE_ACTION = 2
     TYPE_EVENT = 3
+    TYPE_SYSTEM = 4
 
 class AgentMsgStatus(Enum):
     RESPONSED = 0

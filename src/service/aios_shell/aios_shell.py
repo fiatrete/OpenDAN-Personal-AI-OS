@@ -24,7 +24,7 @@ directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
 
-from aios_kernel import AIOS_Version,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode,Local_Stability_ComputeNode,Stability_ComputeNode,PaintEnvironment
+from aios_kernel import AIOS_Version,AgentMsgType,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode,Local_Stability_ComputeNode,Stability_ComputeNode,PaintEnvironment
 from aios_kernel import ContactManager,Contact
 import proxy
 from aios_kernel import *
@@ -199,9 +199,12 @@ class AIOS_Shell:
         agent_msg.topic = topic
         resp = await AIBus.get_default_bus().send_message(agent_msg)
         if resp is not None:
-            return resp.body
+            if resp.msg_type != AgentMsgType.TYPE_SYSTEM:
+                return resp.body
+            else:
+                return f"Process Message Error: {resp.body} Please check logs/aios.log for more details!"
         else:
-            return "error!"
+            return "System Error: Timeout, no resopnse! Please check logs/aios.log for more details!"
 
     async def _user_process_msg(self,msg:AgentMsg) -> AgentMsg:
         pass
@@ -211,12 +214,13 @@ class AIOS_Shell:
         tunnel_config = {}
         tunnel_config["tunnel_id"] = f"{tunnel_type}_2_{tunnel_target}"
         tunnel_config["target"] = tunnel_target
-        intpu_table = {}
+        input_table = {}
         tunnel_introduce : str = ""
         match tunnel_type:
             case "telegram":
                 tunnel_config["type"] = "TelegramTunnel"
-                intpu_table["token"] = UserConfigItem("telegram bot token")
+                input_table["token"] = UserConfigItem("telegram bot token")
+                input_table["allow"] = UserConfigItem("allow group (default is member,you can choose contact or guest)")
             case "email":
                 tunnel_config["type"] = "EmailTunnel"
             case _:
@@ -226,7 +230,7 @@ class AIOS_Shell:
 
         intro_text = FormattedText([("class:prompt", tunnel_introduce)])
         print_formatted_text(intro_text,style=shell_style)
-        for key,item in intpu_table.items():
+        for key,item in input_table.items():
             user_input = await try_get_input(f"{key} : {item.desc}")
             if user_input is None:
                 return None
@@ -246,7 +250,7 @@ class AIOS_Shell:
                 if f:
                     toml.dump(all_tunnels,f)
         except Exception as e:
-            logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
+            logger.warning(f"load tunnels config from {tunnels_config_path} failed! {e}")
 
     async def handle_contact_commands(self,args):
         cm = ContactManager.get_instance()
@@ -353,15 +357,17 @@ class AIOS_Shell:
     async def call_func(self,func_name, args):
         match func_name:
             case 'send':
-                target_id = args[0]
-                msg_content = args[1]
-                topic = args[2]
-                resp = await self.send_msg(msg_content,target_id,topic,self.username)
-                show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
-                                           ("class:content", resp)])
+                show_text = FormattedText([("class:error", f'send args error,/send Tracy "Hello! It is a good day!" default')])
+                if len(args) == 3:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    topic = args[2]
+                    resp = await self.send_msg(msg_content,target_id,topic,self.username)
+                    show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
+                                            ("class:content", resp)])
                 return show_text
             case 'set_config':
-                show_text = FormattedText([("class:title", f"set config failed!")])
+                show_text = FormattedText([("class:error", f"set config args error,/set_config $config_item! ")])
                 if len(args) == 1:
                     key = args[0]
                     config_item = AIStorage.get_instance().get_user_config().get_config_item(key)
@@ -372,10 +378,12 @@ class AIOS_Shell:
                         AIStorage.get_instance().get_user_config().set_value(key,value)
                         await AIStorage.get_instance().get_user_config().save_to_user_config()
                         show_text = FormattedText([("class:title", f"set {key} to {value} success!")])
+                    else:
+                        show_text = FormattedText([("class:error", f"set config failed! config item {key} not found!")])
 
                 return show_text
             case 'connect':
-                show_text = FormattedText([("class:title", "args error, /connect $target telegram | email")])
+                show_text = FormattedText([("class:error", "args error, /connect $target")])
                 if len(args) < 1:
                     return show_text
                 tunnel_target = args[0]
@@ -442,12 +450,12 @@ class AIOS_Shell:
                 AIStorage.get_instance().disable_feature(feature)
                 show_text = FormattedText([("class:title", f"Feature {feature} disabled!")])
                 return show_text
-            case 'login':
-                if len(args) >= 1:
-                    self.username = args[0]
-                AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+            #case 'login':
+            #    if len(args) >= 1:
+            #        self.username = args[0]
+            #    AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
 
-                return self.username + " login success!"
+            #    return self.username + " login success!"
             case 'history':
                 num = 10
                 offset = 0
@@ -491,12 +499,14 @@ def parse_function_call(func_string):
     else:
         return None
 
-async def try_get_input(desc:str,check_func:callable = None) -> str:
+async def try_get_input(desc:str,mutil_line:bool = False,check_func:callable = None) -> str:
     user_input = await session.prompt_async(f"{desc} \nType /exit to abort. \nPlease input:",style=shell_style)
     err_str = ""
     if check_func is None:
         if len(user_input) > 0:
             if user_input != "/exit":
+                if mutil_line is False:
+                    user_input = user_input.strip()
                 return user_input
             else:
                 return None
@@ -580,7 +590,10 @@ async def main():
                             level=logging.INFO,
                             format='[%(asctime)s]%(name)s[%(levelname)s]: %(message)s')
     else:
-        log_file = f"{AIStorage.get_instance().get_myai_dir()}/logs/aios_shell.log"
+        dir_path = f"{AIStorage.get_instance().get_myai_dir()}/logs"
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        log_file = f"{AIStorage.get_instance().get_myai_dir()}/logs/aios.log"
         handler = RotatingFileHandler(log_file, maxBytes=50*1024*1024, backupCount=100)
 
         logging.basicConfig(handlers=[handler],
@@ -590,6 +603,8 @@ async def main():
     is_daemon = False
     if os.name != 'nt':
         if os.getppid() == 1:
+            is_daemon = True
+        if not sys.stdout.isatty(): 
             is_daemon = True
 
     shell = AIOS_Shell("user")
@@ -604,8 +619,10 @@ async def main():
             #Remind users to enter necessary configurations.
             if await get_user_config_from_input(check_result) is False:
                 return 1
-
+    shell.username = AIStorage.get_instance().get_user_config().get_value("username")
     init_result = await shell.initial()
+    proxy.apply_storage()
+    
     if init_result is False:
         if is_daemon:
             logger.error("aios shell initial failed!")
@@ -614,16 +631,14 @@ async def main():
             print("aios shell initial failed!")
             return 1
 
-    print(f"aios shell {shell.get_version()} ready.")
+    print(f"aios shell {shell.get_version()} ready. Daemon:{is_daemon}")
+    logger.info(f"aios shell {shell.get_version()} ready. Daemon:{is_daemon}")
     if is_daemon:
         return await main_daemon_loop(shell)
-
-    proxy.apply_storage()
 
     completer = WordCompleter(['/send $target $msg $topic',
                                '/open $target $topic',
                                '/history $num $offset',
-                               '/login $username',
                                '/connect $target',
                                '/contact $name',
                                '/knowledge add email | dir',

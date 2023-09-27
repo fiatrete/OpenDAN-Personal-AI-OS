@@ -7,7 +7,7 @@ from asyncio import Queue
 
 from .agent import AgentPrompt
 from .compute_node import ComputeNode
-from .compute_task import ComputeTask, ComputeTaskState, ComputeTaskResult, ComputeTaskType
+from .compute_task import ComputeTask, ComputeTaskState, ComputeTaskResult, ComputeTaskType,ComputeTaskResultCode
 
 logger = logging.getLogger(__name__)
 
@@ -105,10 +105,8 @@ class ComputeKernel:
         task_req.set_llm_params(prompt, mode_name, max_token,inner_functions)
         self.run(task_req)
         return task_req
-
-    async def do_llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0, inner_functions = None) -> str:
-        task_req = self.llm_completion(prompt, mode_name, max_token,inner_functions)
-
+    
+    async def _send_task(self,task_req:ComputeTask)->ComputeTaskResult:        
         async def check_timer():
             check_times = 0
             while True:
@@ -126,10 +124,18 @@ class ComputeKernel:
                 check_times += 1
 
         await asyncio.create_task(check_timer())
-        if task_req.state == ComputeTaskState.DONE:
+        if task_req.result:
             return task_req.result
+        else:
+            time_out_result = ComputeTaskResult()
+            time_out_result.result_code = ComputeTaskResultCode.TIMEOUT
+            time_out_result.set_from_task(task_req)
+            ## craete timeout task_result
 
-        raise Exception("error!")
+    async def do_llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0, inner_functions = None) -> str:
+        task_req = self.llm_completion(prompt, mode_name, max_token,inner_functions)
+        return await self._send_task(task_req)
+
 
     
     def text_embedding(self,input:str,model_name:Optional[str] = None):
@@ -140,25 +146,10 @@ class ComputeKernel:
 
     async def do_text_embedding(self,input:str,model_name:Optional[str] = None) -> [float]:
         task_req = self.text_embedding(input,model_name)
-        async def check_timer():
-            check_times = 0
-            while True:
-                if task_req.state == ComputeTaskState.DONE:
-                    break
+        task_result = await self._send_task(task_req)
 
-                if task_req.state == ComputeTaskState.ERROR:
-                    break
-
-                if check_times >=  20:
-                    task_req.state = ComputeTaskState.ERROR
-                    break
-
-                await asyncio.sleep(0.5)
-                check_times += 1
-
-        await asyncio.create_task(check_timer())
         if task_req.state == ComputeTaskState.DONE:
-            return task_req.result.result
+            return task_result.result
 
         return "error!"
 
@@ -179,22 +170,10 @@ class ComputeKernel:
         task_req.task_type = ComputeTaskType.TEXT_2_VOICE
         self.run(task_req)
 
-        check_times = 0
-        while True:
-            if task_req.state == ComputeTaskState.DONE:
-                break
-            if task_req.state == ComputeTaskState.ERROR:
-                break
-            if check_times >= 60:
-                task_req.state = ComputeTaskState.ERROR
-                break
-            await asyncio.sleep(0.5)
-            check_times += 1
+        task_result = await self._send_task(task_req)
 
         if task_req.state == ComputeTaskState.DONE:
-            return task_req.result.result
-        else:
-            raise Exception("do_text_to_speech failed!")
+            return task_result.result
 
 
     def text_2_image(self, prompt:str, model_name:Optional[str] = None):
@@ -205,27 +184,9 @@ class ComputeKernel:
 
     async def do_text_2_image(self, prompt:str, model_name:Optional[str] = None) -> [str, ComputeTaskResult]:
         task_req = self.text_2_image(prompt,model_name)
-        async def check_timer():
-            check_times = 0
-            while True:
-                if task_req.state == ComputeTaskState.DONE:
-                    break
-
-                if task_req.state == ComputeTaskState.ERROR:
-                    break
-
-                #may be it will take a long time to generate a image
-                if check_times >=  60:
-                    task_req.state = ComputeTaskState.ERROR
-                    break
-
-                await asyncio.sleep(0.5)
-                check_times += 1
-
-        await asyncio.create_task(check_timer())
-
+        task_result = self._send_task(task_req)
         if task_req.state == ComputeTaskState.DONE:
-            return None, task_req.result
+            return None, task_result
 
         return task_req.error_str, None
 

@@ -78,7 +78,7 @@ class AIBus:
 
         retry_times = 0
         while True:
-            resp = sender_handler.results.get(msg.msg_id)
+            resp : AgentMsg = sender_handler.results.get(msg.msg_id)
             if resp is not None:
                 msg.resp_msg = resp
                 msg.status = AgentMsgStatus.RESPONSED

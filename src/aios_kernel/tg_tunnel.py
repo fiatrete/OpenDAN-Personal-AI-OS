@@ -32,10 +32,13 @@ class TelegramTunnel(AgentTunnel):
 
 
     async def load_from_config(self,config:dict)->bool:
+        self.type = "TelegramTunnel"
         self.tg_token = config["token"]
         self.target_id = config["target"]
         self.tunnel_id = config["tunnel_id"]
-        self.type = "TelegramTunnel"
+        if config.get("allow") is not None:
+            self.allow_group = config["allow"]
+
         return True
 
     def dump_to_config(self) -> dict:
@@ -47,6 +50,7 @@ class TelegramTunnel(AgentTunnel):
         self.tg_token = tg_token
         self.bot:Bot = None
         self.update_queue = None
+        self.allow_group = "contact"
 
     async def _do_process_raw_message(self,bot: Bot, update_id: int) -> int:
         # Request updates after the last update_id
@@ -88,6 +92,11 @@ class TelegramTunnel(AgentTunnel):
                 except Forbidden:
                     # The user has removed or blocked the bot.
                     update_id += 1
+                except  Exception as e:
+                    logger.error(f"tg_tunnel error:{e}")
+                    await asyncio.sleep(1)
+
+                    
 
         asyncio.create_task(_run_app())
         logger.info(f"tunnel {self.tunnel_id} started.")
@@ -130,7 +139,16 @@ class TelegramTunnel(AgentTunnel):
 
         if contact is not None:
             reomte_user_name = contact.name
+            if not contact.is_family_member:
+                if self.allow_group != "contact" and self.allow_group !="guest":
+                    await update.message.reply_text(f"You are not allowed to talk to me! Please contact my father~")
+                    return
+            
         else:
+            if self.allow_group != "guest":
+                await update.message.reply_text(f"You are not allowed to talk to me! Please contact my father~")
+                return
+
             if cm.is_auto_create_contact_from_telegram:
                 contact_name = update.effective_user.first_name
                 if update.effective_user.last_name is not None:

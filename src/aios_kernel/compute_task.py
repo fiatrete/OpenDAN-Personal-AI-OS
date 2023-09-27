@@ -3,6 +3,11 @@ from enum import Enum
 import uuid
 import time
 
+class ComputeTaskResultCode(Enum):
+    OK = 0
+    TIMEOUT = 1
+    NO_WORK = 2
+
 
 class ComputeTaskState(Enum):
     DONE = 0
@@ -95,3 +100,4 @@ class ComputeTaskResult:
     def set_from_task(self, task: ComputeTask):
         self.task_id = task.task_id
         self.callchain_id = task.callchain_id
+        task.result = self
