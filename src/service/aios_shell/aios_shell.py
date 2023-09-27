@@ -570,13 +570,35 @@ def print_welcome_screen():
     print("\033[1;32m \t\tWelcome to OpenDAN - Your Personal AI OS\033[0m\n")
 
     introduce = """
-\tThe core goal of version 0.5.1 is to turn the concept of AIOS into code and get it up and running as quickly as possible. 
-\tAfter three weeks of development, our plans have undergone some changes based on the actual progress of the system. 
-\tUnder the guidance of this goal, some components do not need to be fully implemented. Furthermore, 
-\tbased on the actual development experience from several demo Intelligent Applications, 
-\twe intend to strengthen some components. This document will explain these changes and provide an update 
-\ton the current development progress of MVP(0.5.1,0.5.2)
+\tOpenDAN (Open and Do Anything Now with AI) is revolutionizing the 
+\tAI landscape with its Personal AI Operating System. Designed for 
+\tseamless integration of diverse AI modules, it ensures unmatched 
+\tinteroperability. OpenDAN empowers users to craft powerful AI agents:
+\tfrom butlers and assistants to personal tutors and digital companions.
+\tAll while retaining control. These agents can team up to tackle complex  
+\tchallenges, integrate with existing services, and command IoT devices. 
+\t
+\tWith OpenDAN, we're putting AI in your hands, making life simpler and smarter.
+\t
+\t================ AIOS Shell Handbook ================
 
+\033[1;94m\tUnderstand the Shell Prompt :\033[0m [current_username]<->[current_topic]@[current_target]$ 
+\033[1;94m\tTalk with Agent/Workflow :\033[0m Directly input and wait.
+\033[1;94m\tTalk with another Agent/Workflow :\033[0m /open $target_name [$topic_name]
+\033[1;94m\tInstall new Agent/Workflow :\033[0m /install $agent_name (Not support at 0.5.1)
+\t\t(For Developer) Download and unzip Agent to ~/myai/agents or ~/myai/workflows
+\033[1;94m\tView chat History :\033[0m /history
+\033[1;94m\tChange AIOS Owner's telegram username :\033[0m /set_config telegram
+\033[1;94m\tChange OpenAI API Token :\033[0m /set_config $openai_api_key
+\033[1;94m\tGive your Agent a Telegram account :\033[0m /connect $agent_name
+\033[1;94m\tAdd personal files to the AI Knowledge Base. \033[0m
+\t\t1) Copy your file to ~/myai/data 
+\t\t2) /knowlege add dir
+\033[1;94m\tSearch your knowledge base :\033[0m /open Mia
+\033[1;94m\tCheck the progress of AI reading personal data :\033[0m /knowledge journal
+\033[1;94m\tOpen AI Bash (For Developer Only):\033[0m /open ai_bash
+\033[1;94m\tEnable AIGC Feature :\033[0m /enable aigc
+\033[1;94m\tEnable llama (Local LLM Kernel) :\033[0m /enable llama
 """
     print(introduce)
 
