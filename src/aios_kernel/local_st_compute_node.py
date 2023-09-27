@@ -58,7 +58,7 @@ class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
                 logger.debug(
                     f"LocalSentenceTransformer_Text_ComputeNode task input: {input}"
                 )
-                sentence_embeddings = self.model.encode(input)
+                sentence_embeddings = self.model.encode(input).tolist()
                 # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task sentence_embeddings: {sentence_embeddings}")
                 return {
                     "state": ComputeTaskState.DONE,
