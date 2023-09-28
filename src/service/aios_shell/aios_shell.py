@@ -143,13 +143,13 @@ class AIOS_Shell:
 
         nodes = ComputeNodeConfig.get_instance().initial()
         for node in nodes:
-            await node.start()
+            node.start()
             ComputeKernel.get_instance().add_compute_node(node)
 
         if await AIStorage.get_instance().is_feature_enable("llama"):
             llama_ai_node = LocalLlama_ComputeNode()
             if await llama_ai_node.initial() is True:
-                await llama_ai_node.start()
+                llama_ai_node.start()
                 ComputeKernel.get_instance().add_compute_node(llama_ai_node)
             else:
                 logger.error("llama node initial failed!")
