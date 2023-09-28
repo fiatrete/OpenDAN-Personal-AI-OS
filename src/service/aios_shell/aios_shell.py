@@ -24,8 +24,7 @@ directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
 
-from aios_kernel import AIOS_Version,AgentMsgType,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode,Local_Stability_ComputeNode,Stability_ComputeNode,PaintEnvironment
-from aios_kernel import ContactManager,Contact
+
 import proxy
 from aios_kernel import *
 
@@ -114,6 +113,10 @@ class AIOS_Shell:
 
             cm.add_family_member(self.username,owenr)
 
+        knowledge_env = KnowledgeEnvironment("knowledge")
+        Environment.set_env_by_id("knowledge",knowledge_env)
+
+
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
@@ -137,6 +140,7 @@ class AIOS_Shell:
             return False
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
 
+
         if await AIStorage.get_instance().is_feature_enable("llama"):
             llama_ai_node = LocalLlama_ComputeNode()
             if await llama_ai_node.initial() is True:
@@ -145,6 +149,7 @@ class AIOS_Shell:
             else:
                 logger.error("llama node initial failed!")
                 await AIStorage.get_instance().set_feature_init_result("llama",False)
+
 
         if await AIStorage.get_instance().is_feature_enable("aigc"):
             try:
@@ -160,13 +165,20 @@ class AIOS_Shell:
             #     logger.error("stability api node initial failed!")
             # ComputeKernel.get_instance().add_compute_node(stability_api_node)
 
-            local_sd_node = Local_Stability_ComputeNode.get_instance()
-            if await local_sd_node.initial() is True:
-                ComputeKernel.get_instance().add_compute_node(local_sd_node)
-            else:
-                logger.error("local stability node initial failed!")
-                await AIStorage.get_instance.set_feature_init_result("aigc",False)
-
+        
+        
+        local_st_text_compute_node = LocalSentenceTransformer_Text_ComputeNode()
+        if local_st_text_compute_node.initial() is not True:
+            logger.error("local sentence transformer text embedding node initial failed!")
+        else:
+            ComputeKernel.get_instance().add_compute_node(local_st_text_compute_node)
+            
+        local_st_image_compute_node = LocalSentenceTransformer_Image_ComputeNode()
+        if local_st_image_compute_node.initial() is not True:
+            logger.error("local sentence transformer image embedding node initial failed!")
+        else:
+            ComputeKernel.get_instance().add_compute_node(local_st_image_compute_node)
+       
 
         await ComputeKernel.get_instance().start()
 
@@ -308,8 +320,7 @@ class AIOS_Shell:
     async def handle_knowledge_commands(self, args):
         show_text = FormattedText([("class:title", "sub command not support!\n" 
                               "/knowledge add email | dir\n"
-                              "/knowledge journal [$topn]\n"
-                              "/knowledge query $query\n")])
+                              "/knowledge journal [$topn]\n")])
         if len(args) < 1:
             return show_text
         sub_cmd = args[0]
@@ -346,13 +357,6 @@ class AIOS_Shell:
             topn = 10 if len(args) == 1 else int(args[1])
             journals = [str(journal) for journal in KnowledgePipline.get_instance().get_latest_journals(topn)]
             print_formatted_text("\r\n".join(journals))
-        if sub_cmd == "query":
-            if len(args) < 2:
-                return show_text
-            prompt = AgentPrompt()
-            prompt.messages.append({"role": "user", "content":" ".join(args[1:])})
-            result = await KnowledgeBase().query_prompt(prompt)
-            print_formatted_text(result.as_str())
 
     async def call_func(self,func_name, args):
         match func_name:
@@ -662,8 +666,7 @@ async def main():
                                '/connect $target',
                                '/contact $name',
                                '/knowledge add email | dir',
-                               '/knowledge journal [$topn]',
-                               '/knowledge query $query' 
+                               '/knowledge journal [$topn]', 
                                '/set_config $key',
                                '/enable $feature',
                                '/disable $feature',

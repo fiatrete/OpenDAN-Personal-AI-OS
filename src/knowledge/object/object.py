@@ -1,6 +1,8 @@
 # define a object type enum
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from enum import Enum
+
 from .object_id import ObjectID, ObjectType
 import hashlib
 import json
@@ -61,5 +63,5 @@ class KnowledgeObject(ABC):
         return pickle.dumps(self)
 
     @staticmethod
-    def decode(data: bytes):
+    def decode(data: bytes) -> "ImageObject":
         return pickle.loads(data)

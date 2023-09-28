@@ -2,6 +2,8 @@
 from enum import Enum
 import uuid
 import time
+from typing import Union
+from knowledge import ObjectID
 
 class ComputeTaskResultCode(Enum):
     OK = 0
@@ -25,6 +27,7 @@ class ComputeTaskType(Enum):
     VOICE_2_TEXT = "voice_2_text"
     TEXT_2_VOICE = "text_2_voice"
     TEXT_EMBEDDING ="text_embedding"
+    IMAGE_EMBEDDING ="image_embedding"
 
 
 class ComputeTask:
@@ -60,7 +63,7 @@ class ComputeTask:
         if inner_functions is not None:
             self.params["inner_functions"] = inner_functions
 
-    def set_text_embedding_params(self, input, model_name=None, callchain_id = None):
+    def set_text_embedding_params(self, input: str, model_name=None, callchain_id = None):
         self.task_type = ComputeTaskType.TEXT_EMBEDDING
         self.create_time = time.time()
         self.task_id = uuid.uuid4().hex
@@ -69,6 +72,17 @@ class ComputeTask:
             self.params["model_name"] = model_name
         else:
             self.params["model_name"] = "text-embedding-ada-002"
+        self.params["input"] = input
+        
+    def set_image_embedding_params(self, input = Union[ObjectID, bytes], model_name=None, callchain_id = None):
+        self.task_type = ComputeTaskType.IMAGE_EMBEDDING
+        self.create_time = time.time()
+        self.task_id = uuid.uuid4().hex
+        self.callchain_id = callchain_id
+        if model_name is not None:
+            self.params["model_name"] = model_name
+        else:
+            self.params["model_name"] = None
         self.params["input"] = input
     
     def set_text_2_image_params(self, prompt: str, model_name, negative_prompt="", callchain_id=None):

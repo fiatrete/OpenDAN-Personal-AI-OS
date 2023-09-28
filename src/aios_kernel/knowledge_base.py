@@ -4,6 +4,8 @@ import logging
 from .agent import AgentPrompt
 from .compute_kernel import ComputeKernel 
 from .storage import AIStorage
+from .environment import Environment
+from .ai_function import SimpleAIFunction
 from knowledge import *
 
 
@@ -20,6 +22,7 @@ class KnowledgeBase:
     def __singleton_init__(self) -> None:
         self.store = KnowledgeStore()
         self.compute_kernel = ComputeKernel.get_instance()
+        self._default_text_model = "all-MiniLM-L6-v2"
 
     async def __embedding_document(self, document: DocumentObject):
         for chunk_id in document.get_chunk_list():
@@ -28,8 +31,8 @@ class KnowledgeBase:
                 raise ValueError(f"text chunk not found: {chunk_id}")
         
             text = chunk.read().decode("utf-8")
-            vector = await self.compute_kernel.do_text_embedding(text)
-            await self.store.get_vector_store("default").insert(vector, chunk_id)
+            vector = await self.compute_kernel.do_text_embedding(text, self._default_text_model)
+            await self.store.get_vector_store(self._default_text_model).insert(vector, chunk_id)
 
     async def __embedding_image(self, image: ImageObject):
         desc = {}
@@ -39,8 +42,8 @@ class KnowledgeBase:
             desc["exif"] = image.get_exif()
         if not not image.get_tags():
             desc["tags"] = image.get_tags()
-        vector = await self.compute_kernel.do_text_embedding(json.dumps(desc))
-        await self.store.get_vector_store("default").insert(vector, image.calculate_id())
+        vector = await self.compute_kernel.do_text_embedding(json.dumps(desc), self._default_text_model)
+        await self.store.get_vector_store(self._default_text_model).insert(vector, image.calculate_id())
 
     async def __embedding_video(self, vedio: VideoObject):
         desc = {}
@@ -50,8 +53,8 @@ class KnowledgeBase:
             desc["info"] = vedio.get_info()
         if not not vedio.get_tags():
             desc["tags"] = vedio.get_tags()
-        vector = await self.compute_kernel.do_text_embedding(json.dumps(desc))
-        await self.store.get_vector_store("default").insert(vector, vedio.calculate_id())
+        vector = await self.compute_kernel.do_text_embedding(json.dumps(desc), self._default_text_model)
+        await self.store.get_vector_store(self._default_text_model).insert(vector, vedio.calculate_id())
 
     async def __embedding_rich_text(self, rich_text: RichTextObject):
         for document_id in rich_text.get_documents().values():
@@ -68,8 +71,8 @@ class KnowledgeBase:
             await self.__embedding_rich_text(rich_text)
 
     async def __embedding_email(self, email: EmailObject):
-        vector = await self.compute_kernel.do_text_embedding(json.dumps(email.get_desc()))
-        await self.store.get_vector_store("default").insert(vector, email.calculate_id())
+        vector = await self.compute_kernel.do_text_embedding(json.dumps(email.get_desc()), self._default_text_model)
+        await self.store.get_vector_store(self._default_text_model).insert(vector, email.calculate_id())
         await self.__embedding_rich_text(email.get_rich_text())
 
 
@@ -159,23 +162,10 @@ class KnowledgeBase:
     async def insert_object(self, object: KnowledgeObject):
         self.store.get_object_store().put_object(object.calculate_id(), object.encode())
         await self.__do_embedding(object)
-
-    async def query_prompt(self, prompt: AgentPrompt):
-        logging.info(f"query_prompt: {prompt}")
-        objects = await self.query_objects(prompt)
-        knowledge_prompt = self.prompt_from_objects(objects)
-        logging.info(f"prompt_from_objects result: {knowledge_prompt.as_str()}")
-       
-        return knowledge_prompt
-
-    async def query_objects(self, prompt: AgentPrompt) -> [ObjectID]:
-        results = []
-        for msg in prompt.messages:
-            if msg["role"] == "user":
-                vector = await self.compute_kernel.do_text_embedding(msg["content"])
-                object_ids = await self.store.get_vector_store("default").query(vector, 10)
-                results.extend(object_ids)
-        return results
+    
+    async def query_objects(self, tokens: str, topk: int) -> [ObjectID]:
+        vector = await self.compute_kernel.do_text_embedding(tokens, self._default_text_model)
+        return await self.store.get_vector_store(self._default_text_model).query(vector, topk)
 
     def __load_object(self, object_id: ObjectID) -> KnowledgeObject:
         if object_id.get_object_type() == ObjectType.Document:
@@ -192,7 +182,7 @@ class KnowledgeBase:
             pass
         
 
-    def prompt_from_objects(self, object_ids: [ObjectID]) -> AgentPrompt:
+    def tokens_from_objects(self, object_ids: [ObjectID]) -> list[str]:
         results = dict()
         for object_id in object_ids:
             parents = self.store.get_relation_store().get_related_root_objects(object_id)
@@ -203,8 +193,7 @@ class KnowledgeBase:
                 results[str(root_object_id)].append(object_id)
             else:
                 results[str(root_object_id)] = [root_object_id, object_id]
-
-        content = "*** I have provided the following known information for your reference with json format:\n"
+        content = ""
         result_desc = []
         for result in results.values():
             # first element in result is the root object
@@ -236,12 +225,28 @@ class KnowledgeBase:
                 else:
                     pass
         content += json.dumps(result_desc)
-        content += ".\n"
+        content += ".\n"  
 
-        prompt = AgentPrompt()
-        prompt.messages.append({"role": "user", "content": content})    
-
-        return prompt
+        return content
 
 
-    
+class KnowledgeEnvironment(Environment):
+    def __init__(self, env_id: str) -> None:
+        super().__init__(env_id)
+
+        query_param = {
+            "tokens": "tokens to query", 
+            "index": "index of query result"
+        }
+        self.add_ai_function(SimpleAIFunction("query_knowledge", 
+                                            "vector query content from local knowledge base",
+                                            self._query, 
+                                            query_param))
+        
+    async def _query(self, tokens: str, index: int=0):
+        object_ids = await KnowledgeBase().query_objects(tokens, 4)
+        if len(object_ids) <= index:
+            return "*** I have no more information for your reference.\n"
+        else:
+            content = "*** I have provided the following known information for your reference with json format:\n"
+            return content + KnowledgeBase().tokens_from_objects(object_ids[index:index + 1])

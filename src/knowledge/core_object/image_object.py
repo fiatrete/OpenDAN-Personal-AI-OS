@@ -2,6 +2,7 @@ from ..object import KnowledgeObject
 from ..data import ChunkList, ChunkListWriter
 from ..object import ObjectType
 from .. import KnowledgeStore
+import os
 
 # desc
 #   meta
@@ -13,30 +14,34 @@ from .. import KnowledgeStore
 
 
 class ImageObject(KnowledgeObject):
-    def __init__(self, meta: dict, tags: dict, exif: dict, chunk_list: ChunkList):
+    def __init__(self, meta: dict, tags: dict, exif: dict, file_size: int, chunk_list: ChunkList):
         desc = dict()
         body = dict()
         desc["meta"] = meta
         desc["exif"] = exif
         desc["tags"] = tags
         desc["hash"] = chunk_list.hash.to_base58()
+        desc["file_size"] = file_size
         body["chunk_list"] = chunk_list.chunk_list
 
         super().__init__(ObjectType.Image, desc, body)
 
-    def get_meta(self):
+    def get_meta(self) -> dict:
         return self.desc["meta"]
 
-    def get_exif(self):
+    def get_exif(self) -> dict:
         return self.desc["exif"]
 
-    def get_tags(self):
+    def get_tags(self) -> dict:
         return self.desc["tags"]
     
-    def get_hash(self):
+    def get_hash(self) -> str:
         return self.desc["hash"]
 
-    def get_chunk_list(self):
+    def get_file_size(self) -> int:
+        return self.desc["file_size"]
+    
+    def get_chunk_list(self) -> ChunkList:
         return self.body["chunk_list"]
 
 
@@ -82,8 +87,10 @@ class ImageObjectBuilder:
         return self
 
     def build(self) -> ImageObject:
+        
+        file_size = os.path.getsize(self.image_file)
         chunk_list = KnowledgeStore().get_chunk_list_writer().create_chunk_list_from_file(
             self.image_file, 1024 * 1024 * 4, self.restore_file
         )
         exif = get_exif_data(self.image_file)
-        return ImageObject(self.meta, self.tags, exif, chunk_list)
+        return ImageObject(self.meta, self.tags, exif, file_size, chunk_list)

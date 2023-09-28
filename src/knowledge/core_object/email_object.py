@@ -21,13 +21,13 @@ class EmailObject(KnowledgeObject):
 
         super().__init__(ObjectType.Email, desc, body)
 
-    def get_meta(self):
+    def get_meta(self) -> dict:
         return self.desc["meta"]
 
-    def get_tags(self):
+    def get_tags(self) -> dict:
         return self.desc["tags"]
 
-    def get_rich_text(self):
+    def get_rich_text(self) -> RichTextObject:
         return self.body["content"]
 
 

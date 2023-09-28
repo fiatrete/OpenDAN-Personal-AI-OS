@@ -24,13 +24,15 @@ from knowledge import (
     ObjectRelationStore,
     KnowledgeStore,
     EmailObject,
+    ImageObject,
 )
+from aios_kernel import LocalSentenceTransformer_Image_ComputeNode, ComputeTask
 import asyncio
 import unittest
 
 
-class TestVectorSTorage(unittest.TestCase):
-    def test_object(self):
+class TestVectorSTorage(unittest.IsolatedAsyncioTestCase):
+    async def test_object(self):
         data = HashValue.hash_data("1233".encode("utf-8"))
         print(data.to_base58())
         print(data.to_base36())
@@ -57,6 +59,41 @@ class TestVectorSTorage(unittest.TestCase):
         ret2 = obj.encode()
         self.assertEqual(ret, ret2)
         
+        images = email_object.get_rich_text().get_images()
+        image_keys = list(images.keys())
+        print("got image list: ", image_keys)
+        
+        image_id = images[image_keys[1]]
+        print(f"got image object: {image_keys[1]} {image_id.to_base58()}")
+        
+        node = LocalSentenceTransformer_Image_ComputeNode();
+        ret = node.initial()
+        self.assertEqual(ret, True)
+        
+        task = ComputeTask()
+        task.set_image_embedding_params(image_id)
+        ret = await node.execute_task(task)
+        print(ret)
+        '''
+        buf = KnowledgeStore().get_object_store().get_object(image_id)
+        image_obj= ImageObject.decode(buf)
+        file_size = image_obj.get_file_size()
+        print(f"got image object: {image_id.to_base58()}, size: {file_size}")
+        
+     
+        image_data = KnowledgeStore().get_chunk_reader().read_chunk_list_to_single_bytes(image_obj.get_chunk_list())
+        self.assertEqual(file_size, len(image_data))
+        
+        from PIL import Image
+        import io
+        image = Image.open(io.BytesIO(image_data))
+        image.show()
+        
+        from sentence_transformers import SentenceTransformer
+        #model = SentenceTransformer('clip-ViT-B-32-multilingual-v1')
+        model = SentenceTransformer('clip-ViT-B-32')
+        model.encode(image, convert_to_tensor=True)
+        '''
 
     def test_relation(self):
         obj1 = ObjectID.hash_data("12345".encode("utf-8"))

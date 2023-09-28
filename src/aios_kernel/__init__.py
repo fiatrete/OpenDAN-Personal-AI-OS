@@ -5,7 +5,7 @@ from .agent import AIAgent,AIAgentTemplete,AgentPrompt
 from .compute_kernel import ComputeKernel,ComputeTask,ComputeTaskResult,ComputeTaskState,ComputeTaskType
 from .compute_node import ComputeNode,LocalComputeNode
 from .open_ai_node import OpenAI_ComputeNode
-from .knowledge_base import KnowledgeBase 
+from .knowledge_base import KnowledgeBase, KnowledgeEnvironment
 from .knowledge_pipeline import KnowledgeEmailSource, KnowledgeDirSource, KnowledgePipline
 from .role import AIRole,AIRoleGroup
 from .workflow import Workflow
@@ -23,6 +23,7 @@ from .text_to_speech_function import TextToSpeechFunction
 from .workspace_env import WorkspaceEnvironment
 from .local_stability_node import Local_Stability_ComputeNode
 from .stability_node import Stability_ComputeNode
+from .local_st_compute_node import LocalSentenceTransformer_Text_ComputeNode,LocalSentenceTransformer_Image_ComputeNode
 
 AIOS_Version = "0.5.1, build 2023-9-27"
 
