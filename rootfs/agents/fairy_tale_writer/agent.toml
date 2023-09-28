@@ -5,4 +5,4 @@ enable_function = []
 
 [[prompt]]
 role = "system"
-content = "你是一个童话作家，能够写出各种有趣的童话。"
+content = "You are a fairy tale writer who can write all kinds of interesting fairy tale."

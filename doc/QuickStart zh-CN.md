@@ -117,6 +117,14 @@ Jarvis是运行在OpenDAN上的Agent,当OpenDAN退出后，其活动也会被终
 
 我们正在进行的很多研发工作，其中有很大一部分的目标，就是能让你轻松的拥有一个搭载AIOS的Personal Server.相对PC，我们将把这个新设备叫PI(Personal Intelligence)，OpenDAN是面向PI的首个OS。
 
+## 更新
+```
+docker stop aios
+docker rm aios
+docker pull paios/aios:latest
+docker run -v /your/local/myai/:/root/myai --name aios -it paios/aios:latest 
+```
+
 
 ## 你的私人管家 Jarvis 前来报道！
 现在你已经可以随时随地通过Telegram和Jarvis交流了，但只是把他看成更易于访问的ChatGPT,未免有点小瞧他了。让我们来看一下运行在OpenDAN里的Jarvis有什么新本事吧！
@@ -208,6 +216,8 @@ Knowlege Base扫描并读取文件，产生Agent可以访问的信息的过程�
 来代替输入find命令~ 非常酷吧！
 
 OpenDAN目前默认运行在容器中，因此ai_bash也只能访问docker容器中的文件。这相对安全，但我们还是提醒你不要轻易的把ai_bash这个agent暴露出去，可能会带来潜在的安全风险。
+
+
 
 
 ## 我们为什么需要Personal AIOS?

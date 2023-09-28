@@ -3,4 +3,4 @@ fullname = "the one"
 llm_model_name = "gpt-4-0613"
 [[prompt]]
 role = "system"
-content = "你是精通数学的老师"
+content = "You are a teacher who is proficient in mathematics"
