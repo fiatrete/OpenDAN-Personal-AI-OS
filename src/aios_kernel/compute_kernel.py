@@ -5,6 +5,7 @@ import logging
 import asyncio
 from asyncio import Queue
 
+from knowledge import ObjectID
 from .agent import AgentPrompt
 from .compute_node import ComputeNode
 from .compute_task import ComputeTask, ComputeTaskState, ComputeTaskResult, ComputeTaskType,ComputeTaskResultCode
@@ -145,6 +146,21 @@ class ComputeKernel:
 
     async def do_text_embedding(self,input:str,model_name:Optional[str] = None) -> [float]:
         task_req = self.text_embedding(input,model_name)
+        task_result = await self._send_task(task_req)
+
+        if task_req.state == ComputeTaskState.DONE:
+            return task_result.result_str
+
+        return "error!"
+
+    def image_embedding(self,input:ObjectID,model_name:Optional[str] = None):
+        task_req = ComputeTask()
+        task_req.set_image_embedding_params(input,model_name)
+        self.run(task_req)
+        return task_req
+    
+    async def do_image_embedding(self,input:ObjectID,model_name:Optional[str] = None) -> [float]:
+        task_req = self.image_embedding(input,model_name)
         task_result = await self._send_task(task_req)
 
         if task_req.state == ComputeTaskState.DONE:

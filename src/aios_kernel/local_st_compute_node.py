@@ -146,7 +146,7 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
                 return None
 
             file_size = image_obj.get_file_size()
-            print(f"got image object: {source.to_base58()}, size: {file_size}")
+            # print(f"got image object: {source.to_base58()}, size: {file_size}")
 
             image_data = (
                 KnowledgeStore()
@@ -207,7 +207,7 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
                         "error": {"code": -1, "message": "load image failed"},
                     }
 
-                sentence_embeddings = self.model.encode(img)
+                sentence_embeddings = self.model.encode(img, show_progress_bar=False).tolist()
 
                 # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task sentence_embeddings: {sentence_embeddings}")
                 return {

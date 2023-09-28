@@ -23,6 +23,7 @@ class KnowledgeBase:
         self.store = KnowledgeStore()
         self.compute_kernel = ComputeKernel.get_instance()
         self._default_text_model = "all-MiniLM-L6-v2"
+        self._default_image_model = "clip-ViT-B-32"
 
     async def __embedding_document(self, document: DocumentObject):
         for chunk_id in document.get_chunk_list():
@@ -35,15 +36,16 @@ class KnowledgeBase:
             await self.store.get_vector_store(self._default_text_model).insert(vector, chunk_id)
 
     async def __embedding_image(self, image: ImageObject):
-        desc = {}
-        if not not image.get_meta():
-            desc["meta"] = image.get_meta()
-        if not not image.get_exif():
-            desc["exif"] = image.get_exif()
-        if not not image.get_tags():
-            desc["tags"] = image.get_tags()
-        vector = await self.compute_kernel.do_text_embedding(json.dumps(desc), self._default_text_model)
-        await self.store.get_vector_store(self._default_text_model).insert(vector, image.calculate_id())
+        # desc = {}
+        # if not not image.get_meta():
+        #     desc["meta"] = image.get_meta()
+        # if not not image.get_exif():
+        #     desc["exif"] = image.get_exif()
+        # if not not image.get_tags():
+        #     desc["tags"] = image.get_tags()
+        # vector = await self.compute_kernel.do_text_embedding(json.dumps(desc), self._default_text_model)
+        vector = await self.compute_kernel.do_image_embedding(image.calculate_id(), self._default_image_model)
+        await self.store.get_vector_store(self._default_image_model).insert(vector, image.calculate_id())
 
     async def __embedding_video(self, vedio: VideoObject):
         desc = {}
@@ -163,9 +165,16 @@ class KnowledgeBase:
         self.store.get_object_store().put_object(object.calculate_id(), object.encode())
         await self.__do_embedding(object)
     
-    async def query_objects(self, tokens: str, topk: int) -> [ObjectID]:
-        vector = await self.compute_kernel.do_text_embedding(tokens, self._default_text_model)
-        return await self.store.get_vector_store(self._default_text_model).query(vector, topk)
+    async def query_objects(self, tokens: str, types: list[str], topk: int) -> [ObjectID]:
+        texts = []
+        if "text" in types:
+            vector = await self.compute_kernel.do_text_embedding(tokens, self._default_text_model)
+            texts = await self.store.get_vector_store(self._default_text_model).query(vector, topk)
+        images = []
+        if "image" in types:
+            vector = await self.compute_kernel.do_text_embedding(tokens, self._default_image_model)
+            images = await self.store.get_vector_store(self._default_image_model).query(vector, topk)
+        return texts + images
 
     def __load_object(self, object_id: ObjectID) -> KnowledgeObject:
         if object_id.get_object_type() == ObjectType.Document:
@@ -213,8 +222,9 @@ class KnowledgeBase:
                 if object_id.get_object_type() == ObjectType.Chunk:
                     upper_list.append({"type": "text", "content": self.store.get_chunk_reader().get_chunk(object_id).read().decode("utf-8")})
                 if object_id.get_object_type() == ObjectType.Image:
-                    image = self.__load_object(object_id)
-                    desc = image.get_desc()
+                    # image = self.__load_object(object_id)
+                    desc = dict()
+                    desc["id"] = str(object_id)
                     desc["type"] = "image"
                     upper_list.append(desc)
                 if object_id.get_object_type() == ObjectType.Video:
@@ -235,7 +245,8 @@ class KnowledgeEnvironment(Environment):
         super().__init__(env_id)
 
         query_param = {
-            "tokens": "tokens to query", 
+            "tokens": "key words to query", 
+            "types": "prefered knowledge types, one or more of [text, image]",
             "index": "index of query result"
         }
         self.add_ai_function(SimpleAIFunction("query_knowledge", 
@@ -243,10 +254,10 @@ class KnowledgeEnvironment(Environment):
                                             self._query, 
                                             query_param))
         
-    async def _query(self, tokens: str, index: int=0):
-        object_ids = await KnowledgeBase().query_objects(tokens, 4)
+    async def _query(self, tokens: str, types: list[str] = ["text"], index: int=0):
+        object_ids = await KnowledgeBase().query_objects(tokens, types, 4)
         if len(object_ids) <= index:
             return "*** I have no more information for your reference.\n"
         else:
             content = "*** I have provided the following known information for your reference with json format:\n"
-            return content + KnowledgeBase().tokens_from_objects(object_ids[index:index + 1])
+            return content + KnowledgeBase().tokens_from_objects(object_ids[index:index+1])
