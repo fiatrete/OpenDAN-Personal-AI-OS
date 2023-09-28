@@ -320,8 +320,7 @@ class AIOS_Shell:
     async def handle_knowledge_commands(self, args):
         show_text = FormattedText([("class:title", "sub command not support!\n" 
                               "/knowledge add email | dir\n"
-                              "/knowledge journal [$topn]\n"
-                              "/knowledge query $query\n")])
+                              "/knowledge journal [$topn]\n")])
         if len(args) < 1:
             return show_text
         sub_cmd = args[0]
@@ -358,13 +357,6 @@ class AIOS_Shell:
             topn = 10 if len(args) == 1 else int(args[1])
             journals = [str(journal) for journal in KnowledgePipline.get_instance().get_latest_journals(topn)]
             print_formatted_text("\r\n".join(journals))
-        if sub_cmd == "query":
-            if len(args) < 2:
-                return show_text
-            prompt = AgentPrompt()
-            prompt.messages.append({"role": "user", "content":" ".join(args[1:])})
-            result = await KnowledgeBase().query_prompt(prompt)
-            print_formatted_text(result.as_str())
 
     async def call_func(self,func_name, args):
         match func_name:
@@ -674,8 +666,7 @@ async def main():
                                '/connect $target',
                                '/contact $name',
                                '/knowledge add email | dir',
-                               '/knowledge journal [$topn]',
-                               '/knowledge query $query' 
+                               '/knowledge journal [$topn]', 
                                '/set_config $key',
                                '/enable $feature',
                                '/disable $feature',

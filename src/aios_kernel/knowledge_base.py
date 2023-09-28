@@ -163,9 +163,9 @@ class KnowledgeBase:
         self.store.get_object_store().put_object(object.calculate_id(), object.encode())
         await self.__do_embedding(object)
     
-    async def query_objects(self, tokens: str) -> [ObjectID]:
+    async def query_objects(self, tokens: str, topk: int) -> [ObjectID]:
         vector = await self.compute_kernel.do_text_embedding(tokens, self._default_text_model)
-        return await self.store.get_vector_store(self._default_text_model).query(vector, 10)
+        return await self.store.get_vector_store(self._default_text_model).query(vector, topk)
 
     def __load_object(self, object_id: ObjectID) -> KnowledgeObject:
         if object_id.get_object_type() == ObjectType.Document:
@@ -193,8 +193,7 @@ class KnowledgeBase:
                 results[str(root_object_id)].append(object_id)
             else:
                 results[str(root_object_id)] = [root_object_id, object_id]
-
-        content = "*** I have provided the following known information for your reference with json format:\n"
+        content = ""
         result_desc = []
         for result in results.values():
             # first element in result is the root object
@@ -244,6 +243,10 @@ class KnowledgeEnvironment(Environment):
                                             self._query, 
                                             query_param))
         
-    async def _query(tokens: str, index: int):
-        object_ids = await KnowledgeBase().query_objects(tokens)
-        KnowledgeBase().tokens_from_objects(object_ids)
+    async def _query(self, tokens: str, index: int=0):
+        object_ids = await KnowledgeBase().query_objects(tokens, 4)
+        if len(object_ids) <= index:
+            return "*** I have no more information for your reference.\n"
+        else:
+            content = "*** I have provided the following known information for your reference with json format:\n"
+            return content + KnowledgeBase().tokens_from_objects(object_ids[index:index + 1])
