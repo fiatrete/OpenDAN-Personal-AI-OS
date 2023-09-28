@@ -358,13 +358,6 @@ class AIAgent:
             old_content = msg.get("content")
             msg["content"] = old_content.format_map(self.owner_env)
 
-    async def _get_knowlege_prompt(self,input_msg:AgentPrompt) -> AgentPrompt:
-        if self.enable_kb is False:
-            return None
-        
-        from .knowledge_base import KnowledgeBase
-        return await KnowledgeBase().query_prompt(input_msg)
-
     async def _process_msg(self,msg:AgentMsg) -> AgentMsg:
             from .compute_kernel import ComputeKernel
             from .bus import AIBus
@@ -392,11 +385,6 @@ class AIAgent:
 
             history_prmpt,history_token_len = await self._get_prompt_from_session(chatsession,system_prompt_len + function_token_len,input_len)
             prompt.append(history_prmpt) # chat context
-            
-            kb_prompt = await self._get_knowlege_prompt(msg_prompt)
-            prompt.append(kb_prompt)
-            prompt.append(msg_prompt)
-
 
             logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
             task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)

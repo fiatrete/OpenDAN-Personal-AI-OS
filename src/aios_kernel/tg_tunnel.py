@@ -9,6 +9,10 @@ from telegram import Bot
 from telegram.ext import Updater
 from telegram.error import Forbidden, NetworkError
 
+from knowledge.object.object_id import ObjectType
+
+from .knowledge_base import KnowledgeBase
+
 from .tunnel import AgentTunnel
 from .storage import AIStorage
 from .contact_manager import ContactManager,Contact,FamilyMember
@@ -171,13 +175,20 @@ class TelegramTunnel(AgentTunnel):
         else:
             if resp_msg.body_mime is None:
                 if resp_msg.body is not None:
-                    pos = resp_msg.body.find("audio file")
-                    if pos != -1:
-                        audio_file = resp_msg.body[pos+11:].strip()
-                        if audio_file.startswith("\""):
-                            audio_file = audio_file[1:-1]
-                        await update.message.reply_voice(audio_file)
-                        return
+                    knowledge_object = KnowledgeBase().parse_object_in_message(resp_msg.body)
+                    if knowledge_object is not None:
+                        if knowledge_object.get_object_type() == ObjectType.Image:
+                            image = KnowledgeBase().bytes_from_object(knowledge_object)
+                            await update.message.reply_photo(image)
+                            return
+                    else:
+                        pos = resp_msg.body.find("audio file")
+                        if pos != -1:
+                            audio_file = resp_msg.body[pos+11:].strip()
+                            if audio_file.startswith("\""):
+                                audio_file = audio_file[1:-1]
+                            await update.message.reply_voice(audio_file)
+                            return
                 await update.message.reply_text(resp_msg.body)
             else:
                 if resp_msg.body_mime.startswith("image"):

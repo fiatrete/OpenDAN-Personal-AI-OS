@@ -238,6 +238,31 @@ class KnowledgeBase:
         content += ".\n"  
 
         return content
+    
+    def parse_object_in_message(self, message: str) -> KnowledgeObject:
+        # get message's first line 
+        lines = message.split("\n")
+        if len(lines) > 0:
+            message = lines[0]
+            try:
+                desc = json.loads(message)
+                object_id = desc["object_id"]
+            except:
+                return None
+            
+            if object_id is not None:
+                return self.__load_object(ObjectID(object_id))
+            
+            
+    def bytes_from_object(self, object: KnowledgeObject) -> bytes:
+        if object.get_object_type() == ObjectType.Image:
+            image_object = object
+            return self.store.get_chunk_reader().read_chunk_list_to_single_bytes(image_object.get_chunk_list())
+           
+
+
+           
+
 
 
 class KnowledgeEnvironment(Environment):
