@@ -107,7 +107,7 @@ class ComputeKernel:
         self.run(task_req)
         return task_req
     
-    async def _send_task(self,task_req:ComputeTask)->ComputeTaskResult:        
+    async def _wait_task(self,task_req:ComputeTask)->ComputeTaskResult:        
         async def check_timer():
             check_times = 0
             while True:
@@ -135,7 +135,7 @@ class ComputeKernel:
 
     async def do_llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0, inner_functions = None) -> str:
         task_req = self.llm_completion(prompt, mode_name, max_token,inner_functions)
-        return await self._send_task(task_req)
+        return await self._wait_task(task_req)
 
 
     def text_embedding(self,input:str,model_name:Optional[str] = None):
@@ -146,12 +146,13 @@ class ComputeKernel:
 
     async def do_text_embedding(self,input:str,model_name:Optional[str] = None) -> [float]:
         task_req = self.text_embedding(input,model_name)
-        task_result = await self._send_task(task_req)
+        task_result = await self._wait_task(task_req)
 
         if task_req.state == ComputeTaskState.DONE:
-            return task_result.result_str
-
-        return "error!"
+            return task_result.result.get("content")
+        else:
+            logging.warning(f"do_text_embedding error: {task_req.error_str},input: {input}")
+        return None
 
     def image_embedding(self,input:ObjectID,model_name:Optional[str] = None):
         task_req = ComputeTask()
@@ -161,12 +162,12 @@ class ComputeKernel:
     
     async def do_image_embedding(self,input:ObjectID,model_name:Optional[str] = None) -> [float]:
         task_req = self.image_embedding(input,model_name)
-        task_result = await self._send_task(task_req)
+        task_result = await self._wait_task(task_req)
 
         if task_req.state == ComputeTaskState.DONE:
-            return task_result.result_str
+            return task_result.result.get("content")
 
-        return "error!"
+        return None
 
     async def do_text_to_speech(self,
                        input:str,
@@ -185,7 +186,7 @@ class ComputeKernel:
         task_req.task_type = ComputeTaskType.TEXT_2_VOICE
         self.run(task_req)
 
-        task_result = await self._send_task(task_req)
+        task_result = await self._wait_task(task_req)
 
         if task_req.state == ComputeTaskState.DONE:
             return task_result.result
@@ -199,7 +200,7 @@ class ComputeKernel:
 
     async def do_text_2_image(self, prompt:str, model_name:Optional[str] = None, negative_prompt = None) -> ComputeTaskResult:
         task = self.text_2_image(prompt,model_name, negative_prompt)
-        task = await self._send_task(task)
+        task = await self._wait_task(task)
 
         return task.result
         # if task_req.state == ComputeTaskState.DONE:

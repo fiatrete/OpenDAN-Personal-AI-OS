@@ -110,7 +110,9 @@ class ComputeTaskResult:
         self.error_str : str = None 
         self.result_code: int = 0
         self.result_str: str = None # easy to use,can read from result
-        self.result_message: dict = {}
+
+        self.result : dict = {}
+
         self.result_refers: dict = {}
         self.pading_data: bytearray = None
 

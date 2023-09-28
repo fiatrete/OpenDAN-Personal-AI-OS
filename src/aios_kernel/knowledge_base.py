@@ -33,7 +33,8 @@ class KnowledgeBase:
         
             text = chunk.read().decode("utf-8")
             vector = await self.compute_kernel.do_text_embedding(text, self._default_text_model)
-            await self.store.get_vector_store(self._default_text_model).insert(vector, chunk_id)
+            if vector:
+                await self.store.get_vector_store(self._default_text_model).insert(vector, chunk_id)
 
     async def __embedding_image(self, image: ImageObject):
         # desc = {}
@@ -45,7 +46,8 @@ class KnowledgeBase:
         #     desc["tags"] = image.get_tags()
         # vector = await self.compute_kernel.do_text_embedding(json.dumps(desc), self._default_text_model)
         vector = await self.compute_kernel.do_image_embedding(image.calculate_id(), self._default_image_model)
-        await self.store.get_vector_store(self._default_image_model).insert(vector, image.calculate_id())
+        if vector:
+            await self.store.get_vector_store(self._default_image_model).insert(vector, image.calculate_id())
 
     async def __embedding_video(self, vedio: VideoObject):
         desc = {}

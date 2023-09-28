@@ -340,7 +340,9 @@ class AIAgent:
         org_msg.inner_call_chain.append(ineternal_call_record)
 
         if stack_limit > 0:
-            inner_func_call_node = task_result.result_message.get("function_call")
+            result_message = task_result.result.get("message")
+            if result_message:
+                inner_func_call_node = result_message.get("function_call")
 
         if inner_func_call_node:
             return await self._execute_func(inner_func_call_node,prompt,org_msg,stack_limit-1)
@@ -395,7 +397,9 @@ class AIAgent:
             
             final_result = task_result.result_str
 
-            inner_func_call_node = task_result.result_message.get("function_call")
+            result_message = task_result.result.get("message")
+            if result_message:
+                inner_func_call_node = result_message.get("function_call")
             if inner_func_call_node:
                 #TODO to save more token ,can i use msg_prompt?
                 final_result,error_code = await self._execute_func(inner_func_call_node,prompt,msg)

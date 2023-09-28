@@ -21,7 +21,11 @@ class LocalLlama_ComputeNode(Queue_ComputeNode):
         self.url = url
         self.model_name = model_name
 
-    async def execute_task(self, task: ComputeTask, result: ComputeTaskResult):
+    async def execute_task(self, task: ComputeTask)->ComputeTaskResult:
+        result = ComputeTaskResult()
+        result.result_code = ComputeTaskResultCode.ERROR
+        result.set_from_task(task)
+        result.worker_id = self.node_id
         match task.task_type:
             case ComputeTaskType.TEXT_EMBEDDING:
                 model_name = task.params["model_name"]
@@ -56,7 +60,9 @@ class LocalLlama_ComputeNode(Queue_ComputeNode):
                 result.result_code = ComputeTaskResultCode.ERROR
                 task.error_str = f"ComputeTask's TaskType : {task.task_type} not support!"
                 result.error_str = f"ComputeTask's TaskType : {task.task_type} not support!"
-                return None
+                return result
+        
+        return result
 
     async def initial(self) -> bool:
         return True
@@ -145,7 +151,8 @@ class LocalLlama_ComputeNode(Queue_ComputeNode):
                     
                 result.result_code = ComputeTaskResultCode.OK
                 result.result_str = resp["choices"][0]["message"]["content"]
-                result.result_message = resp["choices"][0]["message"]
+                result.result["message"] = resp["choices"][0]["message"]
+               
                 if token_usage:
                     result.result_refers["token_usage"] = token_usage
 

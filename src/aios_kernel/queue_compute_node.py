@@ -16,7 +16,7 @@ class Queue_ComputeNode(ComputeNode):
         self.is_start = False
 
     @abstractmethod
-    async def execute_task(self, task: ComputeTask, result: ComputeTaskResult):
+    async def execute_task(self, task: ComputeTask)->ComputeTaskResult:
         pass
 
     async def push_task(self, task: ComputeTask, proiority: int = 0):
@@ -29,15 +29,22 @@ class Queue_ComputeNode(ComputeNode):
     async def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
 
-
         result = ComputeTaskResult()
         result.result_code = ComputeTaskResultCode.ERROR
         result.set_from_task(task)
         result.worker_id = self.node_id
 
-        await self.execute_task(task, result)
-            
-        return result
+        real_result = await self.execute_task(task)
+
+        if real_result:
+            if real_result.result_code == ComputeTaskResultCode.OK:
+                task.state = ComputeTaskState.DONE
+            else:
+                task.state = ComputeTaskState.ERROR
+            return real_result
+        else:
+            task.state = ComputeTaskState.ERROR
+            return result
 
     def start(self):
         if self.is_start is True:

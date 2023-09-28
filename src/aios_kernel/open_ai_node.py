@@ -150,7 +150,8 @@ class OpenAI_ComputeNode(ComputeNode):
                 result.result_code = ComputeTaskResultCode.OK
                 result.worker_id = self.node_id
                 result.result_str = resp["choices"][0]["message"]["content"]
-                result.result_message = resp["choices"][0]["message"]
+                result.result["message"] = resp["choices"][0]["message"]
+
                 if token_usage:
                     result.result_refers["token_usage"] = token_usage
                 logger.info(f"openai success response: {result.result_str}")

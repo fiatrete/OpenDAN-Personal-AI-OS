@@ -28,7 +28,8 @@ class ChromaVectorStore(VectorBase):
         self.collection = collection
 
     async def insert(self, vector: [float], id: ObjectID):
-        logging.info(f"will insert vector: {vector} id: {str(id)}")
+        logging.info(f"will insert vector: {len(vector)} id: {str(id)}")
+        logging.debug(f"vector is {vector}")
         self.collection.add(
             embeddings=vector,
             ids=str(id),

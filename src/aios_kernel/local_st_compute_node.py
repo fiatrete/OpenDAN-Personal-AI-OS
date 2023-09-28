@@ -5,13 +5,11 @@ from pydantic import BaseModel
 from typing import Union
 from PIL import Image
 import io
-from .compute_task import ComputeTask, ComputeTaskState, ComputeTaskType
+from .compute_task import ComputeTask, ComputeTaskState, ComputeTaskType,ComputeTaskResult,ComputeTaskResultCode
 from .queue_compute_node import Queue_ComputeNode
 from knowledge import ObjectID
 
 logger = logging.getLogger(__name__)
-
-
 
 class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
     # For valid pretrained models, see https://www.sbert.net/docs/pretrained_models.html
@@ -39,18 +37,11 @@ class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
         self.start()
         return True
 
-    async def execute_task(
-        self, task: ComputeTask
-    ) -> {
-        "task_type": str,
-        "content": str,
-        "message": str,
-        "state": ComputeTaskState,
-        "error": {
-            "code": int,
-            "message": str,
-        },
-    }:
+    async def execute_task(self, task: ComputeTask) :
+        result = ComputeTaskResult()
+        result.result_code = ComputeTaskResultCode.ERROR
+        result.set_from_task(task)
+        result.worker_id = self.node_id
         try:
             # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task: {task}")
             if task.task_type == ComputeTaskType.TEXT_EMBEDDING:
@@ -60,25 +51,19 @@ class LocalSentenceTransformer_Text_ComputeNode(Queue_ComputeNode):
                 )
                 sentence_embeddings = self.model.encode(input, show_progress_bar=False).tolist()
                 # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task sentence_embeddings: {sentence_embeddings}")
-                return {
-                    "state": ComputeTaskState.DONE,
-                    "content": sentence_embeddings,
-                    "message": None,
-                }
+                result.result_code = ComputeTaskResultCode.OK
+                result.result["content"] = sentence_embeddings
+
             else:
-                return {
-                    "state": ComputeTaskState.ERROR,
-                    "error": {"code": -1, "message": "unsupport embedding task type"},
-                }
+                result.error_str = f"unsupport embedding task type: {task.task_type}"
         except Exception as err:
             import traceback
 
             logger.error(f"{traceback.format_exc()}, error: {err}")
+            result.error_str = f"{traceback.format_exc()}, error: {err}"
 
-            return {
-                "state": ComputeTaskState.ERROR,
-                "error": {"code": -1, "message": "unknown exception: " + str(err)},
-            }
+        return result
+
 
     def display(self) -> str:
         return f"LocalSentenceTransformer_Text_ComputeNode: {self.node_id}, {self.model_name}"
@@ -170,16 +155,11 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
 
     async def execute_task(
         self, task: ComputeTask
-    ) -> {
-        "task_type": str,
-        "content": str,
-        "message": str,
-        "state": ComputeTaskState,
-        "error": {
-            "code": int,
-            "message": str,
-        },
-    }:
+    ) -> ComputeTaskResult:
+        result = ComputeTaskResult()
+        result.result_code = ComputeTaskResultCode.ERROR
+        result.set_from_task(task)
+        result.worker_id = self.node_id
         try:
             # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task: {task}")
             if task.task_type == ComputeTaskType.TEXT_EMBEDDING:
@@ -189,11 +169,9 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
                 )
                 sentence_embeddings = self.multi_model.encode(input, show_progress_bar=False).tolist()
                 # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task sentence_embeddings: {sentence_embeddings}")
-                return {
-                    "state": ComputeTaskState.DONE,
-                    "content": sentence_embeddings,
-                    "message": None,
-                }
+                result.result_code = ComputeTaskResultCode.OK
+                result.result["content"] = sentence_embeddings
+
             elif task.task_type == ComputeTaskType.IMAGE_EMBEDDING:
                 input = task.params["input"]
                 logger.debug(
@@ -202,33 +180,22 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
 
                 img = self._load_image(input)
                 if img is None:
-                    return {
-                        "state": ComputeTaskState.ERROR,
-                        "error": {"code": -1, "message": "load image failed"},
-                    }
+                    result.error_str = f"load image failed: {input}"
+                    return result   
 
                 sentence_embeddings = self.model.encode(img, show_progress_bar=False).tolist()
-
-                # logger.debug(f"LocalSentenceTransformer_Text_ComputeNode task sentence_embeddings: {sentence_embeddings}")
-                return {
-                    "state": ComputeTaskState.DONE,
-                    "content": sentence_embeddings,
-                    "message": None,
-                }
+                result.result_code = ComputeTaskResultCode.OK
+                result.result["content"] = sentence_embeddings
             else:
-                return {
-                    "state": ComputeTaskState.ERROR,
-                    "error": {"code": -1, "message": "unsupport embedding task type"},
-                }
+                result.error_str = f"unsupport embedding task type: {task.task_type}"
         except Exception as err:
             import traceback
 
             logger.error(f"{traceback.format_exc()}, error: {err}")
-
-            return {
-                "state": ComputeTaskState.ERROR,
-                "error": {"code": -1, "message": "unknown exception: " + str(err)},
-            }
+            result.error_str = f"{traceback.format_exc()}, error: {err}"
+ 
+        
+        return result
 
     def display(self) -> str:
         return f"LocalSentenceTransformer_Image_ComputeNode: {self.node_id}, {self.model_name}"
