@@ -20,14 +20,15 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
+
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
-
-
+from aios_kernel import AIOS_Version,AgentMsgType,UserConfigItem,AIStorage,Workflow,AIAgent,AgentMsg,AgentMsgStatus,ComputeKernel,OpenAI_ComputeNode,AIBus,AIChatSession,AgentTunnel,TelegramTunnel,CalenderEnvironment,Environment,EmailTunnel,LocalLlama_ComputeNode,Local_Stability_ComputeNode,Stability_ComputeNode,PaintEnvironment
+from aios_kernel import ContactManager,Contact
 import proxy
 from aios_kernel import *
-
+from aios_kernel.compute_node_config import ComputeNodeConfig
 
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
@@ -140,11 +141,15 @@ class AIOS_Shell:
             return False
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
 
+        nodes = ComputeNodeConfig.get_instance().initial()
+        for node in nodes:
+            node.start()
+            ComputeKernel.get_instance().add_compute_node(node)
 
         if await AIStorage.get_instance().is_feature_enable("llama"):
             llama_ai_node = LocalLlama_ComputeNode()
             if await llama_ai_node.initial() is True:
-                await llama_ai_node.start()
+                llama_ai_node.start()
                 ComputeKernel.get_instance().add_compute_node(llama_ai_node)
             else:
                 logger.error("llama node initial failed!")
@@ -164,9 +169,7 @@ class AIOS_Shell:
             # if await stability_api_node.initial() is not True:
             #     logger.error("stability api node initial failed!")
             # ComputeKernel.get_instance().add_compute_node(stability_api_node)
-
-        
-        
+  
         local_st_text_compute_node = LocalSentenceTransformer_Text_ComputeNode()
         if local_st_text_compute_node.initial() is not True:
             logger.error("local sentence transformer text embedding node initial failed!")
@@ -179,7 +182,6 @@ class AIOS_Shell:
         else:
             ComputeKernel.get_instance().add_compute_node(local_st_image_compute_node)
        
-
         await ComputeKernel.get_instance().start()
 
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
@@ -358,6 +360,54 @@ class AIOS_Shell:
             journals = [str(journal) for journal in KnowledgePipline.get_instance().get_latest_journals(topn)]
             print_formatted_text("\r\n".join(journals))
 
+        if sub_cmd == "query":
+            if len(args) < 2:
+                return show_text
+            prompt = AgentPrompt()
+            prompt.messages.append({"role": "user", "content":" ".join(args[1:])})
+            result = await KnowledgeBase().query_prompt(prompt)
+            print_formatted_text(result.as_str())
+    
+    async def handle_node_commands(self, args):
+        show_text = FormattedText([("class:title", "sub command not support!\n" 
+                              "/node add llama $model_name $url\n"
+                              "/node rm llama $model_name $url\n"
+                              "/node list\n")])
+        if len(args) < 1:
+            return show_text
+        sub_cmd = args[0]
+        if sub_cmd == "add":
+            if len(args) < 2:
+                return show_text
+            if args[1] == "llama":
+                if len(args) < 4:
+                    return show_text
+                
+                model_name = args[2]
+                url = args[3]
+                ComputeNodeConfig.get_instance().add_node("llama", url, model_name)
+                ComputeNodeConfig.get_instance().save()
+                node = LocalLlama_ComputeNode(url, model_name)
+                node.start()
+                ComputeKernel.get_instance().add_compute_node(node)
+            else:
+                return show_text
+        elif sub_cmd == "rm":
+            if len(args) < 2:
+                return show_text
+            if args[1] == "llama":
+                if len(args) < 4:
+                    return show_text
+                
+                model_name = args[3]
+                url = args[4]
+                ComputeNodeConfig.get_instance().remove_node("llama", url, model_name)
+                ComputeNodeConfig.get_instance().save()
+            else:
+                return show_text
+        elif sub_cmd == "list":
+            print_formatted_text(ComputeNodeConfig.get_instance().list())
+
     async def call_func(self,func_name, args):
         match func_name:
             case 'send':
@@ -483,6 +533,8 @@ class AIOS_Shell:
                         format_texts.append(("",f"\n-------------------\n"))
                     return FormattedText(format_texts)
                 return FormattedText([("class:title", f"chatsession not found")])
+            case 'node':
+                return await self.handle_node_commands(args)
             case 'exit':
                 os._exit(0)
             case 'help':
@@ -671,6 +723,9 @@ async def main():
                                '/enable $feature',
                                '/disable $feature',
                                '/list_config',
+                               '/node add llama $model_name $url',
+                               '/node rm llama $model_name $url',
+                               '/node list',
                                '/show',
                                '/exit',
                                '/help'], ignore_case=True)
