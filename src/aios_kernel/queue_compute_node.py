@@ -29,6 +29,7 @@ class Queue_ComputeNode(ComputeNode):
     async def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
 
+
         result = ComputeTaskResult()
         result.result_code = ComputeTaskResultCode.ERROR
         result.set_from_task(task)

@@ -67,12 +67,12 @@ class LocalLlama_ComputeNode(Queue_ComputeNode):
                     task.error_str = str(e)
                     result.error_str = str(e)
                     return result
-
             
                 logger.info(f"local-llama({self.model_path}) response: {json.dumps(resp, indent=4)}")
 
                 status_code = resp["choices"][0]["finish_reason"]
                 token_usage = resp["usage"]
+
                 match status_code:
                     case "function_call":
                         task.state = ComputeTaskState.DONE

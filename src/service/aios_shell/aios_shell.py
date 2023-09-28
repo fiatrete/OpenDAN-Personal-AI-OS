@@ -164,9 +164,7 @@ class AIOS_Shell:
             # if await stability_api_node.initial() is not True:
             #     logger.error("stability api node initial failed!")
             # ComputeKernel.get_instance().add_compute_node(stability_api_node)
-
-        
-        
+  
         local_st_text_compute_node = LocalSentenceTransformer_Text_ComputeNode()
         if local_st_text_compute_node.initial() is not True:
             logger.error("local sentence transformer text embedding node initial failed!")
@@ -179,7 +177,6 @@ class AIOS_Shell:
         else:
             ComputeKernel.get_instance().add_compute_node(local_st_image_compute_node)
        
-
         await ComputeKernel.get_instance().start()
 
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
