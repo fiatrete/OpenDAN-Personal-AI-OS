@@ -319,7 +319,7 @@ class AIOS_Shell:
     
     async def handle_knowledge_commands(self, args):
         show_text = FormattedText([("class:title", "sub command not support!\n" 
-                              "/knowledge add email | dir\n"
+                              "/knowledge add dir\n"
                               "/knowledge journal [$topn]\n")])
         if len(args) < 1:
             return show_text
@@ -585,7 +585,7 @@ def print_welcome_screen():
 \033[1;94m\tGive your Agent a Telegram account :\033[0m /connect $agent_name
 \033[1;94m\tAdd personal files to the AI Knowledge Base. \033[0m
 \t\t1) Copy your file to ~/myai/data 
-\t\t2) /knowlege add dir
+\t\t2) /knowledge add dir
 \033[1;94m\tSearch your knowledge base :\033[0m /open Mia
 \033[1;94m\tCheck the progress of AI reading personal data :\033[0m /knowledge journal
 \033[1;94m\tOpen AI Bash (For Developer Only):\033[0m /open ai_bash
@@ -665,7 +665,7 @@ async def main():
                                '/history $num $offset',
                                '/connect $target',
                                '/contact $name',
-                               '/knowledge add email | dir',
+                               '/knowledge add dir',
                                '/knowledge journal [$topn]', 
                                '/set_config $key',
                                '/enable $feature',

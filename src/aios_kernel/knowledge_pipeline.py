@@ -267,6 +267,7 @@ class KnowledgeEmailSource:
 class KnowledgeDirSource:
     def __init__(self, config):
         self.config = config
+        config["path"] = os.path.abspath(config["path"])
         self.config["type"] = "dir"
 
     @classmethod
@@ -342,6 +343,11 @@ class KnowledgePipline:
                     self.add_email_source(KnowledgeEmailSource(source_config))
                 if source_config['type'] == 'dir':
                     self.add_dir_source(KnowledgeDirSource(source_config))
+        user_data_dir = AIStorage.get_instance().get_myai_dir()
+        default_dir = os.path.abspath(f"{user_data_dir}/data")
+        if not os.path.exists(default_dir):
+            os.makedirs(default_dir)
+        self.add_dir_source(KnowledgeDirSource({"path": default_dir}))
 
         return True
 
