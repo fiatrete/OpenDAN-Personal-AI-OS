@@ -113,9 +113,9 @@ class AIOS_Shell:
 
             cm.add_family_member(self.username,owenr)
 
-
         knowledge_env = KnowledgeEnvironment("knowledge")
         Environment.set_env_by_id("knowledge",knowledge_env)
+
 
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()
