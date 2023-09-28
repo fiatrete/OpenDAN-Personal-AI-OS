@@ -16,15 +16,7 @@ class Queue_ComputeNode(ComputeNode):
         self.is_start = False
 
     @abstractmethod
-    async def execute_task(self, task: ComputeTask) -> {
-        "content": str,
-        "message": str,
-        "state": ComputeTaskState,
-        "error": {
-            "code": int,
-            "message": str,
-        }
-    }:
+    async def execute_task(self, task: ComputeTask) -> ComputeTaskResult:
         pass
 
     async def push_task(self, task: ComputeTask, proiority: int = 0):
@@ -37,23 +29,13 @@ class Queue_ComputeNode(ComputeNode):
     async def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
         
-        resp = await self.execute_task(task)
-
-        result = ComputeTaskResult()
-
-        result.worker_id = self.node_id
-        task.state = resp["state"]
-        
-        if task.state == ComputeTaskState.ERROR:
-            result.result_code = ComputeTaskResultCode.ERROR
-            task.error_str = resp["error"]["message"]
+        result = await self.execute_task(task)
+        if result is not None:
+            result.set_from_task(task)
+            result.worker_id = self.node_id
         else:
-            result.result_code = ComputeTaskResultCode.OK
-            result.result_str = resp["content"]
-            result.result_message = resp["message"]
-
-        result.set_from_task(task)
-
+            task.state = ComputeTaskState.ERROR
+            
         return result
 
     def start(self):
