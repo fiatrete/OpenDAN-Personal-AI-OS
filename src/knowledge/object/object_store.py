@@ -15,6 +15,7 @@ class ObjectStore:
         self.blob = FileBlobStorage(blob_dir)
 
     def put_object(self, object_id: ObjectID, contents: bytes):
+        logging.info(f"will put object: {object_id}")
         self.blob.put(object_id, contents)
 
     def get_object(self, object_id: ObjectID) -> bytes:
