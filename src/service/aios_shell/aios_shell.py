@@ -328,7 +328,8 @@ class AIOS_Shell:
     async def handle_knowledge_commands(self, args):
         show_text = FormattedText([("class:title", "sub command not support!\n" 
                               "/knowledge add email | dir\n"
-                              "/knowledge journal [$topn]\n")])
+                              "/knowledge journal [$topn]\n"
+                              "/knowledge query $object_id\n")])
         if len(args) < 1:
             return show_text
         sub_cmd = args[0]
@@ -365,6 +366,18 @@ class AIOS_Shell:
             topn = 10 if len(args) == 1 else int(args[1])
             journals = [str(journal) for journal in KnowledgePipline.get_instance().get_latest_journals(topn)]
             print_formatted_text("\r\n".join(journals))
+        if sub_cmd == "query":
+            if len(args) < 2:
+                return show_text
+            from knowledge import ObjectID, ObjectType
+            object_id = ObjectID.from_base58(args[1])
+            if object_id.get_object_type() == ObjectType.Image:
+                from PIL import Image
+                import io
+                image = KnowledgeBase().load_object(object_id)
+                image_data = KnowledgeBase().bytes_from_object(image)
+                image = Image.open(io.BytesIO(image_data))
+                image.show()
 
     async def call_func(self,func_name, args):
         match func_name:
@@ -593,9 +606,10 @@ def print_welcome_screen():
 \033[1;94m\tGive your Agent a Telegram account :\033[0m /connect $agent_name
 \033[1;94m\tAdd personal files to the AI Knowledge Base. \033[0m
 \t\t1) Copy your file to ~/myai/data 
-\t\t2) /knowlege add $dir
+\t\t2) /knowlege add dir
 \033[1;94m\tSearch your knowledge base :\033[0m /open Mia
 \033[1;94m\tCheck the progress of AI reading personal data :\033[0m /knowledge journal
+\033[1;94m\tQuery object with ID in knowledge base :\033[0m /knowledge query $object_id
 \033[1;94m\tOpen AI Bash (For Developer Only):\033[0m /open ai_bash
 \033[1;94m\tEnable AIGC Feature :\033[0m /enable aigc
 \033[1;94m\tEnable llama (Local LLM Kernel) :\033[0m /enable llama
@@ -675,6 +689,7 @@ async def main():
                                '/contact $name',
                                '/knowledge add email | dir',
                                '/knowledge journal [$topn]', 
+                               '/knowledge query $object_id',
                                '/set_config $key',
                                '/enable $feature',
                                '/disable $feature',

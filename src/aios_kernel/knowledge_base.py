@@ -178,7 +178,7 @@ class KnowledgeBase:
             images = await self.store.get_vector_store(self._default_image_model).query(vector, topk)
         return texts + images
 
-    def __load_object(self, object_id: ObjectID) -> KnowledgeObject:
+    def load_object(self, object_id: ObjectID) -> KnowledgeObject:
         if object_id.get_object_type() == ObjectType.Document:
             return DocumentObject.decode(self.store.get_object_store().get_object(object_id))
         if object_id.get_object_type() == ObjectType.Image:
@@ -210,7 +210,7 @@ class KnowledgeBase:
             # first element in result is the root object
             root_object_id = result[0]
             if root_object_id.get_object_type() == ObjectType.Email:
-                email = self.__load_object(root_object_id)
+                email = self.load_object(root_object_id)
                 desc = email.get_desc()
                 desc["type"] = "email"
                 desc["contents"] = []
@@ -224,13 +224,13 @@ class KnowledgeBase:
                 if object_id.get_object_type() == ObjectType.Chunk:
                     upper_list.append({"type": "text", "content": self.store.get_chunk_reader().get_chunk(object_id).read().decode("utf-8")})
                 if object_id.get_object_type() == ObjectType.Image:
-                    # image = self.__load_object(object_id)
+                    # image = self.load_object(object_id)
                     desc = dict()
                     desc["id"] = str(object_id)
                     desc["type"] = "image"
                     upper_list.append(desc)
                 if object_id.get_object_type() == ObjectType.Video:
-                    video = self.__load_object(object_id)
+                    video = self.load_object(object_id)
                     desc = video.get_desc()
                     desc["type"] = "video"
                     upper_list.append(desc)
@@ -257,7 +257,7 @@ class KnowledgeBase:
                 return None
             
             if object_id is not None:
-                return self.__load_object(ObjectID.from_base58(object_id))
+                return self.load_object(ObjectID.from_base58(object_id))
             
             
     def bytes_from_object(self, object: KnowledgeObject) -> bytes:
