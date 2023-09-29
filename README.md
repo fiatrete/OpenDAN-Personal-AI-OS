@@ -20,28 +20,28 @@ After over three months of development, the code for the first version of OpenDA
 
 ![MVP](./doc/res/mvp.png)
 
-The main new features of OpenDAN 0.5.1 (MVP) include:
+**The main new features of OpenDAN 0.5.1 (MVP) :**
 
-[x] Rapid installation and deployment of OpenDAN based on Docker, making OpenDAN compatible with a wide range of hardware environments (PC/Mac/RaspberryPI/NAS) through Docker.
-[x] The core support for AI Agent's large language model has been switched, now supporting locally running the open-source model (LLaMa).
-[x] Introduction of more built-in AI Agents:
-    [x] Personal Assistant Jarvis : Consultant.Assistant who anages your schedule and communication records. ChatGPT alternative.
-    [x] Information Assistant Mia : Manage your personal data and sort it into a knowledge base
-    [x] Private English Teacher Tracy : Your private English teacher
-    [x] ai_bash (for developers) :No longer need to memory complicated command line parameters! Bash is used by "Find FILES in ~/Documents that Contain OpenDAN".
-[x] Connectivity to AI Agent/Workflow via Telegram/Email.
-[x] Building a local private Knowledge Base based on existing file or email spiders, enabling AI Agent access to personal data.
-    [x] Supports text files and common image formats.
-    [ ] Supports other common formats.
-[x] Implemented Workflow: Collaboration of Agents to solve more complex issues.
-    [x] Built-in Workflow story_maker, integrated the AIGC tool to create audio fairy tale books.
-[x] Distributed AI computing core available for complex selections.
-[x] Manual download and installation of new Agent/Workflow.
-[ ] OpenDAN Store : Agent/Workflow/Models One-Stop installation  (Delayed to 0.5.2).
+- [x] Rapid installation and deployment of OpenDAN based on Docker, making OpenDAN compatible with a wide range of hardware environments (PC/Mac/RaspberryPI/NAS) through Docker.
+- [x] AI Agent's large language model can be switched, now supporting locally running the open-source model (LLaMa).
+- [x] Introduction of more built-in AI Agents:
+    - [x] Personal Assistant Jarvis : Consultant.Assistant who anages your schedule and communication records. ChatGPT alternative.
+    - [x] Information Assistant Mia : Manage your personal data and sort it into a knowledge base
+    - [x] Private English Teacher Tracy : Your private English teacher
+    - [x] ai_bash (for developers) :No longer need to memory complicated command line parameters! Bash is used by "Find FILES in ~/Documents that Contain OpenDAN".
+- [x] Connectivity to AI Agent/Workflow via Telegram/Email.
+- [x] Building a local private Knowledge Base based on existing file or email spiders, enabling AI Agent access to personal data.
+    - [x] Supports text files and common image formats.
+    - [ ] Supports other common formats.
+- [x] Implemented Workflow: Collaboration of Agents to solve more complex issues.
+    - [x] Built-in Workflow story_maker, integrated the AIGC tool to create audio fairy tale books.
+- [x] Distributed AI computing core available for complex selections.
+- [x] Manual download and installation of new Agent/Workflow.
+- [ ] OpenDAN Store : Agent/Workflow/Models One-Stop installation  (Delayed to 0.5.2).
 
-Try it immediately!
+[Try it NOW!](./doc/QuickStart.md)
 
-Developers click here to learn about OpenDan's system development updates.
+Developers [click here](https://github.com/fiatrete/OpenDAN-Personal-AI-OS/issues/46) to learn about OpenDan's system development updates.
 
 ## **Intro video - What is OpenDAN?**
 
@@ -120,17 +120,17 @@ Say Hello to your private AI assistant Jarvis !
 ![MVP](./doc/res/jarvis.png)
 
 ## **Core Concepts and Features of OpenDAN**
-**AI Agent** Driven by a large language model, having own memory.The AI Agent completes tasks through natural language interaction.
-**AI Workflow** Organize different AI Agents into an AI Agent Group to complete complex tasks.
+1. **AI Agent** Driven by a large language model, having own memory.The AI Agent completes tasks through natural language interaction.
+2. **AI Workflow** Organize different AI Agents into an AI Agent Group to complete complex tasks.
 ![workflow](./doc/res/workflow.png)
-**AI Envriment** Supports AI Agents to access file systems, IoT devices, network services, smart contracts, and everything on today's internet once authorized.
-**AI Marketplace**: Offer a solution for one-click installation and use of various AI applications, helping users easily access and manage AI apps.
-**AI Model Solution**: Provide a unified entry point for model search, download, and access control, making it convenient for users to find and use models suitable for their needs.
-**Hardware-specific optimization**: Optimize for specific hardware to enable smooth local running of most open-source AI applications.
-**Strict Privacy Protection and Management**: Strictly manage personal data, ranging from family albums to chat records and social media records, and provide a unified access control interface for AI applications.
-**Personal Knowlege Base**:
-**Integrated AIGC Workflow**: Offer AIGC Agent/Workflow for users to train their own voice models, Lora models, knowledge models, etc., using personal data. Based on these private model data, integrate the most advanced AIGC algorithm to help people release creativity easily and build more COOL and more personalized content.
-**Development Framework**: Provide a development framework for customizing AI assistants for specific purposes, making it easy for developers to create unique AI applications / service for their customers.
+3. **AI Envriment** Supports AI Agents to access file systems, IoT devices, network services, smart contracts, and everything on today's internet once authorized.
+4. **AI Marketplace**: Offer a solution for one-click installation and use of various AI applications, helping users easily access and manage AI apps.
+5. **AI Model Solution**: Provide a unified entry point for model search, download, and access control, making it convenient for users to find and use models suitable for their needs.
+6. **Hardware-specific optimization**: Optimize for specific hardware to enable smooth local running of most open-source AI applications.
+7. **Strict Privacy Protection and Management**: Strictly manage personal data, ranging from family albums to chat records and social media records, and provide a unified access control interface for AI applications.
+8. **Personal Knowlege Base**:
+9. **Integrated AIGC Workflow**: Offer AIGC Agent/Workflow for users to train their own voice models, Lora models, knowledge models, etc., using personal data. Based on these private model data, integrate the most advanced AIGC algorithm to help people release creativity easily and build more COOL and more personalized content.
+10. **Development Framework**: Provide a development framework for customizing AI assistants for specific purposes, making it easy for developers to create unique AI applications / service for their customers.
 
 ## **Deeply Understanding OpenDAN**
 
@@ -146,6 +146,7 @@ cd OpenDAN-Personal-AI-OS
 pip install -r ./src/requirements.txt
 ```
 Waiting for installation.
+
 4. Start OpenDAN through aios_shell
 ```
 python ./src/srvice/aios_shell/aios_shell.py
@@ -157,22 +158,22 @@ Now OpenDAN runs in the development mode, and the directory is:
 ### OpenDAN Cookbook
 
 #### Chapter 1: Hello, Jarvis! 
-1.1 Installation of OpenDAN
-1.2 Initial Configuration of OpenDAN
-1.3 Introduction to Agent and Using Jarvis
-1.4 Communicating with Jarvis Anytime and Anywhere via Telegram and Email
-1.5 Using Jarvis in Daily Life
-1.6 Mia and the Knowledge Base
-1.7 Introduction to Other Built-in Agents
+- 1.1 Installation of OpenDAN
+- 1.2 Initial Configuration of OpenDAN
+- 1.3 Introduction to Agent and Using Jarvis
+- 1.4 Communicating with Jarvis Anytime and Anywhere via Telegram and Email
+- 1.5 Using Jarvis in Daily Life
+- 1.6 Mia and the Knowledge Base
+- 1.7 Introduction to Other Built-in Agents
 
-Click to Read.
+[Click to Read](./doc/QuickStart.md)
 
 #### Chapter 2: AIGC Workflow （Coming Soon）
 Using Workflow to activate the AIGC feature and let the Agent team (director, artist, and narrator) collaborate to create a unique bedtime story for your child based on your instructions!
 
-2.1 Using Workflow `story_maker`
-2.2 Enabling Your Own AIGC Computation Node
-2.3 Training and Using Your Own AIGC LoRA Model.
+- 2.1 Using Workflow `story_maker`
+- 2.2 Enabling Your Own AIGC Computation Node
+- 2.3 Training and Using Your Own AIGC LoRA Model.
 
 #### Chapter 3: Develop Agent/Workflow on OpenDAN (Writing)
 
@@ -180,12 +181,12 @@ What's the most crucial design aspect of an operating system? Defining new forms
 
 This article will systematically introduce what future Intelligence Applications look like, how to develop and release Intelligence Applications, and how to connect new-age Intelligence Applications with traditional computing.
 
-3.1 Developing Agents that Run on OpenDAN
-3.2 Developing Workflows that Run on OpenDAN
-3.3 Extending the Environments Accessible by Agents
-3.4 Releasing Various Models Trained by Yourself
-3.5 Expanding More Tunnels to Enhance the Accessibility of Agents/Workflow
-3.6 Developing Traditional dApps on the Personal Server.
+- 3.1 Developing Agents that Run on OpenDAN
+- 3.2 Developing Workflows that Run on OpenDAN
+- 3.3 Extending the Environments Accessible by Agents
+- 3.4 Releasing Various Models Trained by Yourself
+- 3.5 Expanding More Tunnels to Enhance the Accessibility of Agents/Workflow
+- 3.6 Developing Traditional dApps on the Personal Server.
 
 #### Chapter 4: OpenDAN Kernel Development (Writing)
 This article will introduce the design and implementation of OpenDAN's architecture
@@ -193,21 +194,21 @@ This article will introduce the design and implementation of OpenDAN's architect
 ![architecture](./doc/res/design.png)
 
 
-4.1 Integrate your own LLM core into OpenDAN.
-4.2 Knowledge Base: Expand more file types, allowing Agents to better understand your knowledge graph.
-4.3 AI computation engine, integrating more AIGC capabilities, and accessing more computational power.
-4.4 OpenDAN's state management: File system and vector database.
-4.5 Kernel services and permission isolation.
-4.6 Smart gateway.
+- 4.1 Integrate your own LLM core into OpenDAN.
+- 4.2 Knowledge Base: Expand more file types, allowing Agents to better understand your knowledge graph.
+- 4.3 AI computation engine, integrating more AIGC capabilities, and accessing more computational power.
+- 4.4 OpenDAN's state management: File system and vector database.
+- 4.5 Kernel services and permission isolation.
+- 4.6 Smart gateway.
 
 
 ## **Upcoming Roadmap**
 
-[x] Release PoC of OpenDAN
-[x] 0.5.1 Implement personal data embeding to Knownlege-Base(KB) via Spider, followed by access by AI Agent
-[ ] 0.5.2 Separate user mode and kernel mode, Knowledge Base supports scene format and more Spiders, supports personal AIGC model training
-[ ] 0.5.3 Release Home Environment, allowing Agents to access and control your home's IoT devices
-[ ] 0.5.x Official version of OpenDAN Alpha. Release OpenDAN SDK 1.0.
+- [x] Release PoC of OpenDAN
+- [x] **0.5.1** Implement personal data embeding to Knownlege-Base(KB) via Spider, followed by access by AI Agent
+- [ ] 0.5.2 Separate user mode and kernel mode, Knowledge Base supports scene format and more Spiders, supports personal AIGC model training
+- [ ] 0.5.3 Release Home Environment, allowing Agents to access and control your home's IoT devices
+- [ ] 0.5.x Official version of OpenDAN Alpha. Release OpenDAN SDK 1.0.
 
 ## **Contributing**
 
@@ -217,7 +218,7 @@ We welcome community members to contribute to the project, including but not lim
 - Submit a Pull Request to the repository
 - Participate in discussions and development
 
-OpenDAN utilizes the SourceDAO smart contract to incentivize the community. Developers who contribute can receive rewards in the form of OpenDAN DAO Tokens. DAO Token holders can collaboratively determine the development direction of OpenDAN. You can learn more about the rules of SourceDAO by reading this article（https://github.com/fiatrete/OpenDAN-Personal-AI-OS/issues/25）
+OpenDAN utilizes the SourceDAO smart contract to incentivize the community. Developers who contribute can receive rewards in the form of OpenDAN DAO Tokens. DAO Token holders can collaboratively determine the development direction of OpenDAN. You can learn more about the rules of SourceDAO by reading this article（ https://github.com/fiatrete/OpenDAN-Personal-AI-OS/issues/25 ）
 
 The DAO governance page for OpenDAN is under development. Once officially launched, all contributors will receive DAO Tokens according to the rules.
 
