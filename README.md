@@ -120,10 +120,10 @@ Say Hello to your private AI assistant Jarvis !
 ![MVP](./doc/res/jarvis.png)
 
 ## **Core Concepts and Features of OpenDAN**
-1. **AI Agent** Driven by a large language model, having own memory.The AI Agent completes tasks through natural language interaction.
-2. **AI Workflow** Organize different AI Agents into an AI Agent Group to complete complex tasks.
+1. **AI Agent**: Driven by a large language model, having own memory.The AI Agent completes tasks through natural language interaction.
+2. **AI Workflow**: Organize different AI Agents into an AI Agent Group to complete complex tasks.
 ![workflow](./doc/res/workflow.png)
-3. **AI Envriment** Supports AI Agents to access file systems, IoT devices, network services, smart contracts, and everything on today's internet once authorized.
+3. **AI Envriment**: Supports AI Agents to access file systems, IoT devices, network services, smart contracts, and everything on today's internet once authorized.
 4. **AI Marketplace**: Offer a solution for one-click installation and use of various AI applications, helping users easily access and manage AI apps.
 5. **AI Model Solution**: Provide a unified entry point for model search, download, and access control, making it convenient for users to find and use models suitable for their needs.
 6. **Hardware-specific optimization**: Optimize for specific hardware to enable smooth local running of most open-source AI applications.
