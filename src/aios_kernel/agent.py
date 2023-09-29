@@ -387,6 +387,7 @@ class AIAgent:
 
             history_prmpt,history_token_len = await self._get_prompt_from_session(chatsession,system_prompt_len + function_token_len,input_len)
             prompt.append(history_prmpt) # chat context
+            prompt.append(msg_prompt)
 
             logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
             task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
