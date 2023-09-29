@@ -4,6 +4,7 @@ OpenDAN (Open and Do Anything Now with AI) is revolutionizing the AI landscape w
 With OpenDAN, we're putting AI in your hands, making life simpler and smarter.
 
 This project is still in its very early stages, and there may be significant changes in the future.
+
 ## Installation
 
 OpenDAN的internal test版本有两种安装方式：
@@ -12,7 +13,7 @@ OpenDAN的internal test版本有两种安装方式：
 
 ### 安装前准备工作
 1. Docker环境
-本文不介绍怎么安装Docker,在你的控制台下执行
+OpenDAN通过适配Docker实现了对多平台的适配。本文不介绍怎么安装Docker,在你的控制台下执行
 ```
 docker --version
 ```
@@ -74,7 +75,8 @@ P.S:
 首次快速体验OpenDAN,我们强烈的推荐你使用GPT4，虽然它很慢，也很贵，但它也是目前最强大和稳定的LLM内核。OpenDAN在架构设计上，允许不同的Agent选择不同的LLM内核（但系统里至少要有一个可用的LLM内核），如果你因为各种原因无法使用GPT4，可以是用下面方法安装Local LLM.
 目前我们只适配了基于Llama.cpp的Local LLM，用下面方法安装
 
-（Coming Soon）
+### 安装LLaMa ComputeNode
+OpenDAN支持分布式计算资源调度，因此你可以把LLaMa的计算节点安装在不同的机器上。在本地运行LLaMa根据模型的大小需要相当的算力支持，请根据自己的机器配置量力而行。我们使用llama.cpp构建LLaMa LLM ComputeNode,llama.cpp也是一个正在高速演化的项目，请阅读llamap.cpp的项目
 
 ## Hello, Jarvis!
 配置完成后，你会进入一个AIOS Shell,这和linux bash 和相似，这个界面的含义是：
@@ -117,7 +119,8 @@ Jarvis是运行在OpenDAN上的Agent,当OpenDAN退出后，其活动也会被终
 
 我们正在进行的很多研发工作，其中有很大一部分的目标，就是能让你轻松的拥有一个搭载AIOS的Personal Server.相对PC，我们将把这个新设备叫PI(Personal Intelligence)，OpenDAN是面向PI的首个OS。
 
-## 更新
+## 更新OpenDAN的镜像
+现在OpenDAN还处在早期阶段，因此我们会定期更新OpenDAN的镜像，因此你可能需要定期更新你的OpenDAN镜像。更新OpenDAN的镜像非常简单，只需要执行下面的命令就可以了
 ```
 docker stop aios
 docker rm aios

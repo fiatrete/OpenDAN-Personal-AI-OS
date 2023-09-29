@@ -458,7 +458,7 @@ class AIOS_Shell:
                     show_text = FormattedText([("class:title", f"Feature {feature} already enabled!")])
                     return show_text
 
-                AIStorage.get_instance().enable_feature(feature)
+                await AIStorage.get_instance().enable_feature(feature)
                 show_text = FormattedText([("class:title", f"Feature {feature} enabled!")])
                 return show_text
             case 'disable':
@@ -472,7 +472,7 @@ class AIOS_Shell:
                     show_text = FormattedText([("class:title", f"Feature {feature} already disabled!")])
                     return show_text
                 
-                AIStorage.get_instance().disable_feature(feature)
+                await AIStorage.get_instance().disable_feature(feature)
                 show_text = FormattedText([("class:title", f"Feature {feature} disabled!")])
                 return show_text
             #case 'login':
