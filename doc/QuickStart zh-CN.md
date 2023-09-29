@@ -72,11 +72,60 @@ P.S:
 
 
 ## （可选）安装本地LLM内核
-首次快速体验OpenDAN,我们强烈的推荐你使用GPT4，虽然它很慢，也很贵，但它也是目前最强大和稳定的LLM内核。OpenDAN在架构设计上，允许不同的Agent选择不同的LLM内核（但系统里至少要有一个可用的LLM内核），如果你因为各种原因无法使用GPT4，可以是用下面方法安装Local LLM.
-目前我们只适配了基于Llama.cpp的Local LLM，用下面方法安装
+首次快速体验OpenDAN,我们强烈的推荐你使用GPT4，虽然它很慢，也很贵，但它也是目前最强大和稳定的LLM内核。OpenDAN在架构设计上，允许不同的Agent选择不同的LLM内核（系统里至少要有一个可用的LLM内核），如果你因为各种原因无法使用GPT4，可以是用下面方法安装Local LLM让系统能跑起来。OpenDAN是面向未来设计的系统，我们相信今天GPT4的能力一定会是未来所有LLM的下限。但目前的现实情况，其它的LLM不管是效果还是功能和GPT4都还有比较明显的差距，所以要完整体验OpenDAN，在一定时间内，我们还是推荐使用GPT4.
+
+目前我们只完成了基于Llama.cpp的Local LLM的适配，为OpenDAN适配新的LLM内核并不是复杂的工作，有需要的工程师朋友可以自行扩展（记得给我们PR~）。Llama.cpp的Compute Node 用下面方法安装:
 
 ### 安装LLaMa ComputeNode
-OpenDAN支持分布式计算资源调度，因此你可以把LLaMa的计算节点安装在不同的机器上。在本地运行LLaMa根据模型的大小需要相当的算力支持，请根据自己的机器配置量力而行。我们使用llama.cpp构建LLaMa LLM ComputeNode,llama.cpp也是一个正在高速演化的项目，请阅读llamap.cpp的项目
+OpenDAN支持分布式计算资源调度，因此你可以把LLaMa的计算节点安装在和OpenDAN不同的机器上。根据模型的大小需要相当的算力支持，请根据自己的机器配置量力而行。我们使用llama.cpp构建LLaMa LLM ComputeNode,llama.cpp也是一个正在高速演化的项目，正致力降低LLM的运行需要的设备门槛，提高运行速度。请阅读llamap.cpp的项目了解其支持的各个模型的最低系统要求。
+
+
+安装LLama.cpp 总共分两步：
+1. 下载LLama.cpp的模型，有3个选择：7B-Chat,13B-Chat,70B-Chat. 我们的实践经验最少需要13B的才能工作。LLaMa2 目前官方的模型并不支持inner function call,而目前OpenDAN的很多Agent都高度依赖inner function call.所以我们推荐您下载通过Fine-Tune 的 13B模型：
+```
+https://huggingface.co/Trelis/Llama-2-13b-chat-hf-function-calling
+```
+
+2. 运行llama-cpp-python镜像
+```
+docker run --rm -it -p 8000:8000 -v /path/to/models:/models -e MODEL=/models/llama-2-13b-chat.gguf ghcr.io/abetlen/llama-cpp-python:latest
+```
+
+完成上述步骤后，可以运行xxx测试一下，如果输出如下，说明LLaMa已经正常运行了
+```
+```
+
+### 将LLama.cpp ComputeNode增加到OpenDAN中
+ComputeNode是OpenDAN的底层组件，而且可能不会与OpenDAN运行在同一个机器上。因此从依赖关系的角度，OpenDAN并没有“主动检测”ComputeNode的能力，需要用户（或系统管理员）在OpenDAN的命令行中通过下面命令手工添加
+
+```
+/node add Llama-2-13b-chat http://localhost:8000
+```
+上面添加的是运行在本地的13b模型，如果你使用的是其它模型，或则跑在了不同的机器上。请修改上述命令中的模型名和端口号。
+
+### 配置Agent使用LLaMa
+
+
+
+OpenDAN的Agent可以选择最适合其职责的LLM-Model，我们内置了一个Agent叫Lachlan的私人英语老师Agent，已经被配置成了使用LLaMa-2-13b-chat模型。你可以通过下面命令与其聊天：
+```
+/open Lachlan
+```
+
+
+因此添加了一个新的LLM后，需要手工修改Agent的配置，才能让其使用新的LLM。比如我们的私人英文老师Tracy，其配置文件是`/opt/aios/agents/Tracy/Agent.toml`，修改配置如下：
+```
+llm_model_name="Llama-2-13b-chat"
+max_token_size = 4000
+```
+然后重新启动OpenDAN,你就可以让Tracy使用LLaMa了(你也可以通过该方法查看其它内置的Agent使用了哪些LL模型)
+
+Tracy是未指定LLM模型选择配置的Agent，因此其使用OpenDAN的默认LLM模型。你可以通过下面命令修改系统的默认LLM模型(请谨慎！)
+```
+
+```
+
+
 
 ## Hello, Jarvis!
 配置完成后，你会进入一个AIOS Shell,这和linux bash 和相似，这个界面的含义是：
@@ -119,14 +168,6 @@ Jarvis是运行在OpenDAN上的Agent,当OpenDAN退出后，其活动也会被终
 
 我们正在进行的很多研发工作，其中有很大一部分的目标，就是能让你轻松的拥有一个搭载AIOS的Personal Server.相对PC，我们将把这个新设备叫PI(Personal Intelligence)，OpenDAN是面向PI的首个OS。
 
-## 更新OpenDAN的镜像
-现在OpenDAN还处在早期阶段，因此我们会定期更新OpenDAN的镜像，因此你可能需要定期更新你的OpenDAN镜像。更新OpenDAN的镜像非常简单，只需要执行下面的命令就可以了
-```
-docker stop aios
-docker rm aios
-docker pull paios/aios:latest
-docker run -v /your/local/myai/:/root/myai --name aios -it paios/aios:latest 
-```
 
 
 ## 你的私人管家 Jarvis 前来报道！
@@ -174,6 +215,15 @@ Jarvis,请添加我的朋友Alic到我的联系人中，他的telegram username�
 Jarvis能够理解你的意图，并完成添加联系人的工作。
 添加联系人后，你的朋友就可以和你的私人管家Jarvis进行交流了。
 
+## 更新OpenDAN的镜像
+现在OpenDAN还处在早期阶段，因此我们会定期发布OpenDAN的镜像来修正一些BUG。因此你可能需要定期更新你的OpenDAN镜像。更新OpenDAN的镜像非常简单，只需要执行下面的命令就可以了
+```
+docker stop aios
+docker rm aios
+docker pull paios/aios:latest
+docker run -v /your/local/myai/:/root/myai --name aios -it paios/aios:latest 
+```
+
 
 ## Agent可以通过OpenDAN进一步访问你的信息 （Coming soon）
 你已经知道Jarvis可以通过OpenDAN帮你管理一些重要的个人信息。但这些信息都是“新增信息”。在上世纪80年代PC发明以后，我们的一切都在高速的数字化。每个人都有海量的数字信息，包括你通过智能手机拍摄的照片，视频，你工作中产生的邮件文档等等。过去我们通过文件系统来管理这些信息，在AI时代，我们将通过Knowledge Base来管理这些信息，进入Knowlege Base的信息能更好的被AI访问，让你的Agent更理解你，更好的为你服务，真正成为你的专属私人管家。
@@ -182,7 +232,7 @@ Knowlege Base是OpenDAN里非常重要的一个基础概念，也是我们为什
 
 Knowlege Base功能已经默认开启了，将自己的数据放入Knowlege Base有两种方法
 1）把要放入KnowlegeBase的数据复制到 `~myai/data`` 文件夹中
-2）通过输入`/knowlege add $dir` 将$dir目录下的数据加入到Knowlege Base中，注意OpenDAN默认运行在容器中，因此$dir是相对于容器的路径，如果你想要加入本地的数据，需要先把本地数据挂载到容器中。
+2）通过输入`/knowlege add dir` ，系统会要求你输入将$dir目录下的数据加入到Knowlege Base中，注意OpenDAN默认运行在容器中，因此$dir是相对于容器的路径，如果你想要加入本地的数据，需要先把本地数据挂载到容器中。
 
 测试时请不要放大量文件，或有非常敏感信息的文件。OpenDAN会在后台不断扫描该文件夹中的文件并加入到Knowlege Base中。
 目前能识别的文件格式有限，我们支持的文件类型有文本文件、图片、短视频等。
@@ -200,7 +250,7 @@ Knowlege Base功能已经默认开启了，将自己的数据放入Knowlege Base
 ```
 
 
-### (可选)启用本地Embeding
+### 本地Embeding Pipeline
 Knowlege Base扫描并读取文件，产生Agent可以访问的信息的过程被称作Embeding.这个过程需要一定的计算资源，因此我们默认使用OpenAI的Embeding服务来完成这个工作。`这意味着加入Knowlege Base的文件会被上传到OpenAI的服务进行处理`，虽然OpenAI的信誉现在不错，但这依旧有潜在的隐私泄露风险。如果你有足够的本地算力（这个要求比Local LLM低很多），我们推荐你在本地启用Embeding的功能，更好的保护自己的隐私
 
 （Coming soon）

@@ -24,6 +24,6 @@ from .workspace_env import WorkspaceEnvironment
 from .local_stability_node import Local_Stability_ComputeNode
 from .stability_node import Stability_ComputeNode
 from .local_st_compute_node import LocalSentenceTransformer_Text_ComputeNode,LocalSentenceTransformer_Image_ComputeNode
-
+from .compute_node_config import ComputeNodeConfig
 AIOS_Version = "0.5.1, build 2023-9-28"
 

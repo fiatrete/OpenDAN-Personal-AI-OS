@@ -52,7 +52,8 @@ class ComputeKernel:
                 task = await self.task_queue.get()
                 logger.info(f"compute_kernel get task: {task.display()}")
                 c_node: ComputeNode = self._schedule(task)
-                await c_node.push_task(task)
+                if c_node:
+                    await c_node.push_task(task)
 
             logger.warn("compute_kernel is stoped!")
 
@@ -62,6 +63,7 @@ class ComputeKernel:
         # find all the node which supports this task
         support_nodes = []
         total_weights = 0
+
         for node in self.compute_nodes.values():
             if node.is_support(task) is True:
                 support_nodes.append({
@@ -70,6 +72,10 @@ class ComputeKernel:
                 })
                 total_weights += node.weight()
 
+        if len(support_nodes) < 1:
+            logger.warning(f"task {task.display()} is not support by any compute node")
+            return None
+        
         # hit a random node with weight
         hit_pos = random.randint(0, total_weights - 1)
         for i in range(min(len(support_nodes) - 1, hit_pos), -1, -1):
