@@ -8,6 +8,7 @@ import time
 import json
 import shlex
 import datetime
+import copy
 
 from .agent_message import AgentMsg, AgentMsgStatus, AgentMsgType,FunctionItem,LLMResult
 from .chatsession import AIChatSession
@@ -48,7 +49,7 @@ class AgentPrompt:
 
         if prompt.system_message is not None:
             if self.system_message is None:
-                self.system_message = prompt.system_message
+                self.system_message = copy.deepcopy(prompt.system_message)
             else:
                 self.system_message["content"] += prompt.system_message.get("content")
 
@@ -105,7 +106,7 @@ class AIAgentTemplete:
 
 class AIAgent:
     def __init__(self) -> None:
-        self.prompt:AgentPrompt = None
+        self.agent_prompt:AgentPrompt = None
         self.llm_model_name:str = None
         self.max_token_size:int = 3600
         self.agent_id:str = None
@@ -136,7 +137,7 @@ class AIAgent:
         result_agent.agent_id = "agent#" + uuid.uuid4().hex
         result_agent.fullname = fullname
         result_agent.powerby = templete.author
-        result_agent.prompt = templete.prompt
+        result_agent.agent_prompt = templete.prompt
         return result_agent
 
     def load_from_config(self,config:dict) -> bool:
@@ -151,8 +152,8 @@ class AIAgent:
         self.fullname = config["fullname"]
 
         if config.get("prompt") is not None:
-            self.prompt = AgentPrompt()
-            self.prompt.load_from_config(config["prompt"])
+            self.agent_prompt = AgentPrompt()
+            self.agent_prompt.load_from_config(config["prompt"])
 
         if config.get("guest_prompt") is not None:
             self.guest_prompt_str = config["guest_prompt"]
@@ -350,7 +351,7 @@ class AIAgent:
             return task_result.result_str,0
 
     async def _get_agent_prompt(self) -> AgentPrompt:
-        return self.prompt
+        return self.agent_prompt
 
     def _format_msg_by_env_value(self,prompt:AgentPrompt):
         if self.owner_env is None:
@@ -403,7 +404,8 @@ class AIAgent:
                 inner_func_call_node = result_message.get("function_call")
             if inner_func_call_node:
                 #TODO to save more token ,can i use msg_prompt?
-                final_result,error_code = await self._execute_func(inner_func_call_node,prompt,msg)
+                call_prompt : AgentPrompt = copy.deepcopy(prompt)
+                final_result,error_code = await self._execute_func(inner_func_call_node,call_prompt,msg)
                 if error_code != 0:
                     error_resp = msg.create_error_resp(final_result)
                     return error_resp
