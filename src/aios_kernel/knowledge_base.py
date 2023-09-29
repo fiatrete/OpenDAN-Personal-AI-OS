@@ -243,17 +243,21 @@ class KnowledgeBase:
     
     def parse_object_in_message(self, message: str) -> KnowledgeObject:
         # get message's first line 
+        logging.info(f"tg parse resp message: {message}")
         lines = message.split("\n")
         if len(lines) > 0:
             message = lines[0]
             try:
                 desc = json.loads(message)
-                object_id = desc["object_id"]
-            except:
+                if isinstance(desc, dict):
+                    object_id = desc["id"]
+                else:
+                    object_id = desc[0]["id"]
+            except Exception as e:
                 return None
             
             if object_id is not None:
-                return self.__load_object(ObjectID(object_id))
+                return self.__load_object(ObjectID.from_base58(object_id))
             
             
     def bytes_from_object(self, object: KnowledgeObject) -> bytes:
@@ -281,7 +285,8 @@ class KnowledgeEnvironment(Environment):
                                             self._query, 
                                             query_param))
         
-    async def _query(self, tokens: str, types: list[str] = ["text"], index: int=0):
+    async def _query(self, tokens: str, types: list[str] = ["text"], index: str=0):
+        index = int(index)
         object_ids = await KnowledgeBase().query_objects(tokens, types, 4)
         if len(object_ids) <= index:
             return "*** I have no more information for your reference.\n"

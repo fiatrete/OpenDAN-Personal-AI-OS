@@ -55,6 +55,7 @@ class TelegramTunnel(AgentTunnel):
         self.bot:Bot = None
         self.update_queue = None
         self.allow_group = "contact"
+        self.in_process_tg_msg = {}
 
     async def _do_process_raw_message(self,bot: Bot, update_id: int) -> int:
         # Request updates after the last update_id
@@ -130,6 +131,13 @@ class TelegramTunnel(AgentTunnel):
         if update.effective_user.is_bot:
             logger.warning(f"ignore message from telegram bot {update.effective_user.id}")
             return None
+        
+        if self.in_process_tg_msg.get(update.message.message_id) is not None:
+            logger.warning(f"ignore message from telegram bot {update.effective_user.id}")
+            return None
+        
+        self.in_process_tg_msg[update.message.message_id] = True
+
 
         cm : ContactManager = ContactManager.get_instance()
         reomte_user_name = f"{update.effective_user.id}@telegram"

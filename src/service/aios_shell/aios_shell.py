@@ -252,15 +252,25 @@ class AIOS_Shell:
     async def append_tunnel_config(self,tunnel_config):
         user_data_dir = AIStorage.get_instance().get_myai_dir()
         tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
+        all_tunnels = None 
         try:
             all_tunnels = toml.load(tunnels_config_path)
-            if all_tunnels is not None:
-                all_tunnels[tunnel_config["tunnel_id"]] = tunnel_config
-                f = open(tunnels_config_path,"w")
-                if f:
-                    toml.dump(all_tunnels,f)
         except Exception as e:
-            logger.warning(f"load tunnels config from {tunnels_config_path} failed! {e}")
+            logger.warning(f"load tunnels config for append from {tunnels_config_path} failed! {e}")
+
+        if all_tunnels is None:
+            all_tunnels = {}
+
+        all_tunnels[tunnel_config["tunnel_id"]] = tunnel_config
+        try:
+            f = open(tunnels_config_path,"w")
+            if f:
+                toml.dump(all_tunnels,f)
+                logger.info(f"append tunnel config to {tunnels_config_path} success!")
+            else:
+                logger.warning(f"append tunnel config to {tunnels_config_path} failed!")
+        except Exception as e:
+            logger.warning(f"append tunnels config  from {tunnels_config_path} failed! {e}")
 
     async def handle_contact_commands(self,args):
         cm = ContactManager.get_instance()

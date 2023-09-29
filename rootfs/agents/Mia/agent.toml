@@ -1,10 +1,10 @@
 instance_id = "Mia"
 fullname = "Mia"
-llm_model_name = "gpt-4"
-max_token_size = 16000
+#llm_model_name = "gpt-4"
+#max_token_size = 16000
 #enable_function =["add_event"]
 #enable_kb = "true"
-enable_timestamp = "false"
+#enable_timestamp = "false"
 owner_prompt = "我是你的主人{name}"
 contact_prompt = "我是你的朋友{name}"
 owner_env = "knowledge"
