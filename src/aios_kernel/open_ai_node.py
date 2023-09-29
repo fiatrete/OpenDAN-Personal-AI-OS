@@ -195,10 +195,10 @@ class OpenAI_ComputeNode(ComputeNode):
             model_name : str = task.params["model_name"]
             if model_name.startswith("gpt-"):
                 return True
-
-        if task.task_type == ComputeTaskType.TEXT_EMBEDDING:
-            if task.params["model_name"] == "text-embedding-ada-002":
-                return True
+        
+        #if task.task_type == ComputeTaskType.TEXT_EMBEDDING:
+        #    if task.params["model_name"] == "text-embedding-ada-002":
+        #        return True
         return False
 
 

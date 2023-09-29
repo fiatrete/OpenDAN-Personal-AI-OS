@@ -116,7 +116,6 @@ class AIOS_Shell:
         knowledge_env = KnowledgeEnvironment("knowledge")
         Environment.set_env_by_id("knowledge",knowledge_env)
 
-
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
@@ -139,7 +138,6 @@ class AIOS_Shell:
             logger.error("openai node initial failed!")
             return False
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
-
 
         if await AIStorage.get_instance().is_feature_enable("llama"):
             llama_ai_node = LocalLlama_ComputeNode()

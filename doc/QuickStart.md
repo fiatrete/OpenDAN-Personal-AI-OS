@@ -6,25 +6,25 @@ With OpenDAN, we're putting AI in your hands, making life simpler and smarter.
 This project is still in its very early stages, and there may be significant changes in the future.
 ## Installation
 
-There are two ways to install the Internal Test Version of OpenDan:
+There are two ways to install the Internal Test Version of OpenDAN:
 1. Installation through docker, this is also the installation method we recommend now
-2. Installing through the source code, this method may encounter some traditional Pyhont dependence problems and requires you to have a certain ability to solve.But if you want to do secondary development of OpenDan, this method is necessary.
+2. Installing through the source code, this method may encounter some traditional Pyhont dependence problems and requires you to have a certain ability to solve.But if you want to do secondary development of OpenDAN, this method is necessary.
 
 ### Preparation before installation
 1. Docker environment
 This article does not introduce how to install the docker, execute it under your console
-`` `
+```
 docker -version
-`` `
+```
 If you can see the docker version number (> 20.0), it means that you have installed Docker.
-If you don't know how to install docker, you can refer to [here] (https://docs.docker.com/engine/install/)
+If you don't know how to install docker, you can refer to [here](https://docs.docker.com/engine/install/)
 
 2. OpenAI API Token
-If there is no api token, you can apply for [here] (https://beta.openai.com/)
+If there is no api token, you can apply for [here](https://beta.openai.com/)
 (Applying for the API Token may have some thresholds for new players. You can find friends around you, and you can give you a temporary, or join our internal test experience group. We will also release some free experience API token from time to time.These token is limited to the maximum consumption and effective time)
 
-### Install OpenDan
-After executing the following command, you can install the Docker Image of OpenDan
+### Install OpenDAN
+After executing the following command, you can install the Docker Image of OpenDAN
 ```
 docker pull paios/aios:latest
 ```
@@ -32,7 +32,7 @@ docker pull paios/aios:latest
 ## Run
 The first Run of OpenDAN needs to be initialized. You need to enter some information in the process of initialization. Therefore, when starting the docker, remember to bring the -it parameter.
 
-OpenDan is your Personal AIOS, so it will generate some important personal data (such as chat history with agent, schedule data, etc.) during its operation. These data will be stored on your local disk. ThereforeWe recommend that you mount the local disk into the container of Docker so that the data can be guaranteed.
+OpenDAN is your Personal AIOS, so it will generate some important personal data (such as chat history with agent, schedule data, etc.) during its operation. These data will be stored on your local disk. ThereforeWe recommend that you mount the local disk into the container of Docker so that the data can be guaranteed.
 
 ```
 docker run -v /your/local/myai/:/root/myai --name aios -it paios/aios:latest 
@@ -79,7 +79,7 @@ The above configuration will be saved in the `/your/local/myai/etc/system.cfg.to
 
 
 ## (Optional) Install the local LLM kernel
-For the first time quickly experience OpenDan, we strongly recommend you to use GPT4. Although he is very slow and expensive, he is also the most powerful and stable LLM core at present.OpenDan In the architecture design, different agents are allowed to choose different LLM kernels (but at least one available LLM kernel in the system should be available in the system). If you cannot use GPT4 for various reasons, you can use the Local LLM.
+For the first time quickly experience OpenDAN, we strongly recommend you to use GPT4. Although he is very slow and expensive, he is also the most powerful and stable LLM core at present.OpenDAN In the architecture design, different agents are allowed to choose different LLM kernels (but at least one available LLM kernel in the system should be available in the system). If you cannot use GPT4 for various reasons, you can use the Local LLM.
 At present, we only adapt to LOCAL LLM based on LLaMa.CPP, and use the following method to install
 
 （Coming Soon）
@@ -96,7 +96,7 @@ Say Hello to your private AI assistant Jarvis !
 
 You've successfully installed and configured OpenDAN, and verified that it's working properly. Now, let's quickly return to the familiar graphical interface, back to the mobile internet world!
 We'll be registering a Telegram account for Jarvis. Through Telegram, you can communicate with Jarvis in a way that feels familiar.
-In the opendan's aios_shell, type:
+In the OpenDAN's aios_shell, type:
 ```
 /connect Jarvis
 ```
