@@ -3,6 +3,7 @@ import threading
 import asyncio
 import uuid
 import time
+import aiofiles
 
 from telegram import Update
 from telegram import Bot
@@ -153,12 +154,12 @@ class TelegramTunnel(AgentTunnel):
             reomte_user_name = contact.name
             if not contact.is_family_member:
                 if self.allow_group != "contact" and self.allow_group !="guest":
-                    await update.message.reply_text(f"You are not allowed to talk to me! Please contact my father~")
+                    await update.message.reply_text(f"You're not supposed to talk to me! Please contact my father~")
                     return
             
         else:
             if self.allow_group != "guest":
-                await update.message.reply_text(f"You are not allowed to talk to me! Please contact my father~")
+                await update.message.reply_text(f"You're not supposed to talk to me! Please contact my father~")
                 return
 
             if cm.is_auto_create_contact_from_telegram:
@@ -187,7 +188,13 @@ class TelegramTunnel(AgentTunnel):
                     if knowledge_object is not None:
                         if knowledge_object.get_object_type() == ObjectType.Image:
                             image = KnowledgeBase().bytes_from_object(knowledge_object)
-                            await update.message.reply_photo(image)
+                            try:
+                                async with aiofiles.open("tg_send_temp.png", mode='wb') as local_file:
+                                    if local_file:
+                                        await local_file.write(image)
+                                        await update.message.reply_photo("tg_send_temp.png")
+                            except Exception as e:
+                                logger.error(f"save image error: {e}")
                             return
                     else:
                         pos = resp_msg.body.find("audio file")
