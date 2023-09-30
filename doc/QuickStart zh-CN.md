@@ -91,15 +91,23 @@ https://huggingface.co/Trelis/Llama-2-13b-chat-hf-function-calling
 docker run --rm -it -p 8000:8000 -v /path/to/models:/models -e MODEL=/models/llama-2-13b-chat.gguf ghcr.io/abetlen/llama-cpp-python:latest
 ```
 
-完成上述步骤后，可以运行xxx测试一下，如果输出如下，说明LLaMa已经正常运行了
+完成上述步骤后，如果输出如下，说明LLaMa已经正确加载模型并正常运行了
 ```
+....................................................................................................
+llama_new_context_with_model: kv self size  =  640.00 MB
+llama_new_context_with_model: compute buffer total size =  305.47 MB
+AVX = 1 | AVX2 = 1 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | FMA = 1 | NEON = 0 | ARM_FMA = 0 | F16C = 1 | FP16_VA = 0 | WASM_SIMD = 0 | BLAS = 0 | SSE3 = 1 | SSSE3 = 1 | VSX = 0 | 
+INFO:     Started server process [171]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
 
 ### 将LLama.cpp ComputeNode增加到OpenDAN中
 ComputeNode是OpenDAN的底层组件，而且可能不会与OpenDAN运行在同一个机器上。因此从依赖关系的角度，OpenDAN并没有“主动检测”ComputeNode的能力，需要用户（或系统管理员）在OpenDAN的命令行中通过下面命令手工添加
 
 ```
-/node add Llama-2-13b-chat http://localhost:8000
+/node add llama Llama-2-13b-chat http://localhost:8000
 ```
 上面添加的是运行在本地的13b模型，如果你使用的是其它模型，或则跑在了不同的机器上。请修改上述命令中的模型名和端口号。
 
