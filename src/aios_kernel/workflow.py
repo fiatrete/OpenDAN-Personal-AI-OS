@@ -326,7 +326,7 @@ class Workflow:
             asyncio.create_task(target_workflow._process_msg(msg))
 
         logger.info(f"{msg.sender} post message {msg.msg_id} to AIBus: {msg.target}")
-        await self.get_bus().post_message(msg.target,msg)
+        await self.get_bus().post_message(msg,msg.target)
         return
 
 

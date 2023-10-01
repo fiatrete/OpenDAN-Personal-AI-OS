@@ -8,10 +8,12 @@ from .ai_function import FunctionItem
 
 class AgentMsgType(Enum):
     TYPE_MSG = 0
-    TYPE_INTERNAL_CALL = 1
-    TYPE_ACTION = 2
-    TYPE_EVENT = 3
-    TYPE_SYSTEM = 4
+    TYPE_GROUPMSG = 1
+    TYPE_INTERNAL_CALL = 10
+    TYPE_ACTION = 20
+    TYPE_EVENT = 30
+    TYPE_SYSTEM = 40
+
 
 class AgentMsgStatus(Enum):
     RESPONSED = 0
@@ -43,6 +45,9 @@ class AgentMsg:
         self.quote_msg_id:str = None    
         self.rely_msg_id:str = None # if not none means this is a respone msg
         self.session_id:str = None
+
+        #forword info
+
 
         self.create_time = 0
         self.done_time = 0
@@ -107,6 +112,18 @@ class AgentMsg:
         resp_msg.rely_msg_id = self.msg_id
         resp_msg.sender = self.target
         resp_msg.target = self.sender
+        resp_msg.body = resp_body
+        resp_msg.topic = self.topic
+
+        return resp_msg
+    
+    def create_group_resp_msg(self,sender_id,resp_body):
+        resp_msg = AgentMsg(AgentMsgType.TYPE_GROUPMSG)
+        resp_msg.create_time = time.time()
+
+        resp_msg.rely_msg_id = self.msg_id
+        resp_msg.target = self.target
+        resp_msg.sender = sender_id
         resp_msg.body = resp_body
         resp_msg.topic = self.topic
 

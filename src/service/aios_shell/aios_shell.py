@@ -80,8 +80,7 @@ class AIOS_Shell:
 
 
 
-    async def _handle_no_target_msg(self,bus:AIBus,msg:AgentMsg) -> bool:
-        target_id = msg.target.split(".")[0]
+    async def _handle_no_target_msg(self,bus:AIBus,target_id:str) -> bool:
         agent : AIAgent = await AgentManager.get_instance().get(target_id)
         if agent is not None:
             bus.register_message_handler(target_id,agent._process_msg)

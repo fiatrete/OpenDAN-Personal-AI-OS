@@ -361,17 +361,97 @@ class AIAgent:
             old_content = msg.get("content")
             msg["content"] = old_content.format_map(self.owner_env)
 
+    async def _process_group_chat_msg(self,msg:AgentMsg) -> AgentMsg:
+        from .compute_kernel import ComputeKernel
+        from .bus import AIBus
+        
+        session_topic = msg.target + "#" + msg.topic
+        chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
+        need_process = False
+        if msg.mentions is not None:
+            if self.agent_id in msg.mentions:
+                need_process = True
+                logger.info(f"agent {self.agent_id} recv a group chat message from {msg.sender},but is not mentioned,ignore!")
+
+        if need_process is not True:
+            chatsession.append(msg)
+            resp_msg = msg.create_group_resp_msg(self.agent_id,"")
+            return resp_msg
+        else:
+            msg_prompt = AgentPrompt()
+            msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
+
+            prompt = AgentPrompt()
+            prompt.append(await self._get_agent_prompt())
+            self._format_msg_by_env_value(prompt)
+            inner_functions,function_token_len = self._get_inner_functions()
+       
+            system_prompt_len = prompt.get_prompt_token_len()
+            input_len = len(msg.body)
+
+            history_prmpt,history_token_len = await self._get_prompt_from_session_for_groupchat(chatsession,system_prompt_len + function_token_len,input_len)
+            prompt.append(history_prmpt) # chat context
+            prompt.append(msg_prompt)
+
+            logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
+            if task_result.result_code != ComputeTaskResultCode.OK:
+                logger.error(f"llm compute error:{task_result.error_str}")
+                error_resp = msg.create_error_resp(task_result.error_str)
+                return error_resp
+            
+            final_result = task_result.result_str
+
+            result_message = task_result.result.get("message")
+            if result_message:
+                inner_func_call_node = result_message.get("function_call")
+            if inner_func_call_node:
+                #TODO to save more token ,can i use msg_prompt?
+                call_prompt : AgentPrompt = copy.deepcopy(prompt)
+                final_result,error_code = await self._execute_func(inner_func_call_node,call_prompt,msg)
+                if error_code != 0:
+                    error_resp = msg.create_error_resp(final_result)
+                    return error_resp
+
+            llm_result : LLMResult = self._get_llm_result_type(final_result)
+            is_ignore = False
+            result_prompt_str = ""
+            match llm_result.state:
+                case "ignore":
+                    is_ignore = True
+                case "waiting":
+                    for sendmsg in llm_result.send_msgs:
+                        target = sendmsg.target
+                        sendmsg.topic = msg.topic
+                        sendmsg.prev_msg_id = msg.get_msg_id()
+                        send_resp = await AIBus.get_default_bus().send_message(sendmsg)
+                        if send_resp is not None:
+                            result_prompt_str += f"\n{target} response is :{send_resp.body}"
+                            agent_sesion = AIChatSession.get_session(self.agent_id,f"{sendmsg.target}#{sendmsg.topic}",self.chat_db)
+                            agent_sesion.append(sendmsg)
+                            agent_sesion.append(send_resp)
+
+                    final_result = llm_result.resp + result_prompt_str
+
+            if is_ignore is not True:
+                resp_msg = msg.create_group_resp_msg(self.agent_id,final_result)
+                chatsession.append(msg)
+                chatsession.append(resp_msg)
+
+                return resp_msg
+
+            return None
+
     async def _process_msg(self,msg:AgentMsg) -> AgentMsg:
             from .compute_kernel import ComputeKernel
             from .bus import AIBus
             
+            if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
+                return await self._process_group_chat_msg(msg)
+
             session_topic = msg.get_sender() + "#" + msg.topic
             chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
-            if msg.mentions is not None:
-                if not self.agent_id in msg.mentions:
-                    chatsession.append(msg)
-                    logger.info(f"agent {self.agent_id} recv a group chat message from {msg.sender},but is not mentioned,ignore!")
-                    return None
+
                 
             msg_prompt = AgentPrompt()
             msg_prompt.messages = [{"role":"user","content":msg.body}]
@@ -453,6 +533,37 @@ class AIAgent:
 
     def get_max_token_size(self) -> int:
         return self.max_token_size
+    
+    async def _get_prompt_from_session_for_groupchat(self,chatsession:AIChatSession,system_token_len,input_token_len,is_groupchat=False):
+        history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
+        messages = chatsession.read_history(self.history_len) # read
+        result_token_len = 0
+        result_prompt = AgentPrompt()
+        read_history_msg = 0
+        for msg in reversed(messages):
+            read_history_msg += 1
+            dt = datetime.datetime.fromtimestamp(float(msg.create_time))
+            formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
+
+            if msg.sender == self.agent_id:
+                if self.enable_timestamp:
+                    result_prompt.messages.append({"role":"assistant","content":f"(create on {formatted_time}) {msg.body} "})
+                else:
+                    result_prompt.messages.append({"role":"assistant","content":msg.body})
+                
+            else:
+                if self.enable_timestamp:
+                    result_prompt.messages.append({"role":"user","content":f"(create on {formatted_time}) {msg.body} "})
+                else:
+                    result_prompt.messages.append({"role":"user","content":f"{msg.sender}:{msg.body}"})
+
+            history_len -= len(msg.body)
+            result_token_len += len(msg.body)
+            if history_len < 0:
+                logger.warning(f"_get_prompt_from_session reach limit of token,just read {read_history_msg} history message.")
+                break
+
+        return result_prompt,result_token_len
 
     async def _get_prompt_from_session(self,chatsession:AIChatSession,system_token_len,input_token_len,is_groupchat=False) -> AgentPrompt:
         # TODO: get prompt from group chat is different from single chat

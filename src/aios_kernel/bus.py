@@ -1,5 +1,5 @@
 from typing import Coroutine,Dict,Any
-from .agent_message import AgentMsg,AgentMsgStatus
+from .agent_message import AgentMsg,AgentMsgStatus,AgentMsgType
 import asyncio
 from asyncio import Queue
 
@@ -23,7 +23,10 @@ class AIBusHandler:
         resp_msg = await self.handler(msg)
         if self.enable_defualt_proc:
             if resp_msg is not None:
-                await self.owner_bus.post_message(resp_msg,False)
+                if resp_msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
+                    await self.owner_bus.post_message(resp_msg,resp_msg.target)
+                else:
+                    await self.owner_bus.post_message(resp_msg)
 
         return resp_msg
 
@@ -40,8 +43,11 @@ class AIBus:
         self.unhandle_handler:Coroutine = None
 
 
-    async def post_message(self,msg:AgentMsg,use_unhandle=True) -> bool:
-        target_id = msg.target.split(".")[0]
+    async def post_message(self,msg:AgentMsg,target_id = None,use_unhandle=True) -> bool:
+        if target_id is None:
+            target_id =msg.target
+
+        target_id = target_id.split(".")[0]
 
         handler = self.handlers.get(target_id)
         if handler:
@@ -55,8 +61,8 @@ class AIBus:
 
         if use_unhandle:
             if self.unhandle_handler is not None:
-                if await self.unhandle_handler(self,msg):
-                    return await self.post_message(msg,False)
+                if await self.unhandle_handler(self,target_id):
+                    return await self.post_message(msg,target_id,False)
 
         logger.warn(f"post message to {msg.target} failed!,target not found")
         return False
@@ -65,14 +71,18 @@ class AIBus:
         assert resp.rely_msg_id == org_msg_id
         return await self.post_message(resp)
 
-    async def send_message(self,msg:AgentMsg) -> AgentMsg:
-        sender_id = msg.sender.split(".")[0]
+    async def send_message(self,msg:AgentMsg,target_id = None, real_sender=None) -> AgentMsg:
+        if real_sender is None:
+            sender_id = msg.sender.split(".")[0]
+        else:
+            sender_id = real_sender.split(".")[0]
+            
         sender_handler = self.handlers.get(sender_id) # sender already register on bus
         if sender_handler is None:
             logger.warn(f"sender {sender_id} not register on AI_BUS!")
             return None
 
-        post_result = await self.post_message(msg)
+        post_result = await self.post_message(msg,target_id)
         if post_result is False:
             return None
 
