@@ -107,6 +107,7 @@ class AIAgentTemplete:
 class AIAgent:
     def __init__(self) -> None:
         self.agent_prompt:AgentPrompt = None
+        self.agent_think_prompt:AgentPrompt = None
         self.llm_model_name:str = None
         self.max_token_size:int = 3600
         self.agent_id:str = None
@@ -154,6 +155,10 @@ class AIAgent:
         if config.get("prompt") is not None:
             self.agent_prompt = AgentPrompt()
             self.agent_prompt.load_from_config(config["prompt"])
+        
+        if config.get("think_prompt") is not None:
+            self.agent_think_prompt = AgentPrompt()
+            self.agent_think_prompt.load_from_config(config["think_prompt"])
 
         if config.get("guest_prompt") is not None:
             self.guest_prompt_str = config["guest_prompt"]
@@ -202,7 +207,7 @@ class AIAgent:
             match func_name:
                 case "send_msg":# sendmsg($target_id,$msg_content)
                     if len(func_args) != 1:
-                        logger.error(f"parse sendmsg failed! {func_call}")
+                        logger.error(f"parse sendmsg failed! {func_name}")
                         return False
                     new_msg = AgentMsg()
                     target_id = func_item.args[0]
@@ -214,7 +219,7 @@ class AIAgent:
 
                 case "post_msg":# postmsg($target_id,$msg_content)
                     if len(func_args) != 1:
-                        logger.error(f"parse postmsg failed! {func_call}")
+                        logger.error(f"parse postmsg failed! {func_name}")
                         return False
                     new_msg = AgentMsg()
                     target_id = func_item.args[0]
@@ -352,6 +357,9 @@ class AIAgent:
 
     async def _get_agent_prompt(self) -> AgentPrompt:
         return self.agent_prompt
+    
+    async def _get_agent_think_prompt(self) -> AgentPrompt:
+        return self.agent_think_prompt
 
     def _format_msg_by_env_value(self,prompt:AgentPrompt):
         if self.owner_env is None:
@@ -360,6 +368,57 @@ class AIAgent:
         for msg in prompt.messages:
             old_content = msg.get("content")
             msg["content"] = old_content.format_map(self.owner_env)
+
+    async def _handle_event(self,event):
+        if event.type == "AgentThink":
+            return await self._do_think()
+        
+
+    async def _do_think(self):
+        #1) load all sessions
+        session_id_list = AIChatSession.list_session(self.agent_id,self.chat_db)
+        #2) get history from session in token limit
+        for session_id in session_id_list:
+            await self.think_chatsession(session_id)
+
+        #4) advanced: reload all chatrecord,and think the topic of message.
+        #5)     some topic could be end(not be thinked in futured )
+        return 
+        
+    async def think_chatsession(self,session_id):
+        if self.agent_think_prompt is None:
+            return
+        logger.info(f"agent {self.agent_id} think session {session_id}")
+        from .compute_kernel import ComputeKernel
+        chatsession = AIChatSession.get_session_by_id(session_id,self.chat_db)
+
+        while True:
+            cur_pos = chatsession.summarize_pos
+            summary = chatsession.summary
+            prompt:AgentPrompt = AgentPrompt()
+            #prompt.append(self._get_agent_prompt())
+            prompt.append(await self._get_agent_think_prompt())
+            system_prompt_len = prompt.get_prompt_token_len()
+            #think env?
+            history_prompt,next_pos = await self._get_history_prompt_for_think(chatsession,summary,system_prompt_len,cur_pos)
+            prompt.append(history_prompt)
+            is_finish = next_pos - cur_pos < 2
+            if is_finish:
+                logger.info(f"agent {self.agent_id} think session {session_id} is finished!,no more history")
+                break
+            #3) llm summarize chat history
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,None)
+            if task_result.result_code != ComputeTaskResultCode.OK:
+                logger.error(f"llm compute error:{task_result.error_str}")
+                break
+            else:
+                new_summary= task_result.result_str
+                logger.info(f"agent {self.agent_id} think session {session_id} from {cur_pos} to {next_pos} summary:{new_summary}")
+                chatsession.update_think_progress(next_pos,new_summary)
+            
+
+        
+        return 
 
     async def _process_group_chat_msg(self,msg:AgentMsg) -> AgentMsg:
         from .compute_kernel import ComputeKernel
@@ -534,6 +593,42 @@ class AIAgent:
     def get_max_token_size(self) -> int:
         return self.max_token_size
     
+    async def _get_history_prompt_for_think(self,chatsession:AIChatSession,summary:str,system_token_len:int,pos:int)->(AgentPrompt,int):
+        history_len = (self.max_token_size * 0.7) - system_token_len
+        
+        messages = chatsession.read_history(self.history_len,pos,"natural") # read
+        result_token_len = 0
+        result_prompt = AgentPrompt()
+        have_summary = False
+        if summary is not None:
+            if len(summary) > 1:
+                have_summary = True
+        
+        if have_summary:
+                result_prompt.messages.append({"role":"user","content":summary})
+                result_token_len -= len(summary)
+        else:
+            result_prompt.messages.append({"role":"user","content":"There is no summary yet."})
+            result_token_len -= 6
+
+        read_history_msg = 0
+        history_str : str = ""
+        for msg in messages:
+            read_history_msg += 1
+            dt = datetime.datetime.fromtimestamp(float(msg.create_time))
+            formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
+            record_str = f"{msg.sender},[{formatted_time}]\n{msg.body}\n"
+            history_str = history_str + record_str
+
+            history_len -= len(msg.body)
+            result_token_len += len(msg.body)
+            if history_len < 0:
+                logger.warning(f"_get_prompt_from_session reach limit of token,just read {read_history_msg} history message.")
+                break
+        
+        result_prompt.messages.append({"role":"user","content":history_str})
+        return result_prompt,pos+read_history_msg
+    
     async def _get_prompt_from_session_for_groupchat(self,chatsession:AIChatSession,system_token_len,input_token_len,is_groupchat=False):
         history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
         messages = chatsession.read_history(self.history_len) # read
@@ -565,13 +660,20 @@ class AIAgent:
 
         return result_prompt,result_token_len
 
-    async def _get_prompt_from_session(self,chatsession:AIChatSession,system_token_len,input_token_len,is_groupchat=False) -> AgentPrompt:
+    async def _get_prompt_from_session(self,chatsession:AIChatSession,system_token_len,input_token_len) -> AgentPrompt:
         # TODO: get prompt from group chat is different from single chat
+        
         history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
         messages = chatsession.read_history(self.history_len) # read
         result_token_len = 0
         result_prompt = AgentPrompt()
         read_history_msg = 0
+
+        if chatsession.summary is not None:
+            if len(chatsession.summary) > 1:  
+                result_prompt.messages.append({"role":"user","content":chatsession.summary})
+                result_token_len -= len(chatsession.summary)
+
         for msg in reversed(messages):
             read_history_msg += 1
             dt = datetime.datetime.fromtimestamp(float(msg.create_time))

@@ -473,6 +473,12 @@ class AIOS_Shell:
                 return await self.handle_knowledge_commands(args)
             case 'contact':
                 return await self.handle_contact_commands(args)
+            case 'think':
+                if len(args) >= 1:
+                    target_id = args[0]
+                    the_agent = await AgentManager.get_instance().get(target_id)
+                    if the_agent is not None:
+                        await the_agent._do_think()
             case 'open':
                 if len(args) >= 1:
                     target_id = args[0]
