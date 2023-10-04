@@ -233,7 +233,7 @@ class AIOS_Shell:
         match tunnel_type:
             case "telegram":
                 tunnel_config["type"] = "TelegramTunnel"
-                input_table["token"] = UserConfigItem("telegram bot token")
+                input_table["token"] = UserConfigItem("telegram bot token\n You can get it from https://t.me/BotFather ,read https://core.telegram.org/bots#how-do-i-create-a-bot for more details")
                 input_table["allow"] = UserConfigItem("allow group (default is member,you can choose contact or guest)")
             case "email":
                 tunnel_config["type"] = "EmailTunnel"
@@ -490,6 +490,16 @@ class AIOS_Shell:
                     topic = args[1]
                 else:
                     topic = "default"
+
+                target_exist = False
+                if await AgentManager.get_instance().is_exist(target_id):
+                    target_exist = True
+                if await WorkflowManager.get_instance().is_exist(target_id):
+                    target_exist = True
+                
+                if target_exist is False:
+                    show_text = FormattedText([("class:error", f"Target {target_id} not exist!")])
+                    return show_text
 
                 self.current_target = target_id
                 self.current_topic = topic

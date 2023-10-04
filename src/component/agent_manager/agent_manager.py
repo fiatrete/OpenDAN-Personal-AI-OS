@@ -48,6 +48,12 @@ class AgentManager:
         pass
         
     
+    async def is_exist(self,agent_id:str) -> bool:
+        the_aget = await self.get(agent_id)
+        if the_aget:
+            return True
+        return False
+
     async def get(self,agent_id:str) -> AIAgent:
         the_agent = self.loaded_agent_instance.get(agent_id)
         if the_agent:

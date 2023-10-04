@@ -39,11 +39,6 @@ class CalenderEnvironment(Environment):
         self.add_ai_function(SimpleAIFunction("get_time",
                                         "get current time",
                                         self._get_now))
-
-        #self.add_ai_function(SimpleAIFunction("serach_events",
-        #                                "search events in calender",
-        #                                self._search_events))
-
         get_param = {
             "start_time": "start time (UTC) of event",
             "end_time": "end time (UTC) of event"
