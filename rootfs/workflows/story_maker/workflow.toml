@@ -1,0 +1,51 @@
+name = "story_maker"
+
+
+[filter]
+"*" = "manager"
+
+[roles.manager]
+name = "manager"
+fullname = "总导演"
+agent="manager"
+enable_function = []
+
+[[roles.manager.prompt]]
+role="system"
+content="""
+你当前的职位是语音故事制作总负责人,负责与客户对接并向团队下达指令，不需要自己直接完成任务。你的团队分为下面两个成员:writer,speecher。一个故事制作分成两个阶段：让writer写出故事，再交由speecher演播故事生成音频文件。你的基本工作模式是：
+1. 收到客户的明确的指令后,让writer写出故事
+2. 将writer写出的故事交给speecher演播
+3. 获得音频文件之后，整个任务已完成，将音频文件的存放路径以如下格式返回给客户：
+```
+故事制作完成。
+audio file:音频文件路径
+```
+4. 当你决定要和成员通信时，请使用下面形式输出需要通信的消息
+```
+##/send_msg "成员名称"
+内容
+```
+"""
+
+[roles.writer]
+name = "writer"
+agent = "fairy_tale_writer"
+fullname = "作家"
+enable_function = []
+[[roles.writer.prompt]]
+role="system"
+content=""
+
+[roles.speecher]
+name = "speecher"
+agent = "speecher"
+enable_function = ["text_to_speech"]
+[[roles.speecher.prompt]]
+role="system"
+content="""你现在的职责是演播一个故事，故事完成之后请以如下格式返回：
+```
+故事演播完成。
+audio file：音频文件路径
+```
+"""

@@ -1,0 +1,76 @@
+<mxfile host="65bd71144e">
+    <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
+        <mxGraphModel dx="711" dy="944" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="WIyWlLk6GJQsqaUBKTNV-0"/>
+                <mxCell id="WIyWlLk6GJQsqaUBKTNV-1" parent="WIyWlLk6GJQsqaUBKTNV-0"/>
+                <mxCell id="ia-fclrWNqMUroYMcw65-37" value="" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="340" y="345" width="290" height="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-36" value="" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="90" y="345" width="250" height="105" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-1" value="local compute &lt;br&gt;node" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="90" y="380" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="ia-fclrWNqMUroYMcw65-2" target="ia-fclrWNqMUroYMcw65-28" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-2" value="my device&lt;br&gt;&amp;nbsp;compute &lt;br&gt;node" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="210" y="380" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-3" value="service compute&lt;br&gt;node" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#e3c800;fontColor=#000000;strokeColor=#B09500;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="370" y="380" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-4" value="untruest compute&lt;br&gt;node" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#fa6800;fontColor=#000000;strokeColor=#C73500;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="490" y="380" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-18" value="TaskParams:json" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="280" y="50" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-19" value="padding input:buffers" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0050ef;fontColor=#ffffff;strokeColor=#001DBC;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="280" y="130" width="120" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-22" value="Refer:Name Data" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="280" y="90" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-23" value="aios_kernel&lt;br&gt;(scheduler)" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="280" y="250" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-24" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="ia-fclrWNqMUroYMcw65-19" target="ia-fclrWNqMUroYMcw65-23" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="430" y="240" as="sourcePoint"/>
+                        <mxPoint x="480" y="190" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-25" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="ia-fclrWNqMUroYMcw65-23" target="ia-fclrWNqMUroYMcw65-2" edge="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="420" y="350" as="sourcePoint"/>
+                        <mxPoint x="470" y="300" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-26" value="Owne Nodes" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="90" y="345" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-27" value="Rental Nodes" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="505" y="345" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-28" value="ResultParams:json" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="280" y="516" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-29" value="padding result:buffers" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0050ef;fontColor=#ffffff;strokeColor=#001DBC;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="280" y="596" width="120" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-30" value="Refer:Name Data" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="280" y="556" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-34" value="&lt;br&gt;&lt;span style=&quot;color: rgb(209, 213, 219); font-family: Söhne, ui-sans-serif, system-ui, -apple-system, &amp;quot;Segoe UI&amp;quot;, Roboto, Ubuntu, Cantarell, &amp;quot;Noto Sans&amp;quot;, sans-serif, &amp;quot;Helvetica Neue&amp;quot;, Arial, &amp;quot;Apple Color Emoji&amp;quot;, &amp;quot;Segoe UI Emoji&amp;quot;, &amp;quot;Segoe UI Symbol&amp;quot;, &amp;quot;Noto Color Emoji&amp;quot;; font-size: 16px;&quot;&gt;Some tasks can be divided, and this can be handled either at the higher layer for splitting and merging, or by the aios_kernel.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;labelBackgroundColor=default;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="450" y="80" width="170" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="ia-fclrWNqMUroYMcw65-35" value="&lt;span style=&quot;color: rgb(209, 213, 219); font-family: Söhne, ui-sans-serif, system-ui, -apple-system, &amp;quot;Segoe UI&amp;quot;, Roboto, Ubuntu, Cantarell, &amp;quot;Noto Sans&amp;quot;, sans-serif, &amp;quot;Helvetica Neue&amp;quot;, Arial, &amp;quot;Apple Color Emoji&amp;quot;, &amp;quot;Segoe UI Emoji&amp;quot;, &amp;quot;Segoe UI Symbol&amp;quot;, &amp;quot;Noto Color Emoji&amp;quot;; font-size: 16px;&quot;&gt;The core of the scheduler is to select a compute_node to complete the computing task based on a variety of factors, such as the known status of the compute_node, the distance to the Refer data, the cost of computation, and the speed of operation. It can also include some iterative retry logic.&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;labelBackgroundColor=default;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+                    <mxGeometry x="450" y="470" width="200" height="250" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
