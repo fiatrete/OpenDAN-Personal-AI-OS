@@ -58,7 +58,7 @@ Click the image below for a demo:
 There are two ways to install the Internal Test Version of OpenDAN:
 
 1. Installation through docker, this is also the installation method we recommend now
-2. Installing through the source code, this method may encounter some traditional Pyhont dependence problems and requires you to have a certain ability to solve.But if you want to do secondary development of OpenDAN, this method is necessary.
+2. Installing through the source code, this method may encounter some traditional Python dependence problems and requires you to have a certain ability to solve.But if you want to do secondary development of OpenDAN, this method is necessary.
 
 ### Preparation before installation
 
@@ -75,7 +75,7 @@ If you don't know how to install docker, you can refer to [here](https://docs.do
 2. OpenAI API Token
 If there is no api token, you can apply for [here](https://beta.openai.com/)
 
-Applying for the API Token may have some thresholds for new players. You can find friends around you, and you can give you a temporary, or join our internal test experience group. We will also release some free experience API token from time to time.These token is limited to the maximum consumption and effective time
+Applying for the API Token may have some thresholds for new players. You can find friends around you, and he can give you a temporary, or join our internal test experience group. We will also release some free experience API token from time to time.These token is limited to the maximum consumption and effective time
 
 ### Install
 
