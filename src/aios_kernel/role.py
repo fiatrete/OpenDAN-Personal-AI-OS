@@ -35,18 +35,18 @@ class AIRole:
             if self.prompt.load_from_config(prompt_node) is False:
                 logging.error("load prompt failed!")
                 return False
-        
+
         intro_node = config.get("intro")
         if intro_node is not None:
             self.introduce = intro_node
 
         history_node = config.get("history_len")
-        if history_node:
+        if history_node is not None:
             self.history_len = int(history_node)
 
         if config.get("enable_function") is not None:
             self.enable_function_list = config["enable_function"]
-    
+
     def get_role_id(self) -> str:
         return self.role_id
 
@@ -55,15 +55,15 @@ class AIRole:
 
     def get_name(self) -> str:
         return self.role_name
-    
+
     def get_prompt(self) -> AgentPrompt:
         return self.prompt
-    
+
 class AIRoleGroup:
     def __init__(self) -> None:
         self.roles : dict[str,AIRole] = {}
         self.owner_name : str = None
-        
+
     def load_from_config(self,config:dict) -> bool:
         for k,v in config.items():
             role = AIRole()
@@ -72,10 +72,9 @@ class AIRoleGroup:
                 return False
             role.role_id = self.owner_name + "." + k
             self.roles[k] = role
-        
+
         return True
 
     def get(self,role_name:str) -> AIRole:
         return self.roles.get(role_name)
 
-    

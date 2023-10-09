@@ -196,7 +196,7 @@ class Workflow:
         targets = self._parse_msg_target(msg.target)
         if len(targets) > 1:
             return await self._forword_msg(targets,msg)
-        
+
         #0 we don't support workflow join a group right now, this cloud be a feture in future
         if msg.mentions is not None:
             logger.warn(f"workflow {self.workflow_id} recv a group chat message,not support ignore!")
@@ -254,8 +254,8 @@ class Workflow:
         def check_args(func_item:FunctionItem):
             match func_name:
                 case "send_msg":# sendmsg($target_id,$msg_content)
-                    if len(func_args) != 1:
-                        logger.error(f"parse sendmsg failed! {func_call}")
+                    if len(func_item.args) != 1:
+                        logger.error(f"parse sendmsg failed! {func_item}")
                         return False
                     new_msg = AgentMsg()
                     target_id = func_item.args[0]
@@ -266,8 +266,8 @@ class Workflow:
                     is_need_wait = True
 
                 case "post_msg":# postmsg($target_id,$msg_content)
-                    if len(func_args) != 1:
-                        logger.error(f"parse postmsg failed! {func_call}")
+                    if len(func_item.args) != 1:
+                        logger.error(f"parse postmsg failed! {func_item}")
                         return False
                     new_msg = AgentMsg()
                     target_id = func_item.args[0]
@@ -381,7 +381,7 @@ class Workflow:
             if the_role.enable_function_list is not None:
                 if len(the_role.enable_function_list) > 0:
                     if func_name not in the_role.enable_function_list:
-                        logger.debug(f"agent {self.agent_id} ignore inner func:{func_name}")
+                        logger.debug(f"agent {the_role.agent.agent_id} ignore inner func:{func_name}")
                         continue
                 else:
                     continue
@@ -410,6 +410,7 @@ class Workflow:
             except Exception as e:
                 result_str = f"execute {func_name} error:{str(e)}"
                 logger.error(f"llm execute inner func:{func_name} error:{e}")
+                logger.exception(e)
 
 
         inner_functions = self._get_inner_functions(the_role)
@@ -442,7 +443,7 @@ class Workflow:
 
 
         prompt = AgentPrompt()
-        prompt.append(the_role.agent.prompt)
+        prompt.append(the_role.agent.agent_prompt)
         prompt.append(self.get_workflow_rule_prompt())
         prompt.append(the_role.get_prompt())
         # prompt.append(self._get_function_prompt(the_role.get_name()))
@@ -465,7 +466,7 @@ class Workflow:
                 logger.error(f"llm compute error:{task_result.error_str}")
                 error_resp = msg.create_error_resp(task_result.error_str)
                 return error_resp
-            
+
             result_str = task_result.result_str
             logger.info(f"{the_role.role_id} process {msg.sender}:{msg.body},llm str is :{result_str}")
 
@@ -513,7 +514,7 @@ class Workflow:
                     workflow_chat_session.append(resp_msg)
                     #await self.get_bus().resp_message(resp_msg)
                     return resp_msg
-                case "waiting":        
+                case "waiting":
                     for sendmsg in result.send_msgs:
                         target = sendmsg.target
                         sendmsg.topic = msg.topic
@@ -529,7 +530,7 @@ class Workflow:
                         else:
                              # message will be saved in role.process_message
                             pass
-                    
+
                     this_llm_resp_prompt = AgentPrompt()
                     this_llm_resp_prompt.messages = [{"role":"assistant","content":result_str}]
                     prompt.append(this_llm_resp_prompt)

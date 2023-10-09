@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class EnvironmentEvent(ABC):
     @abstractmethod
     def display(self) -> str:
-        pass    
+        pass
 
 EnvironmentEventHandler = Callable[[str,EnvironmentEvent],Awaitable[Any]]
 
@@ -21,7 +21,7 @@ class Environment:
     @classmethod
     def get_env_by_id(cls,env_id:str):
         return cls._all_env.get(env_id)
-    
+
     @classmethod
     def set_env_by_id(cls,id,env):
         assert id == env.get_id()
@@ -39,7 +39,7 @@ class Environment:
 
     def get_id(self) -> str:
         return self.env_id
-    
+
     def add_owner_env(self,env) -> None:
         self.owner_env[env.get_id()] = env
 
@@ -51,11 +51,20 @@ class Environment:
     def add_ai_function(self,func:AIFunction) -> None:
         if self.functions.get(func.get_name()) is not None:
             logger.warn(f"add ai_function {func.get_name()} in env {self.env_id}:function already exist")
-            
+
         self.functions[func.get_name()] = func
 
     def get_ai_function(self,func_name:str) -> AIFunction:
-        return self.functions.get(func_name)
+        func = self.functions.get(func_name)
+        if func is not None:
+            return func
+
+        for owner_env in self.owner_env.values():
+            func = owner_env.get_ai_function(func_name)
+            if func is not None:
+                return func
+
+        return None
 
     #def enable_ai_function(self,func_name:str) -> None:
     #    pass
@@ -64,7 +73,11 @@ class Environment:
     #    pass
 
     def get_all_ai_functions(self) -> List[AIFunction]:
-        return self.functions.values()
+        func_list = []
+        func_list.extend(self.functions.values())
+        for owner_env in self.owner_env.values():
+            func_list.extend(owner_env.get_all_ai_functions())
+        return func_list
 
     @abstractmethod
     def _do_get_value(self,key:str) -> Optional[str]:
@@ -93,7 +106,7 @@ class Environment:
             return
 
         logger.warn(f"remove event_handler {event_id} in env {self.env_id}:handler not found")
-    
+
     async def fire_event(self,event_id:str,event:EnvironmentEvent) -> None:
         handler_list = self.event_handlers.get(event_id)
         if handler_list is not None:
@@ -102,15 +115,15 @@ class Environment:
         else:
             logger.debug(f"fire event {event_id} in env {self.env_id}:handler not found")
         return
-    
+
     def __getitem__(self, key):
         return self.get_value(key)
-    
+
     def get_value(self,key:str) -> Optional[str]:
         handler = self.get_handlers.get(key)
         if handler is not None:
             return handler()
-    
+
         s = self.values.get(key)
         if isinstance(s,str):
             return s
@@ -119,7 +132,7 @@ class Environment:
 
         s = self._do_get_value(key)
         if s is not None:
-            return s       
+            return s
         if self.owner_env is not None:
             for env in self.owner_env.values():
                 s = env.get_value(key)
@@ -128,7 +141,7 @@ class Environment:
 
         logger.warn(f"get value {key} in env {self.env_id} failed!,not found")
         return None
-    
+
     def set_value(self, key: str, str_value: str,is_storage:bool = True):
         logger.info(f"set value {key} in env {self.env_id} to {str_value}")
         self.values[key] = str_value
