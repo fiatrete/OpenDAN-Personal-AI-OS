@@ -442,7 +442,7 @@ class Workflow:
 
 
         prompt = AgentPrompt()
-        prompt.append(the_role.agent.prompt)
+        prompt.append(the_role.agent.agent_prompt)
         prompt.append(self.get_workflow_rule_prompt())
         prompt.append(the_role.get_prompt())
         # prompt.append(self._get_function_prompt(the_role.get_name()))
