@@ -123,7 +123,7 @@ class ComputeKernel:
                 if task_req.state == ComputeTaskState.ERROR:
                     break
 
-                if check_times >= 120:
+                if check_times >= 12000:
                     task_req.state = ComputeTaskState.ERROR
                     break
 

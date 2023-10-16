@@ -544,8 +544,9 @@ class Workflow:
     async def _get_prompt_from_session(self,the_role:AIRole,chatsession:AIChatSession) -> AgentPrompt:
         messages = chatsession.read_history(the_role.history_len) # read last 10 message
         result_prompt = AgentPrompt()
+        
         for msg in reversed(messages):
-            if msg.sender == chatsession.owner_id:
+            if msg.sender == the_role.role_id:
                 result_prompt.messages.append({"role":"assistant","content":msg.body})
             else:
                 result_prompt.messages.append({"role":"user","content":f"{msg.body}"})
