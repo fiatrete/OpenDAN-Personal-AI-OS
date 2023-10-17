@@ -414,8 +414,8 @@ class AIOS_Shell:
                 if len(args) < 4:
                     return show_text
                 
-                model_name = args[3]
-                url = args[4]
+                model_name = args[2]
+                url = args[3]
                 ComputeNodeConfig.get_instance().remove_node("llama", url, model_name)
                 ComputeNodeConfig.get_instance().save()
             else:
@@ -747,6 +747,7 @@ async def main():
                                '/disable $feature',
                                '/node add llama $model_name $url',
                                '/node rm llama $model_name $url',
+                               '/node list',
                                '/show',
                                '/exit',
                                '/help'], ignore_case=True)
