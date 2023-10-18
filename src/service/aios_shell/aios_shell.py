@@ -367,9 +367,12 @@ class AIOS_Shell:
             else:
                 return show_text
         if sub_cmd == "journal":
-            topn = 10 if len(args) == 1 else int(args[1])
-            journals = [str(journal) for journal in KnowledgePipline.get_instance().get_latest_journals(topn)]
-            print_formatted_text("\r\n".join(journals))
+            try:
+                topn = 10 if len(args) == 1 else int(args[1])
+                journals = [str(journal) for journal in KnowledgePipline.get_instance().get_latest_journals(topn)]
+                print_formatted_text("\r\n".join(journals))
+            except ValueError:
+                return FormattedText([("class:title", f"/knowledge journal failed: {args[1]} is not a valid integer.\n")])
         if sub_cmd == "query":
             if len(args) < 2:
                 return show_text
