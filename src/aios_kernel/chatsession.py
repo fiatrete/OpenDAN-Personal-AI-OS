@@ -7,7 +7,7 @@ import datetime
 import uuid
 import json
 
-from .agent_message import AgentMsgType, AgentMsg, AgentMsgStatus
+from .agent_base import AgentMsgType, AgentMsg, AgentMsgStatus
 
 class ChatSessionDB:
     def __init__(self, db_file):

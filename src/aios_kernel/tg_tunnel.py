@@ -17,7 +17,7 @@ from .knowledge_base import KnowledgeBase
 from .tunnel import AgentTunnel
 from .storage import AIStorage
 from .contact_manager import ContactManager,Contact,FamilyMember
-from .agent_message import AgentMsg,AgentMsgType
+from .agent_base import AgentMsg,AgentMsgType
 
 
 logger = logging.getLogger(__name__)

@@ -8,7 +8,7 @@ import logging
 import time
 import datetime
 from .tunnel import AgentTunnel
-from .agent_message import AgentMsg
+from .agent_base import AgentMsg
 
 from email.message import EmailMessage
 

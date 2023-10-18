@@ -1,5 +1,5 @@
 from typing import Coroutine,Dict,Any
-from .agent_message import AgentMsg,AgentMsgStatus,AgentMsgType
+from .agent_base import AgentMsg,AgentMsgStatus,AgentMsgType
 import asyncio
 from asyncio import Queue
 

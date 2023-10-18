@@ -6,6 +6,8 @@ from .vector import ChromaVectorStore, VectorBase
 import logging
 
 
+
+
 # KnowledgeStore class, which aggregates ChunkStore, ChunkTracker, and ObjectStore, and is a global singleton that makes it easy to use these three built-in store examples
 class KnowledgeStore:
     _instance = None
@@ -41,6 +43,8 @@ class KnowledgeStore:
         self.chunk_list_writer = ChunkListWriter(self.chunk_store, self.chunk_tracker)
         self.chunk_reader = ChunkReader(self.chunk_store, self.chunk_tracker)
         self.vector_store = {}
+
+    
     
     def get_relation_store(self) -> ObjectRelationStore:
         return self.relation_store

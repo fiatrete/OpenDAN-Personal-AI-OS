@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import logging
 from typing import Coroutine
-from .agent_message import AgentMsg
+from .agent_base import AgentMsg
 from .bus import AIBus
 
 logger = logging.getLogger(__name__)

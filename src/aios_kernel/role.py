@@ -1,6 +1,6 @@
 import logging
 
-from .agent import AIAgent,AgentPrompt
+from .agent_base import AgentPrompt
 
 class AIRole:
     def __init__(self) -> None:

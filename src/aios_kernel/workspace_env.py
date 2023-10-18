@@ -1,5 +1,6 @@
 # this env is designed for workflow owner filesystem, support file/directory operations
 
+import json
 import subprocess
 import tempfile
 import threading
@@ -9,6 +10,9 @@ import ast
 import sys
 import os
 import re
+import asyncio
+import aiofiles.os
+import chardet
 
 from .environment import Environment,EnvironmentEvent
 from .ai_function import AIFunction,SimpleAIFunction
@@ -170,4 +174,50 @@ class WorkspaceEnvironment(Environment):
     async def run_code(self,pycode:str) -> str:
         interpreter = CodeInterpreter("python",True)
         return interpreter.run(pycode)
+    
+
+
+class KnowledgeBaseFileSystemEnvironment(Environment):
+    def __init__(self, env_id: str) -> None:
+        super().__init__(env_id)
+        self.root_path = "."
+
+        operator_param = {
+            "path": "full path of target directory",
+        }
+        self.add_ai_function(SimpleAIFunction("list",
+                                        "list the files and sub directory in target directory,result is a json array",
+                                        self.list,operator_param))
+        
+        operator_param = {
+            "path": "full path of target file",
+        }
+        self.add_ai_function(SimpleAIFunction("cat",
+                                        "cat the file content in target path,result is a string",
+                                        self.cat,operator_param))
+    
+    def set_root_path(self,path:str):
+        self.root_path = path
+
+    
+    async def list(self,path:str) -> str:
+        directory_path = self.root_path + path
+        items = []
+
+        with await aiofiles.os.scandir(directory_path) as entries:
+            async for entry in entries:
+                item_type = "directory" if entry.is_dir() else "file"
+                items.append({"name": entry.name, "type": item_type})
+
+        return json.dumps(items)
+
+    async def cat(self,path:str) -> str:
+        file_path = self.root_path + path
+        cur_encode = "utf-8"
+        async with aiofiles.open(file_path,'rb') as f:
+            cur_encode = chardet.detect(await f.read())['encoding']
+
+        async with aiofiles.open(file_path, mode='r', encoding=cur_encode) as f:
+            content = await f.read(2048)
+        return content
 

@@ -8,8 +8,7 @@ from typing import Optional,Tuple,List
 from abc import ABC, abstractmethod
 
 from .environment import Environment,EnvironmentEvent
-from .agent_message import AgentMsg,AgentMsgStatus,FunctionItem,LLMResult
-from .agent import AgentPrompt,AgentMsg
+from .agent_base import AgentMsg,AgentMsgStatus,FunctionItem,LLMResult,AgentPrompt
 from .chatsession import AIChatSession
 from .role import AIRole,AIRoleGroup
 from .ai_function import AIFunction,FunctionItem
@@ -238,77 +237,6 @@ class Workflow:
         error_resp = msg.create_error_resp(err_str)
         return error_resp
 
-    @classmethod
-    def prase_llm_result(cls,llm_result_str:str)->LLMResult:
-        r = LLMResult()
-        if llm_result_str is None:
-            r.state = "ignore"
-            return r
-        if llm_result_str == "ignore":
-            r.state = "ignore"
-            return r
-
-        lines = llm_result_str.splitlines()
-        is_need_wait = False
-
-        def check_args(func_item:FunctionItem):
-            match func_name:
-                case "send_msg":# sendmsg($target_id,$msg_content)
-                    if len(func_item.args) != 1:
-                        logger.error(f"parse sendmsg failed! {func_item}")
-                        return False
-                    new_msg = AgentMsg()
-                    target_id = func_item.args[0]
-                    msg_content = func_item.body
-                    new_msg.set("_",target_id,msg_content)
-
-                    r.send_msgs.append(new_msg)
-                    is_need_wait = True
-
-                case "post_msg":# postmsg($target_id,$msg_content)
-                    if len(func_item.args) != 1:
-                        logger.error(f"parse postmsg failed! {func_item}")
-                        return False
-                    new_msg = AgentMsg()
-                    target_id = func_item.args[0]
-                    msg_content = func_item.body
-                    new_msg.set("_",target_id,msg_content)
-                    r.post_msgs.append(new_msg)
-
-                case "call":# call($func_name,$args_str)
-                    r.calls.append(func_item)
-                    is_need_wait = True
-                    return True
-                case "post_call": # post_call($func_name,$args_str)
-                    r.post_calls.append(func_item)
-                    return True
-
-        current_func : FunctionItem = None
-        for line in lines:
-            if line.startswith("##/"):
-                if current_func:
-                    if check_args(current_func) is False:
-                        r.resp += current_func.dumps()
-
-                func_name,func_args = AgentMsg.parse_function_call(line[3:])
-                current_func = FunctionItem(func_name,func_args)
-            else:
-                if current_func:
-                    current_func.append_body(line + "\n")
-                else:
-                    r.resp += line + "\n"
-
-        if current_func:
-            if check_args(current_func) is False:
-                r.resp += current_func.dumps()
-
-        if len(r.send_msgs) > 0 or len(r.calls) > 0:
-            r.state = "waiting"
-        else:
-            r.state = "reponsed"
-
-        return r
-
     async def role_post_msg(self,msg:AgentMsg,the_role:AIRole,workflow_chat_session:AIChatSession):
         msg.sender = the_role.get_role_id()
 
@@ -395,7 +323,6 @@ class Workflow:
         return None
 
     async def _role_execute_func(self,the_role:AIRole,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> [str,int]:
-        from .compute_kernel import ComputeKernel
 
         func_name = inenr_func_call_node.get("name")
         arguments = json.loads(inenr_func_call_node.get("arguments"))
@@ -441,7 +368,6 @@ class Workflow:
     async def role_process_msg(self,msg:AgentMsg,the_role:AIRole,workflow_chat_session:AIChatSession) -> AgentMsg:
         msg.target = the_role.get_role_id()
 
-
         prompt = AgentPrompt()
         prompt.append(the_role.agent.agent_prompt)
         prompt.append(self.get_workflow_rule_prompt())
@@ -481,7 +407,7 @@ class Workflow:
                     error_resp = msg.create_error_resp(result_str)
                     return error_resp
 
-            result : LLMResult = Workflow.prase_llm_result(result_str)
+            result : LLMResult = LLMResult.from_str(result_str)
             for postmsg in result.post_msgs:
                 postmsg.prev_msg_id = msg.get_msg_id()
                 # might be craete a new msg.topic for this postmsg

@@ -3,10 +3,12 @@ import random
 from typing import Optional
 import logging
 import asyncio
+import tiktoken
+
 from asyncio import Queue
 
 from knowledge import ObjectID
-from .agent import AgentPrompt
+from .agent_base import AgentPrompt
 from .compute_node import ComputeNode
 from .compute_task import ComputeTask, ComputeTaskState, ComputeTaskResult, ComputeTaskType,ComputeTaskResultCode
 
@@ -103,6 +105,18 @@ class ComputeKernel:
 
     def is_task_support(self, task: ComputeTask) -> bool:
         return True
+
+    @staticmethod
+    def llm_num_tokens_from_text(text:str,model:str) -> int:
+        try:
+            encoding = tiktoken.encoding_for_model(model)
+        except KeyError:
+            logger.debug("Warning: model not found. Using cl100k_base encoding.")
+            encoding = tiktoken.get_encoding("cl100k_base")
+
+        token_count = len(encoding.encode(text))
+        return token_count
+
 
     # friendly interface for use:
     def llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0,inner_functions = None):

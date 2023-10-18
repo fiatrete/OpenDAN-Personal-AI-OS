@@ -118,7 +118,7 @@ class OpenAI_ComputeNode(ComputeNode):
                                                         #max_tokens=result_token,
                                                         temperature=0.7)
                     else:
-                        logger.info(f"call openai {mode_name} prompts: {prompts} functions: {json.dumps(llm_inner_functions)}")
+                        logger.info(f"call openai {mode_name} prompts: \n\t {prompts} \nfunctions: \n\t{json.dumps(llm_inner_functions)}")
                         resp = openai.ChatCompletion.create(model=mode_name,
                                                             messages=prompts,
                                                             functions=llm_inner_functions,

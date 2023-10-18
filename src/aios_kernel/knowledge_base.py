@@ -1,7 +1,8 @@
 # define a knowledge base class
 import json
 import logging
-from .agent import AgentPrompt
+
+from .agent_base import AgentPrompt
 from .compute_kernel import ComputeKernel 
 from .storage import AIStorage
 from .environment import Environment
