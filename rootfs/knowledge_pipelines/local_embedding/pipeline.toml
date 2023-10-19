@@ -1,0 +1,6 @@
+name = "LocalEmbedding"
+input.module = "local_dir"
+input.params.path = "${myai_dir}/data"
+parser.module = "embedding"
+parser.params.path = "${myai_dir}/knowledge/indices/embedding"
+

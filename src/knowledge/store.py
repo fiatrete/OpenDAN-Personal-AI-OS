@@ -68,15 +68,15 @@ class KnowledgeStore:
     
     def load_object(self, object_id: ObjectID) -> KnowledgeObject:
         if object_id.get_object_type() == ObjectType.Document:
-            return DocumentObject.decode(self.store.get_object_store().get_object(object_id))
+            return DocumentObject.decode(self.object_store.get_object(object_id))
         if object_id.get_object_type() == ObjectType.Image:
-            return ImageObject.decode(self.store.get_object_store().get_object(object_id))
+            return ImageObject.decode(self.object_store.get_object(object_id))
         if object_id.get_object_type() == ObjectType.Video:
-            return VideoObject.decode(self.store.get_object_store().get_object(object_id))
+            return VideoObject.decode(self.object_store.get_object(object_id))
         if object_id.get_object_type() == ObjectType.RichText:
-            return RichTextObject.decode(self.store.get_object_store().get_object(object_id))
+            return RichTextObject.decode(self.object_store.get_object(object_id))
         if object_id.get_object_type() == ObjectType.Email:
-            return EmailObject.decode(self.store.get_object_store().get_object(object_id))
+            return EmailObject.decode(self.object_store.get_object(object_id))
         else:
             pass
     

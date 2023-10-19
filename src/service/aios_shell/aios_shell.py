@@ -32,6 +32,7 @@ from aios_kernel import *
 sys.path.append(directory + '/../../component/')
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
+from knowledge_manager import KnowledgePipelineManager
 
 
 logger = logging.getLogger(__name__)
@@ -185,9 +186,9 @@ class AIOS_Shell:
         AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
         
         
-        pipelines = KnowledgePipelineManager(AIStorage().get_instance().get_myai_dir() / "knowledge" / "pipelines")
-        pipelines.load_dir(AIStorage().get_instance().get_system_app_dir() / "knowledge_pipelines")
-        pipelines.load_dir(AIStorage().get_instance().get_myai_dir() / "knowledge_pipelines")
+        pipelines = KnowledgePipelineManager(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge/pipelines"))
+        pipelines.load_dir(os.path.join(AIStorage().get_instance().get_system_app_dir(), "knowledge_pipelines"))
+        pipelines.load_dir(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge_pipelines"))
         asyncio.create_task(pipelines.run())
 
         TelegramTunnel.register_to_loader()
