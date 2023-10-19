@@ -1,7 +1,6 @@
 from ..object import KnowledgeObject
 from ..data import ChunkList, ChunkListWriter
 from ..object import ObjectType
-from .. import KnowledgeStore
 
 # desc
 #   meta
@@ -76,8 +75,8 @@ class VideoObjectBuilder:
         self.restore_file = restore_file
         return self
 
-    def build(self) -> VideoObject:
-        chunk_list = KnowledgeStore().get_chunk_list_writer().create_chunk_list_from_file(
+    def build(self, store) -> VideoObject:
+        chunk_list = store.get_chunk_list_writer().create_chunk_list_from_file(
             self.video_file, 1024 * 1024 * 4, self.restore_file
         )
         info = get_video_info(self.video_file)

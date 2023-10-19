@@ -1,7 +1,6 @@
 from ..object import KnowledgeObject, ObjectRelationStore
 from ..data import ChunkList, ChunkListWriter
 from ..object import ObjectType
-from .. import KnowledgeStore
 
 # desc
 #   meta
@@ -49,13 +48,13 @@ class DocumentObjectBuilder:
         self.text = text
         return self
 
-    def build(self) -> DocumentObject:
-        chunk_list = KnowledgeStore().get_chunk_list_writer().create_chunk_list_from_text(self.text)
+    def build(self, store) -> DocumentObject:
+        chunk_list = store.get_chunk_list_writer().create_chunk_list_from_text(self.text)
         doc = DocumentObject(self.meta, self.tags, chunk_list)
         doc_id = doc.calculate_id()
         
         # Add relation to store
         for chunk_id in chunk_list.chunk_list:
-            KnowledgeStore().get_relation_store().add_relation(chunk_id, doc_id)
+            store.get_relation_store().add_relation(chunk_id, doc_id)
             
         return doc

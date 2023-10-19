@@ -1,7 +1,6 @@
 from ..object import KnowledgeObject
 from ..data import ChunkList, ChunkListWriter
 from ..object import ObjectType
-from .. import KnowledgeStore
 import os
 
 # desc
@@ -86,10 +85,10 @@ class ImageObjectBuilder:
         self.restore_file = restore_file
         return self
 
-    def build(self) -> ImageObject:
+    def build(self, store) -> ImageObject:
         
         file_size = os.path.getsize(self.image_file)
-        chunk_list = KnowledgeStore().get_chunk_list_writer().create_chunk_list_from_file(
+        chunk_list = store.get_chunk_list_writer().create_chunk_list_from_file(
             self.image_file, 1024 * 1024 * 4, self.restore_file
         )
         exif = get_exif_data(self.image_file)

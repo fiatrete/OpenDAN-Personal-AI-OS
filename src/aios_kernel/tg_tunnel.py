@@ -10,9 +10,7 @@ from telegram import Bot
 from telegram.ext import Updater
 from telegram.error import Forbidden, NetworkError
 
-from knowledge.object.object_id import ObjectType
-
-from .knowledge_base import KnowledgeBase
+from knowledge import ObjectType, KnowledgeStore
 
 from .tunnel import AgentTunnel
 from .storage import AIStorage
@@ -236,10 +234,10 @@ class TelegramTunnel(AgentTunnel):
                     await update.message.reply_text("")
                     return
                 
-                knowledge_object = KnowledgeBase().parse_object_in_message(resp_msg.body)
+                knowledge_object = KnowledgeStore().parse_object_in_message(resp_msg.body)
                 if knowledge_object is not None:
                     if knowledge_object.get_object_type() == ObjectType.Image:
-                        image = KnowledgeBase().bytes_from_object(knowledge_object)
+                        image = KnowledgeStore().bytes_from_object(knowledge_object)
                         try:
                             async with aiofiles.open("tg_send_temp.png", mode='wb') as local_file:
                                 if local_file:

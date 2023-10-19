@@ -1,7 +1,7 @@
 import os
 
-from .object import ObjectStore, ObjectRelationStore, ObjectID, ObjectType, KnowledgeObject, DocumentObject, ImageObject, VideoObject, RichTextObject, EmailObject
-from core_object import DocumentObject, ImageObject, VideoObject, RichTextObject, EmailObject
+from .object import ObjectStore, ObjectRelationStore, ObjectID, ObjectType, KnowledgeObject
+from .core_object import DocumentObject, ImageObject, VideoObject, RichTextObject, EmailObject
 from .data import ChunkStore, ChunkTracker, ChunkListWriter, ChunkReader
 import json
 import logging

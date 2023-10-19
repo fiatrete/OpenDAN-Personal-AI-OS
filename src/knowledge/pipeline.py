@@ -7,6 +7,7 @@ import sqlite3
 import os
 from . import ObjectID, KnowledgeStore
 import asyncio
+from enum import Enum
 
 class KnowledgePipelineJournal:
     def __init__(self, time: datetime.datetime, object_id: str, input: str, parser: str):
