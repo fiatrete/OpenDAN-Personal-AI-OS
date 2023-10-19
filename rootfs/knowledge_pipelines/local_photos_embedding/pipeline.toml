@@ -1,0 +1,6 @@
+name = "LocalPhotoEmbedding"
+input.module = "local_dir"
+input.params.path = "~/myai/photos"
+parser.module = "embedding"
+parser.params.path = "~/myai/knowledge/indices/photo_embedding"
+

@@ -112,9 +112,6 @@ class AIOS_Shell:
 
             cm.add_family_member(self.username,owenr)
 
-        knowledge_env = KnowledgeEnvironment("knowledge")
-        Environment.set_env_by_id("knowledge",knowledge_env)
-
         cal_env = CalenderEnvironment("calender")
         await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
@@ -186,7 +183,12 @@ class AIOS_Shell:
 
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
-        KnowledgePipline.get_instance().initial()
+        
+        
+        pipelines = KnowledgePipelineManager(AIStorage().get_instance().get_myai_dir() / "knowledge" / "pipelines")
+        pipelines.load_dir(AIStorage().get_instance().get_system_app_dir() / "knowledge_pipelines")
+        pipelines.load_dir(AIStorage().get_instance().get_myai_dir() / "knowledge_pipelines")
+        asyncio.create_task(pipelines.run())
 
         TelegramTunnel.register_to_loader()
         EmailTunnel.register_to_loader()
