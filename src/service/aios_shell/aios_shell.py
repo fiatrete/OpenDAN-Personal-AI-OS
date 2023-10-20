@@ -27,6 +27,7 @@ sys.path.append(directory + '/../../')
 
 import proxy
 from aios_kernel import *
+from knowledge import *
 
 
 sys.path.append(directory + '/../../component/')
@@ -186,7 +187,7 @@ class AIOS_Shell:
         AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
         
         
-        pipelines = KnowledgePipelineManager(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge/pipelines"))
+        pipelines = KnowledgePipelineManager.initial(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge/pipelines"))
         pipelines.load_dir(os.path.join(AIStorage().get_instance().get_system_app_dir(), "knowledge_pipelines"))
         pipelines.load_dir(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge_pipelines"))
         asyncio.create_task(pipelines.run())
@@ -333,46 +334,21 @@ class AIOS_Shell:
             cm.add_contact(contact_name,contact)
     
     async def handle_knowledge_commands(self, args):
-        show_text = FormattedText([("class:title", "sub command not support!\n" 
-                              "/knowledge add email | dir\n"
-                              "/knowledge journal [$topn]\n"
+        show_text = FormattedText([("class:title", "sub command not support!\n"
+                              "/knowledge pipelines\n" 
+                              "/knowledge journal $pipeline [$topn]\n"
                               "/knowledge query $object_id\n")])
         if len(args) < 1:
             return show_text
         sub_cmd = args[0]
-        if sub_cmd == "add":
-            if len(args) < 2:
-                return show_text
-            if args[1] == "email":
-                config = dict()
-                for key, item in KnowledgeEmailSource.user_config_items():
-                    user_input = await try_get_input(f"{key} : {item}")
-                    if user_input is None:
-                        return show_text
-                    config[key] = user_input
-                error = KnowledgePipline.get_instance().add_email_source(KnowledgeEmailSource(config))
-                if error is not None:
-                    return FormattedText([("class:title", f"/knowledge add email failed {error}\n")])
-                else:
-                    KnowledgePipline.get_instance().save_cosnfig()
-            if args[1] == "dir":
-                config = dict()
-                for key, item in KnowledgeDirSource.user_config_items():
-                    user_input = await try_get_input(f"{key} : {item}")
-                    if user_input is None:
-                        return show_text
-                    config[key] = user_input
-                error = KnowledgePipline.get_instance().add_dir_source(KnowledgeDirSource(config))
-                if error is not None:
-                    return FormattedText([("class:title", f"/knowledge add dir failed {error}\n")])
-                else:
-                    KnowledgePipline.get_instance().save_config()
-            else:
-                return show_text
+        if sub_cmd == "pipelines":
+            pipelines = KnowledgePipelineManager.get_instance().get_pipelines()
+            print_formatted_text("\r\n".join(pipeline.get_name() for pipeline in pipelines))
         if sub_cmd == "journal":
-            topn = 10 if len(args) == 1 else int(args[1])
-            journals = [str(journal) for journal in KnowledgePipline.get_instance().get_latest_journals(topn)]
-            print_formatted_text("\r\n".join(journals))
+            name = args[1]
+            topn = 10 if len(args) == 2 else int(args[2])
+            journals = [str(journal) for journal in KnowledgePipelineManager.get_instance().get_pipeline(name).get_journal().latest_journals(topn)]
+            print_formatted_text("\r\n".join(str(journal) for journal in journals))
         if sub_cmd == "query":
             if len(args) < 2:
                 return show_text
@@ -381,8 +357,8 @@ class AIOS_Shell:
             if object_id.get_object_type() == ObjectType.Image:
                 from PIL import Image
                 import io
-                image = KnowledgeBase().load_object(object_id)
-                image_data = KnowledgeBase().bytes_from_object(image)
+                image = KnowledgeStore().load_object(object_id)
+                image_data = KnowledgeStore().bytes_from_object(image)
                 image = Image.open(io.BytesIO(image_data))
                 image.show()
 
@@ -671,9 +647,8 @@ def print_welcome_screen():
 \033[1;94m\tGive your Agent a Telegram account :\033[0m /connect $agent_name
 \033[1;94m\tAdd personal files to the AI Knowledge Base. \033[0m
 \t\t1) Copy your file to ~/myai/data 
-\t\t2) /knowlege add dir
 \033[1;94m\tSearch your knowledge base :\033[0m /open Mia
-\033[1;94m\tCheck the progress of AI reading personal data :\033[0m /knowledge journal
+\033[1;94m\tCheck the progress of AI reading personal data :\033[0m /knowledge $pipeline journal
 \033[1;94m\tQuery object with ID in knowledge base :\033[0m /knowledge query $object_id
 \033[1;94m\tOpen AI Bash (For Developer Only):\033[0m /open ai_bash
 \033[1;94m\tEnable AIGC Feature :\033[0m /enable aigc
@@ -752,8 +727,8 @@ async def main():
                                '/history $num $offset',
                                '/connect $target',
                                '/contact $name',
-                               '/knowledge add email | dir',
-                               '/knowledge journal [$topn]', 
+                               '/knowledge pipelines',
+                               '/knowledge journal $pipeline [$topn]', 
                                '/knowledge query $object_id',
                                '/set_config $key',
                                '/enable $feature',

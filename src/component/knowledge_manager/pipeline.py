@@ -4,7 +4,17 @@ import toml
 import asyncio
 from knowledge import KnowledgePipelineEnvironment, KnowledgePipeline
 
+
 class KnowledgePipelineManager:
+    @classmethod
+    def initial(cls, root_dir: str):
+        cls._instance = KnowledgePipelineManager(root_dir)
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls):
+        return cls._instance    
+    
     def __init__(self, root_dir: str):
         self.root_dir = root_dir
         self.input_modules = {}
@@ -32,7 +42,7 @@ class KnowledgePipelineManager:
         input_module = config["input"]["module"]
         _, ext = os.path.splitext(input_module)
         if ext == ".py":
-            input_module = os.path.abspath(path, input_module)
+            input_module = os.path.join(path, input_module)
             input_init = runpy.run_path(input_module)["init"]
         else:
             input_init = self.input_modules.get(input_module)
@@ -41,7 +51,7 @@ class KnowledgePipelineManager:
         parser_module = config["parser"]["module"]
         _, ext = os.path.splitext(parser_module)
         if ext == ".py":
-            parser_module = os.path.abspath(path, parser_module)
+            parser_module = os.path.join(path, parser_module)
             parser_init = runpy.run_path(parser_module)["init"]
         else:
             parser_init = self.parser_modules.get(parser_module)
@@ -53,6 +63,12 @@ class KnowledgePipelineManager:
         pipeline = KnowledgePipeline(name, env, input_init, input_params, parser_init, parser_params)
         self.pipelines["names"][name] = pipeline
         self.pipelines["running"].append(pipeline)
+
+    def get_pipelines(self) -> [KnowledgePipeline]:
+        return self.pipelines["running"]
+    
+    def get_pipeline(self, name: str) -> KnowledgePipeline:
+        return self.pipelines["names"].get(name)
 
     async def run(self):
         while True:

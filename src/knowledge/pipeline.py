@@ -19,6 +19,12 @@ class KnowledgePipelineJournal:
     
     def get_parser(self) -> str:
         return self.parser
+    
+    def __str__(self) -> str:
+        if self.is_finish():
+            return f"{self.time}: finished)"
+        else:
+            return f"{self.time}: object:{self.object_id} input:{self.input}, parser:{self.parser})"
 
 # init sqlite3 client
 class KnowledgePipelineJournalClient:
@@ -84,6 +90,12 @@ class KnowledgePipeline:
         self.env = env
         self.input = None
         self.parser = None
+
+    def get_name(self):
+        return self.name
+
+    def get_journal(self) -> KnowledgePipelineJournalClient:
+        return self.env.journal
         
     async def run(self):
         if self.state == KnowledgePipelineState.INIT:
@@ -100,6 +112,8 @@ class KnowledgePipeline:
                 if object_id is not None:
                     parser_journal = await self.parser.parse(object_id)
                     self.env.journal.insert(object_id, input_journal, parser_journal)
+                else:
+                    return
         if self.state == KnowledgePipelineState.STOPPED:
             return 
         if self.state == KnowledgePipelineState.FINISHED:

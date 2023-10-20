@@ -1,9 +1,11 @@
 
 import logging
 import toml
+import os
+import runpy
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from aios_kernel import AIAgent,AIAgentTemplete,AIStorage
+from aios_kernel import AIAgent,AIAgentTemplete,AIStorage,Environment
 from package_manager import PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
 
 logger = logging.getLogger(__name__)
@@ -105,6 +107,18 @@ class AgentManager:
             config_data = await config_file.read()
             config = toml.loads(config_data)
             result_agent = AIAgent()
+
+            if "owner_env" in config:
+                owner_env = config["owner_env"]
+                _, ext = os.path.splitext(owner_env)
+                if ext == ".py":
+                    env_path = os.path.join(agent_media.full_path, owner_env)
+                    owner_env = runpy.run_path(env_path)["init"]()
+                    config["owner_env"] = owner_env
+                else:
+                    owner_env = Environment.get_env_by_id(config["owner_env"])
+                config["owner_env"] = owner_env
+
             if result_agent.load_from_config(config) is False:
                 logger.error(f"load agent from {agent_media} failed!")
                 return None
