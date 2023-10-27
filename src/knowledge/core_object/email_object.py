@@ -1,4 +1,3 @@
-from .. import KnowledgeStore
 from .rich_text_object import RichTextObject, RichTextObjectBuilder
 from ..object import ObjectID, ObjectType, KnowledgeObject
 from .document_object import DocumentObjectBuilder
@@ -68,11 +67,11 @@ class EmailObjectBuilder:
         self.folder = folder
         return self
 
-    def build(self) -> EmailObject:
+    def build(self, store) -> EmailObject:
         
         # Just get the object store and relation store from global KnowledgeStore
-        store = KnowledgeStore().get_object_store()
-        relation = KnowledgeStore().get_relation_store()
+        store = store.get_object_store()
+        relation = store.get_relation_store()
         
         # Read meta.json
         meta = {}

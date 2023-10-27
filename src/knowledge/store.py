@@ -1,8 +1,9 @@
 import os
 
-from .object import ObjectStore, ObjectRelationStore
+from .object import ObjectStore, ObjectRelationStore, ObjectID, ObjectType, KnowledgeObject
+from .core_object import DocumentObject, ImageObject, VideoObject, RichTextObject, EmailObject
 from .data import ChunkStore, ChunkTracker, ChunkListWriter, ChunkReader
-from .vector import ChromaVectorStore, VectorBase
+import json
 import logging
 
 
@@ -17,7 +18,7 @@ class KnowledgeStore:
             cls._instance = super().__new__(cls)
             
             import aios_kernel
-            knowledge_dir = aios_kernel.storage.AIStorage().get_myai_dir() / "knowledge"
+            knowledge_dir = aios_kernel.storage.AIStorage().get_myai_dir() / "knowledge" / "objects"
 
             if not os.path.exists(knowledge_dir):
                 os.makedirs(knowledge_dir)
@@ -42,9 +43,7 @@ class KnowledgeStore:
         self.chunk_tracker = ChunkTracker(chunk_store_dir)
         self.chunk_list_writer = ChunkListWriter(self.chunk_store, self.chunk_tracker)
         self.chunk_reader = ChunkReader(self.chunk_store, self.chunk_tracker)
-        self.vector_store = {}
 
-    
     
     def get_relation_store(self) -> ObjectRelationStore:
         return self.relation_store
@@ -64,7 +63,43 @@ class KnowledgeStore:
     def get_chunk_reader(self) -> ChunkReader:
         return self.chunk_reader
     
-    def get_vector_store(self, model_name: str) -> VectorBase:
-        if model_name not in self.vector_store:
-            self.vector_store[model_name] = ChromaVectorStore(self.root, model_name)
-        return self.vector_store[model_name]
+    async def insert_object(self, object: KnowledgeObject):
+        self.object_store.put_object(object.calculate_id(), object.encode())
+    
+    def load_object(self, object_id: ObjectID) -> KnowledgeObject:
+        if object_id.get_object_type() == ObjectType.Document:
+            return DocumentObject.decode(self.object_store.get_object(object_id))
+        if object_id.get_object_type() == ObjectType.Image:
+            return ImageObject.decode(self.object_store.get_object(object_id))
+        if object_id.get_object_type() == ObjectType.Video:
+            return VideoObject.decode(self.object_store.get_object(object_id))
+        if object_id.get_object_type() == ObjectType.RichText:
+            return RichTextObject.decode(self.object_store.get_object(object_id))
+        if object_id.get_object_type() == ObjectType.Email:
+            return EmailObject.decode(self.object_store.get_object(object_id))
+        else:
+            pass
+    
+    def parse_object_in_message(self, message: str) -> KnowledgeObject:
+        # get message's first line 
+        logging.info(f"tg parse resp message: {message}")
+        lines = message.split("\n")
+        if len(lines) > 0:
+            message = lines[0]
+            try:
+                desc = json.loads(message)
+                if isinstance(desc, dict):
+                    object_id = desc["id"]
+                else:
+                    object_id = desc[0]["id"]
+            except Exception as e:
+                return None
+            
+            if object_id is not None:
+                return self.load_object(ObjectID.from_base58(object_id))
+            
+            
+    def bytes_from_object(self, object: KnowledgeObject) -> bytes:
+        if object.get_object_type() == ObjectType.Image:
+            image_object = object
+            return self.get_chunk_reader().read_chunk_list_to_single_bytes(image_object.get_chunk_list())

@@ -16,7 +16,6 @@ from .compute_task import ComputeTaskResult,ComputeTaskResultCode
 from .ai_function import AIFunction
 from .environment import Environment
 from .contact_manager import ContactManager,Contact,FamilyMember
-from .knowledge_base import KnowledgeBase
 from .compute_kernel import ComputeKernel
 from .bus import AIBus
 
@@ -123,7 +122,8 @@ class AIAgent:
             self.contact_prompt_str = config["contact_prompt"]
 
         if config.get("owner_env") is not None:
-            self.owner_env = Environment.get_env_by_id(config["owner_env"])
+            self.owner_env = config.get("owner_env")
+       
 
         if config.get("powerby") is not None:
             self.powerby = config["powerby"]
@@ -550,8 +550,7 @@ class AIAgent:
     def parser_learn_llm_result(self,llm_result:str):
         pass
 
-    async def _llm_read_article(self,kb:KnowledgeBase,item:KnowledgeObject) -> ComputeTaskResult:
-        #kb_env = KnowledgeBaseFileSystemEnvironment()
+    async def _llm_read_article(self,item:KnowledgeObject) -> ComputeTaskResult:
         full_content = item.get_article_full_content()
         full_content_len = ComputeKernel.llm_num_tokens_from_text(full_content,self.get_llm_model_name())
         if full_content_len < self.get_llm_learn_token_limit():
