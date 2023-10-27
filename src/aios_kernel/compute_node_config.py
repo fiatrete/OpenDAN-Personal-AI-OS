@@ -70,10 +70,12 @@ class ComputeNodeConfig:
     def remove_node(self, model_type: str, url: str, model_name: str):
         if model_type == "llama":
             llama_nodes_cfg = self.config.get("llama") or []
-            for i in range(0, len(llama_nodes_cfg)):
-                cfg = llama_nodes_cfg[i]
+            i = 0
+            for cfg in llama_nodes_cfg:
                 if url == cfg["url"] and model_name == cfg["model_name"]:
                     llama_nodes_cfg.pop(i)
+                else:
+                    i += 1
 
     def list(self) -> str:
         return toml.dumps(self.config)
