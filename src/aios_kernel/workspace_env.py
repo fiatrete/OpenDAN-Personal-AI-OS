@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+import logging
 import tempfile
 import threading
 import traceback
@@ -11,12 +12,124 @@ import sys
 import os
 import re
 import asyncio
+from typing import Any,List
 import aiofiles.os
 import chardet
 
+from .agent_base import AgentMsg,AgentTodo
 from .environment import Environment,EnvironmentEvent
 from .ai_function import AIFunction,SimpleAIFunction
 
+logger = logging.getLogger(__name__)
+
+class WorkspaceEnvironment(Environment):
+    def __init__(self, env_id: str) -> None:
+        super().__init__(env_id)
+        self.root_path = f"./workspace/{env_id}"
+
+    def set_root_path(self,path:str):
+        self.root_path = path
+
+    def get_knowledge_base(self) -> str:
+        pass
+
+    def exec_op_list(self,oplist:List)->None:
+        for op in oplist:
+            if op["op"] == "create":
+                self.create(op["path"],op["content"])
+            elif op["op"] == "write":
+                self.write(op["path"],op["content"],op["mode"])
+            elif op["op"] == "delete":
+                self.delete(op["path"])
+            elif op["op"] == "rename":
+                self.rename(op["path"],op["new_name"])
+
+            else:
+                logger.error(f"execute op list failed: unknown op:{op['op']}")
+
+    async def list(self,path:str,only_dir:bool=False) -> str:
+        directory_path = self.root_path + path
+        items = []
+
+        with await aiofiles.os.scandir(directory_path) as entries:
+            async for entry in entries:
+                is_dir = entry.is_dir()
+                if only_dir and not is_dir:
+                    continue
+                item_type = "directory" if is_dir else "file"
+                items.append({"name": entry.name, "type": item_type})
+
+        return json.dumps(items)
+
+    async def read(self,path:str) -> str:
+        file_path = self.root_path + path
+        cur_encode = "utf-8"
+        async with aiofiles.open(file_path,'rb') as f:
+            cur_encode = chardet.detect(await f.read())['encoding']
+
+        async with aiofiles.open(file_path, mode='r', encoding=cur_encode) as f:
+            content = await f.read(2048)
+        return content
+    
+    async def write(self,path:str,content:str,is_append:bool=False) -> str:
+        file_path = self.root_path + path
+        if is_append:
+            async with aiofiles.open(file_path, mode='a', encoding="utf-8") as f:
+                await f.write(content)
+        else:
+            async with aiofiles.open(file_path, mode='w', encoding="utf-8") as f:
+                await f.write(content)
+        return "success"
+
+    async def create(self,path:str,content:str=None) -> bool:
+        if content is None:
+            # create dir
+            dir_path = self.root_path + path
+            os.makedirs(dir_path)
+            return True
+        else:
+            file_path = self.root_path + path
+            async with aiofiles.open(file_path, mode='w', encoding="utf-8") as f:
+                await f.write(content)
+            return True
+        
+    async def delete(self,path:str) -> bool:
+        file_path = self.root_path + path
+        os.remove(file_path)
+        return True
+    
+    async def rename(self,path:str,new_name:str) -> bool:
+        file_path = self.root_path + path
+        new_path = self.root_path + new_name
+        os.rename(file_path,new_path)
+        return True
+
+
+    #easy use functions
+    async def update_state_by_msg(self, msg: AgentMsg,extra_info:dict) -> None:
+        # add todo
+        # update todo status
+        pass
+
+    async def update_todos(self,oplist:list) -> None:
+        # add todo
+        # update todo status
+        pass
+
+    async def get_todo_tree(self,path:str,deep:int = 4) -> str:
+        pass
+
+    async def get_todo_by_path(self,path:str) -> AgentTodo:
+        pass
+    
+    async def get_todo(self,id:str) -> AgentTodo:
+        pass
+
+    async def save_new_todo(self,path:str,todo:AgentTodo) -> None:
+        pass
+
+    async def update_todo(self,path:str,todo:AgentTodo)->None:
+        pass
 
 class CodeInterpreter:
     def __init__(self, language, debug_mode):
@@ -138,7 +251,7 @@ class CodeInterpreter:
 
 
   
-class WorkspaceEnvironment(Environment):
+class ShellEnvironment(Environment):
     def __init__(self, env_id: str) -> None:
         super().__init__(env_id)
 
@@ -176,7 +289,7 @@ class WorkspaceEnvironment(Environment):
         return interpreter.run(pycode)
     
 
-
+# merge to standard workspace env, **ABANDON this!**
 class KnowledgeBaseFileSystemEnvironment(Environment):
     def __init__(self, env_id: str) -> None:
         super().__init__(env_id)

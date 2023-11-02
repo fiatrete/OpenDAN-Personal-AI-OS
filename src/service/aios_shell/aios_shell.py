@@ -118,7 +118,7 @@ class AIOS_Shell:
         await cal_env.start()
         Environment.set_env_by_id("calender",cal_env)
 
-        workspace_env = WorkspaceEnvironment("bash")
+        workspace_env = ShellEnvironment("bash")
         Environment.set_env_by_id("bash",workspace_env)
 
         paint_env = PaintEnvironment("paint")

@@ -151,3 +151,8 @@ class ContactManager:
 
     def list_family_members(self):
         return self.family_members
+    
+
+    #async def process_msg(self,msg:AgentMsg):
+    #    # forword message to contact    
+    #    pass

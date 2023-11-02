@@ -7,6 +7,7 @@ import re
 import shlex
 from typing import List
 from .ai_function import FunctionItem
+from .compute_task import ComputeTaskResult
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +231,7 @@ class LLMResult:
         self.send_msgs : List[AgentMsg] = []
         self.calls : List[FunctionItem] = []
         self.post_calls : List[FunctionItem] = []
+        self.extra_info = None
 
     @classmethod
     def from_str(self,llm_result_str:str,valid_func:List[str]=None) -> 'LLMResult':
@@ -310,7 +312,49 @@ class LLMResult:
         else:
             r.state = "reponsed"
 
-        return r    
+        return r   
+
+class AgentGoal:
+    def __init__(self) -> None:
+        self.description = None
+
+
+class AgentReport:
+    def __init__(self):
+        pass 
+
+class AgentTodoResult:
+    def __init__(self) -> None:
+        self.result_state = "error"
+
+class AgentTodo:
+    def __init__(self):
+        self.todo_id = "todo#" + uuid.uuid4().hex
+        self.title = None
+        self.detail = None
+        self.todo_path = None # get parent todo,sub todo by path
+
+        self.depend_todo_ids = []
+
+        self.need_check = True
+        self.result : ComputeTaskResult = None
+        self.last_check_result = None
+
+        self.worker = None 
+        self.checker = None 
+        self.createor = None
+
+        self.retry_count = 0
+
+    def can_do(self) -> bool:
+        return True
+
+    async def save(self):
+        pass
+
+class AgentWorkLog:
+    def __init__(self) -> None:
+        pass
 
 class BaseAIAgent:
     def __init__(self) -> None:

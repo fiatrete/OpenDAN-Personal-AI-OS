@@ -18,7 +18,7 @@ from .email_tunnel import EmailTunnel
 from .storage import ResourceLocation,AIStorage,UserConfig,UserConfigItem
 from .contact_manager import ContactManager,Contact,FamilyMember  
 from .text_to_speech_function import TextToSpeechFunction
-from .workspace_env import WorkspaceEnvironment
+from .workspace_env import ShellEnvironment
 from .local_stability_node import Local_Stability_ComputeNode
 from .stability_node import Stability_ComputeNode
 from .local_st_compute_node import LocalSentenceTransformer_Text_ComputeNode,LocalSentenceTransformer_Image_ComputeNode
