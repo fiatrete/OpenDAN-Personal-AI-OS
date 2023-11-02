@@ -46,7 +46,7 @@ class KnowledgePipelineManager:
             input_init = runpy.run_path(input_module)["init"]
         else:
             input_init = self.input_modules.get(input_module)
-        input_params = config["input"]["params"]
+        input_params = config["input"].get("params")
 
         parser_module = config["parser"]["module"]
         _, ext = os.path.splitext(parser_module)
@@ -55,7 +55,7 @@ class KnowledgePipelineManager:
             parser_init = runpy.run_path(parser_module)["init"]
         else:
             parser_init = self.parser_modules.get(parser_module)
-        parser_params = config["parser"]["params"]
+        parser_params = config["parser"].get("params")
 
 
         data_path = os.path.join(self.root_dir, name)

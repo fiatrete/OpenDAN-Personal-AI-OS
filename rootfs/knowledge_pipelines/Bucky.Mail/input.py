@@ -1,19 +1,22 @@
+import os
+import aiofiles
+import chardet
+import logging
+import string
+from knowledge import ImageObjectBuilder, DocumentObjectBuilder, KnowledgePipelineEnvironment, KnowledgePipelineJournal
+from aios_kernel.storage import AIStorage
 
 class KnowledgeEmailSource:
     def __init__(self, env: KnowledgePipelineEnvironment, config:dict): 
         self.config = config
-        self.config["type"] = "email"
     
-    def id(self):
-        return self.config["address"]
-
-    @classmethod
-    def user_config_items(cls):
-        return [("address", "email address"),
-                ("password", "email password"),
-                ("imap_server", "imap server"),
-                ("imap_port", "imap port")
-                ]
+    # @classmethod
+    # def user_config_items(cls):
+    #     return [("address", "email address"),
+    #             ("password", "email password"),
+    #             ("imap_server", "imap server"),
+    #             ("imap_port", "imap port")
+    #             ]
     
     async def run_once(self):
         # read config from toml file
