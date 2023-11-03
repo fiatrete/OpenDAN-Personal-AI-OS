@@ -136,21 +136,27 @@ Say Hello to your private AI assistant Jarvis !
 
 ### Build OpenDAN from source code
 1. Install the latest version of python (>= 3.11) and pip
-2. Clone the source code
-```
-git clone https://github.com/fiatrete/OpenDAN-Personal-AI-OS.git
-cd OpenDAN-Personal-AI-OS
-```
-3. Install the dependent python library
-```
-pip install -r ./src/requirements.txt
-```
-Waiting for installation.
-
-4. Start OpenDAN through aios_shell
-```
-python ./src/srvice/aios_shell/aios_shell.py
-```
+1. Clone the source code
+   ```
+   git clone https://github.com/fiatrete/OpenDAN-Personal-AI-OS.git
+   cd OpenDAN-Personal-AI-OS
+   ```
+1. Enable virtual env
+   ```
+   virtualenv venv
+   source ./venv/bin/activate
+   ```
+1. Install the dependent python library
+   ```
+   pip install -r ./src/requirements.txt
+   ```
+   Waiting for installation.
+1. Start OpenDAN through aios_shell
+   ```
+   python ./src/srvice/aios_shell/aios_shell.py
+   ```
+   1. If seeing error saying `No ffmpeg exe could be found`, you need to install it manually from https://www.ffmpeg.org/
+      
 Now OpenDAN runs in the development mode, and the directory is:
 - AIOS_ROOT: ./rootfs (/opt/aios in docker)
 - AIOS_MYAI: ~/myai (/root/myai in docer)
