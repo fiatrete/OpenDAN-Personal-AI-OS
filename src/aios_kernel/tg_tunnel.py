@@ -196,7 +196,7 @@ class TelegramTunnel(AgentTunnel):
             
         else:
             if self.allow_group != "guest":
-                await update.message.reply_text(f"You're not supposed to talk to me! Please contact my father~")
+                await update.message.reply_text(f"The current Telegram account is not in the contact list. If you want to receive a reply, you can add the configuration in the contacts.toml file or switch tunnel to guest mode.")
                 return
 
             if cm.is_auto_create_contact_from_telegram:
