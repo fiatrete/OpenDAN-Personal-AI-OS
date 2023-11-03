@@ -1,6 +1,7 @@
 from typing import List
 import toml
-
+import time
+from datetime import datetime
 class Contact:
     def __init__(self, name, phone=None, email=None, telegram=None,added_by=None, tags=[], notes=""):
         self.name = name
@@ -21,7 +22,8 @@ class Contact:
 
             "added_by": self.added_by,
             "tags": self.tags,
-            "notes": self.notes
+            "notes": self.notes,
+            "now" : datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
 
     @classmethod

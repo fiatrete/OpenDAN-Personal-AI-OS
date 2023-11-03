@@ -12,37 +12,58 @@ import sys
 import os
 import re
 import asyncio
+import aiofiles
 from typing import Any,List
-import aiofiles.os
+import os
 import chardet
 
 from .agent_base import AgentMsg,AgentTodo
 from .environment import Environment,EnvironmentEvent
 from .ai_function import AIFunction,SimpleAIFunction
+from .storage import AIStorage,ResourceLocation
 
 logger = logging.getLogger(__name__)
 
 class WorkspaceEnvironment(Environment):
     def __init__(self, env_id: str) -> None:
         super().__init__(env_id)
-        self.root_path = f"./workspace/{env_id}"
+        myai_path = AIStorage.get_instance().get_myai_dir() 
+        self.root_path = f"{myai_path}/workspace/{env_id}"
+        if not os.path.exists(self.root_path):
+            os.makedirs(self.root_path+"/todos")
+        
 
     def set_root_path(self,path:str):
         self.root_path = path
 
+    def get_prompt(self) -> AgentMsg:
+        return None
+    
+    def get_role_prompt(self,role_id:str) -> AgentMsg:
+        return None
+
     def get_knowledge_base(self) -> str:
         pass
 
-    def exec_op_list(self,oplist:List)->None:
+    async def exec_op_list(self,oplist:List)->None:
+        if oplist is None:
+            return
+        
         for op in oplist:
             if op["op"] == "create":
-                self.create(op["path"],op["content"])
+                return await self.create(op["path"],op["content"])
             elif op["op"] == "write":
-                self.write(op["path"],op["content"],op["mode"])
+                return await self.write(op["path"],op["content"],op["mode"])
             elif op["op"] == "delete":
-                self.delete(op["path"])
+                return await self.delete(op["path"])
             elif op["op"] == "rename":
-                self.rename(op["path"],op["new_name"])
+                return await self.rename(op["path"],op["new_name"])
+            elif op["op"] == "mkdir":
+                return await self.mkdir(op["path"])
+            elif op["op"] == "create_todo":
+                todoObj = AgentTodo.from_dict(op["todo"])
+                path = op.get("path")
+                return await self.create_todo(path,todoObj)
 
             else:
                 logger.error(f"execute op list failed: unknown op:{op['op']}")
@@ -98,26 +119,44 @@ class WorkspaceEnvironment(Environment):
         os.remove(file_path)
         return True
     
+    async def mkdir(self,path:str) -> bool:
+        dir_path = self.root_path + path
+        os.makedirs(dir_path)
+        return True
+    
     async def rename(self,path:str,new_name:str) -> bool:
         file_path = self.root_path + path
         new_path = self.root_path + new_name
         os.rename(file_path,new_path)
         return True
 
+    async def get_todo_tree(self,path:str = None,deep:int = 4):
+        if path:
+            directory_path = self.root_path + "/todos/" + path
+        else:
+            directory_path = self.root_path + "/todos"
 
-    #easy use functions
-    async def update_state_by_msg(self, msg: AgentMsg,extra_info:dict) -> None:
-        # add todo
-        # update todo status
-        pass
+        str_result:str = "/todos\n"
+        todo_count:int = 0 
 
-    async def update_todos(self,oplist:list) -> None:
-        # add todo
-        # update todo status
-        pass
+        async def scan_dir(directory_path:str,deep:int):
+            nonlocal str_result
+            nonlocal todo_count
+            if deep <= 0:
+                return
+            
+            for entry in os.scandir(directory_path):
+                is_dir = entry.is_dir()
+                if not is_dir:
+                    continue
+                
+                todo_count = todo_count +  1
+                str_result = str_result + f"{'  '*(4-deep)}└─{entry.name}\n"
+                await scan_dir(entry.path,deep-1)
 
-    async def get_todo_tree(self,path:str,deep:int = 4) -> str:
-        pass
+        await scan_dir(directory_path,deep)
+        return str_result,todo_count
+
 
     async def get_todo_by_path(self,path:str) -> AgentTodo:
         pass
@@ -125,8 +164,15 @@ class WorkspaceEnvironment(Environment):
     async def get_todo(self,id:str) -> AgentTodo:
         pass
 
-    async def save_new_todo(self,path:str,todo:AgentTodo) -> None:
-        pass
+    async def create_todo(self,path:str,todo:AgentTodo) -> None:
+        if path is None:
+            dir_path = f"/todos/{todo.title}"
+        else:
+            dir_path = f"/todos/{path}/{todo.title}"
+
+        os.makedirs(self.root_path + dir_path)
+        detail_path = f"{dir_path}/detail"
+        await self.create(detail_path,json.dumps(todo.to_dict()))
 
     async def update_todo(self,path:str,todo:AgentTodo)->None:
         pass

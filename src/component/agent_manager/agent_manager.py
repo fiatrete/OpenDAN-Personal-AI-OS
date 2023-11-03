@@ -69,6 +69,7 @@ class AgentManager:
         the_agent : AIAgent = await self._load_agent_from_media(agent_media_info)
         if the_agent is None:
             logger.warn(f"load agent {agent_id} from media failed!")
+            return None
             
         the_agent.chat_db = self.db_path
         return the_agent

@@ -1,10 +1,12 @@
 import copy
+from datetime import datetime
 import logging
 from enum import Enum
 import uuid
 import time 
 import re
 import shlex
+import json
 from typing import List
 from .ai_function import FunctionItem
 from .compute_task import ComputeTaskResult
@@ -77,6 +79,12 @@ class AgentMsg:
         self.status = AgentMsgStatus.INIT
         self.inner_call_chain = []
         self.resp_msg = None
+
+    @classmethod
+    def from_json(cls,json_obj:dict) -> 'AgentMsg':
+        msg = AgentMsg()
+
+        return msg
 
     @classmethod
     def create_internal_call_msg(self,func_name:str,args:dict,prev_msg_id:str,caller:str):
@@ -216,22 +224,49 @@ class AgentPrompt:
             return False
         self.messages = []
         for msg in config:
-            if msg.get("role") == "system":
-                self.system_message = msg
+            if msg.get("content"):
+                if msg.get("role") == "system":
+                    self.system_message = msg
+                else:
+                    self.messages.append(msg)
             else:
-                self.messages.append(msg)
+                logger.error("prompt message has no content!")
         return True
-        
+
 class LLMResult:
     def __init__(self) -> None:
         self.state : str = "ignore"
         self.resp : str = ""
         self.paragraphs : dict[str,FunctionItem] = []
+
         self.post_msgs : List[AgentMsg] = []
         self.send_msgs : List[AgentMsg] = []
         self.calls : List[FunctionItem] = []
         self.post_calls : List[FunctionItem] = []
-        self.extra_info = None
+        self.op_list : List[FunctionItem] = []
+
+    @classmethod
+    def from_json_str(self,llm_json_str:str) -> 'LLMResult':
+        r = LLMResult()
+        if llm_json_str is None:
+            r.state = "ignore"
+            return r
+        if llm_json_str == "ignore":
+            r.state = "ignore"
+            return r
+
+        llm_json = json.loads(llm_json_str)
+        r.state = llm_json.get("state")
+        r.resp = llm_json.get("resp")
+
+        r.post_msgs = llm_json.get("post_msgs")
+        r.send_msgs = llm_json.get("send_msgs")
+
+        r.calls = llm_json.get("calls")
+        r.post_calls = llm_json.get("post_calls")
+        r.op_list = llm_json.get("op_list")
+
+        return r
 
     @classmethod
     def from_str(self,llm_result_str:str,valid_func:List[str]=None) -> 'LLMResult':
@@ -328,11 +363,52 @@ class AgentTodoResult:
         self.result_state = "error"
 
 class AgentTodo:
+    @classmethod
+    def from_dict(cls,json_obj:dict) -> 'AgentTodo':
+        todo = AgentTodo()
+        if json_obj.get("id") is not None:
+            todo.todo_id = json_obj.get("id")
+        todo.parent_id = json_obj.get("parent_id")
+        todo.title = json_obj.get("title")
+        todo.detail = json_obj.get("detail")
+        due_date = json_obj.get("due_date")
+        if due_date:
+            todo.due_date = datetime.fromisoformat(due_date).timestamp()
+        #todo.todo_path = json_obj.get("todo_path")
+        todo.depend_todo_ids = json_obj.get("depend_todo_ids")
+        todo.need_check = json_obj.get("need_check")
+        #todo.result = json_obj.get("result")
+        #todo.last_check_result = json_obj.get("last_check_result")
+        todo.worker = json_obj.get("worker")
+        todo.checker = json_obj.get("checker")
+        todo.createor = json_obj.get("createor")
+        #todo.retry_count = json_obj.get("retry_count")
+
+        return todo
+
+    def to_dict(self) -> dict:
+        result = {}
+        result["id"] = self.todo_id
+        result["parent_id"] = self.parent_id
+        result["title"] = self.title
+        result["detail"] = self.detail
+        result["due_date"] = datetime.fromtimestamp(self.due_date).isoformat()
+        result["depend_todo_ids"] = self.depend_todo_ids
+        result["need_check"] = self.need_check
+        result["worker"] = self.worker
+        result["checker"] = self.checker
+        result["createor"] = self.createor
+        result["retry_count"] = self.retry_count
+
+        return result
+
     def __init__(self):
         self.todo_id = "todo#" + uuid.uuid4().hex
         self.title = None
         self.detail = None
         self.todo_path = None # get parent todo,sub todo by path
+        self.create_time = time.time()
+        self.due_date = time.time() + 3600 * 24 * 2
 
         self.depend_todo_ids = []
 

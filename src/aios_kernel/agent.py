@@ -129,6 +129,7 @@ class AIAgent:
         self.owner_env : Environment = None
         self.owenr_bus = None
         self.enable_function_list = None
+        
 
     @classmethod
     def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
@@ -148,6 +149,7 @@ class AIAgent:
             logger.error("agent instance_id is None!")
             return False
         self.agent_id = config["instance_id"]
+        self.agent_workspace = WorkspaceEnvironment(self.agent_id)
 
         if config.get("fullname") is None:
             logger.error(f"agent {self.agent_id} fullname is None!")
@@ -412,7 +414,7 @@ class AIAgent:
 
     #         return None
     def get_workspace_by_msg(self,msg:AgentMsg) -> WorkspaceEnvironment:
-        return None
+        return self.agent_workspace
     
     def need_session_summmary(self,msg:AgentMsg,session:AIChatSession) -> bool:
         return False
@@ -455,14 +457,26 @@ class AIAgent:
             summary = self.llm_select_session_summary(msg,chatsession)
             prompt.append(AgentPrompt(summary))
         
+        known_info_str = "# 已知信息\n"
+        have_known_info = False
+        todos_str,todo_count = await workspace.get_todo_tree()
+        if todo_count > 0:
+            have_known_info = True
+            known_info_str += f"## 已有todo\n{todos_str}\n"
         inner_functions,function_token_len = self._get_inner_functions()
         system_prompt_len = prompt.get_prompt_token_len()
         input_len = len(msg.body)
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
-            history_prmpt,history_token_len = await self._get_prompt_from_session_for_groupchat(chatsession,system_prompt_len + function_token_len,input_len)
+            history_str,history_token_len = await self._get_prompt_from_session_for_groupchat(chatsession,system_prompt_len + function_token_len,input_len)
         else:
-            history_prmpt,history_token_len = await self.get_prompt_from_session(chatsession,system_prompt_len + function_token_len,input_len)      
-        prompt.append(history_prmpt) # chat context
+            history_str,history_token_len = await self.get_prompt_from_session(chatsession,system_prompt_len + function_token_len,input_len)      
+        if history_str:
+            have_known_info = True
+            known_info_str += history_str
+        
+        if have_known_info:
+            known_info_prompt = AgentPrompt(known_info_str)
+            prompt.append(known_info_prompt) # chat context
 
         prompt.append(msg_prompt)
 
@@ -475,12 +489,18 @@ class AIAgent:
             return error_resp
         
         final_result = task_result.result_str
+        if final_result is not None:
+            if final_result[0] == "{":
+                llm_result = LLMResult.from_json_str(final_result)
+            else:
+                llm_result : LLMResult = LLMResult.from_str(final_result)
+        else:
+            llm_result = LLMResult()
+            llm_result.state = "ignore"
 
-        llm_result : LLMResult = LLMResult.from_str(final_result)
-        
-        # extra_info include the operation about workspace
-        if llm_result.extra_info is not None:
-            await workspace.update_state_by_msg(msg,llm_result.extra_info)
+        final_result = llm_result.resp
+
+        await workspace.exec_op_list(llm_result.op_list)
 
         is_ignore = False
         result_prompt_str = ""
@@ -899,38 +919,37 @@ class AIAgent:
         history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
         messages = chatsession.read_history(self.history_len) # read
         result_token_len = 0
-        result_prompt = AgentPrompt()
+        
         read_history_msg = 0
-
+        have_known_info = False
+        
+        known_info = ""
         if chatsession.summary is not None:
             if len(chatsession.summary) > 1:  
-                result_prompt.messages.append({"role":"user","content":chatsession.summary})
+                known_info += f"## 最近交流的总结 \n {chatsession.summary}\n"
                 result_token_len -= len(chatsession.summary)
+                have_known_info = True
 
+        histroy_str = ""
         for msg in reversed(messages):
             read_history_msg += 1
             dt = datetime.datetime.fromtimestamp(float(msg.create_time))
             formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
-
-            if msg.sender == self.agent_id:
-                if self.enable_timestamp:
-                    result_prompt.messages.append({"role":"assistant","content":f"(create on {formatted_time}) {msg.body} "})
-                else:
-                    result_prompt.messages.append({"role":"assistant","content":msg.body})
-                
-            else:
-                if self.enable_timestamp:
-                    result_prompt.messages.append({"role":"user","content":f"(create on {formatted_time}) {msg.body} "})
-                else:
-                    result_prompt.messages.append({"role":"user","content":msg.body})
+            record_str = f"{msg.sender},[{formatted_time}]\n{msg.body}\n"
+            have_known_info = True
+            histroy_str = histroy_str + record_str
 
             history_len -= len(msg.body)
             result_token_len += len(msg.body)
             if history_len < 0:
                 logger.warning(f"_get_prompt_from_session reach limit of token,just read {read_history_msg} history message.")
                 break
-
-        return result_prompt,result_token_len
+        
+        known_info += f"## 最近的沟通记录 \n {histroy_str}\n"
+ 
+        if have_known_info:
+            return known_info,result_token_len
+        return None,0
     
     async def _do_llm_complection(self,prompt:AgentPrompt,inner_functions:dict=None,org_msg:AgentMsg=None) -> ComputeTaskResult:
         from .compute_kernel import ComputeKernel
@@ -951,6 +970,9 @@ class AIAgent:
             task_result = await self._execute_func(inner_func_call_node,call_prompt,inner_functions,org_msg)
             
         return task_result
+    
+    async def execute_op_list(self,oplist:list,workspace:WorkspaceEnvironment):
+        pass
     
     def need_work(self) -> bool:
         return True
