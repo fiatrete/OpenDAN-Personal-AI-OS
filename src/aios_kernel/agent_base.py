@@ -1,5 +1,5 @@
 import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from enum import Enum
 import uuid
@@ -243,8 +243,7 @@ class LLMResult:
         self.send_msgs : List[AgentMsg] = []
         self.calls : List[FunctionItem] = []
         self.post_calls : List[FunctionItem] = []
-        self.op_list : List[FunctionItem] = []
-
+        self.op_list : List[FunctionItem] = [] # op_list is a optimize design for saving token
     @classmethod
     def from_json_str(self,llm_json_str:str) -> 'LLMResult':
         r = LLMResult()
@@ -271,12 +270,16 @@ class LLMResult:
     @classmethod
     def from_str(self,llm_result_str:str,valid_func:List[str]=None) -> 'LLMResult':
         r = LLMResult()
+        
         if llm_result_str is None:
             r.state = "ignore"
             return r
         if llm_result_str == "ignore":
             r.state = "ignore"
             return r
+        
+        if llm_result_str[0] == "{":
+            return LLMResult.from_json_str(llm_result_str)
 
         lines = llm_result_str.splitlines()
         is_need_wait = False
@@ -361,15 +364,44 @@ class AgentReport:
 class AgentTodoResult:
     def __init__(self) -> None:
         self.result_state = "error"
+        
 
 class AgentTodo:
+
+
+    def __init__(self):
+        self.todo_id = "todo#" + uuid.uuid4().hex
+        self.title = None
+        self.detail = None
+        self.todo_path = None # get parent todo,sub todo by path
+        self.create_time = time.time()
+        self.due_date = time.time() + 3600 * 24 * 2
+        self.state = "pending"
+
+        self.depend_todo_ids = []
+        self.sub_todos = []
+
+        self.need_check = True
+        self.result : ComputeTaskResult = None
+        self.last_check_result = None
+
+        self.worker = None 
+        self.checker = None 
+        self.createor = None
+
+        self.retry_count = 0
+        self.raw_obj = None
+
     @classmethod
     def from_dict(cls,json_obj:dict) -> 'AgentTodo':
         todo = AgentTodo()
         if json_obj.get("id") is not None:
             todo.todo_id = json_obj.get("id")
-        todo.parent_id = json_obj.get("parent_id")
+        
         todo.title = json_obj.get("title")
+        create_time = json_obj.get("create_time")
+        if create_time:
+            todo.create_time = datetime.fromisoformat(create_time).timestamp()
         todo.detail = json_obj.get("detail")
         due_date = json_obj.get("due_date")
         if due_date:
@@ -383,14 +415,16 @@ class AgentTodo:
         todo.checker = json_obj.get("checker")
         todo.createor = json_obj.get("createor")
         #todo.retry_count = json_obj.get("retry_count")
+        todo.raw_obj = json_obj
 
         return todo
 
     def to_dict(self) -> dict:
         result = {}
         result["id"] = self.todo_id
-        result["parent_id"] = self.parent_id
+        #result["parent_id"] = self.parent_id
         result["title"] = self.title
+        result["create_time"] = datetime.fromtimestamp(self.create_time).isoformat()
         result["detail"] = self.detail
         result["due_date"] = datetime.fromtimestamp(self.due_date).isoformat()
         result["depend_todo_ids"] = self.depend_todo_ids
@@ -401,33 +435,18 @@ class AgentTodo:
         result["retry_count"] = self.retry_count
 
         return result
-
-    def __init__(self):
-        self.todo_id = "todo#" + uuid.uuid4().hex
-        self.title = None
-        self.detail = None
-        self.todo_path = None # get parent todo,sub todo by path
-        self.create_time = time.time()
-        self.due_date = time.time() + 3600 * 24 * 2
-
-        self.depend_todo_ids = []
-
-        self.need_check = True
-        self.result : ComputeTaskResult = None
-        self.last_check_result = None
-
-        self.worker = None 
-        self.checker = None 
-        self.createor = None
-
-        self.retry_count = 0
-
     def can_do(self) -> bool:
+        for sub_todo in self.sub_todos:
+            if sub_todo.state != "done":
+                return False
+        
+        now = datetime.now().timestamp()
+        time_diff = now - self.due_date
+
+        if time_diff > 7*24*3600:
+            return False
         return True
-
-    async def save(self):
-        pass
-
+    
 class AgentWorkLog:
     def __init__(self) -> None:
         pass

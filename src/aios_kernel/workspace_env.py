@@ -17,7 +17,7 @@ from typing import Any,List
 import os
 import chardet
 
-from .agent_base import AgentMsg,AgentTodo
+from .agent_base import AgentMsg,AgentTodo,AgentPrompt
 from .environment import Environment,EnvironmentEvent
 from .ai_function import AIFunction,SimpleAIFunction
 from .storage import AIStorage,ResourceLocation
@@ -31,6 +31,8 @@ class WorkspaceEnvironment(Environment):
         self.root_path = f"{myai_path}/workspace/{env_id}"
         if not os.path.exists(self.root_path):
             os.makedirs(self.root_path+"/todos")
+
+        self.known_todo = {}
         
 
     def set_root_path(self,path:str):
@@ -39,20 +41,23 @@ class WorkspaceEnvironment(Environment):
     def get_prompt(self) -> AgentMsg:
         return None
     
-    def get_role_prompt(self,role_id:str) -> AgentMsg:
+    def get_role_prompt(self,role_id:str) -> AgentPrompt:
         return None
 
     def get_knowledge_base(self) -> str:
         pass
 
-    async def exec_op_list(self,oplist:List)->None:
+    def get_do_prompt(self,todo_type:str=None)->AgentPrompt:
+        return None
+
+    async def exec_op_list(self,oplist:List,agent_id:str)->None:
         if oplist is None:
             return
         
         for op in oplist:
             if op["op"] == "create":
                 return await self.create(op["path"],op["content"])
-            elif op["op"] == "write":
+            elif op["op"] == "write_file":
                 return await self.write(op["path"],op["content"],op["mode"])
             elif op["op"] == "delete":
                 return await self.delete(op["path"])
@@ -62,8 +67,14 @@ class WorkspaceEnvironment(Environment):
                 return await self.mkdir(op["path"])
             elif op["op"] == "create_todo":
                 todoObj = AgentTodo.from_dict(op["todo"])
-                path = op.get("path")
-                return await self.create_todo(path,todoObj)
+                todoObj.worker = agent_id
+                todoObj.createor = agent_id
+                parent_id = op.get("parent")
+                await self.create_todo(parent_id,todoObj)
+            elif op["op"] == "update_todo":
+                todo_id = op["id"]
+                new_stat = op["state"]
+                await self.update_todo(todo_id,new_stat)
 
             else:
                 logger.error(f"execute op list failed: unknown op:{op['op']}")
@@ -92,6 +103,10 @@ class WorkspaceEnvironment(Environment):
             content = await f.read(2048)
         return content
     
+    # use diff to update large file content
+    async def write_diff(self,path:str,diff):
+        pass 
+
     async def write(self,path:str,content:str,is_append:bool=False) -> str:
         file_path = self.root_path + path
         if is_append:
@@ -136,6 +151,7 @@ class WorkspaceEnvironment(Environment):
         else:
             directory_path = self.root_path + "/todos"
 
+        
         str_result:str = "/todos\n"
         todo_count:int = 0 
 
@@ -145,9 +161,15 @@ class WorkspaceEnvironment(Environment):
             if deep <= 0:
                 return
             
+            if os.path.exists(directory_path) is False:
+                return 
+            
             for entry in os.scandir(directory_path):
                 is_dir = entry.is_dir()
                 if not is_dir:
+                    continue
+
+                if entry.name.startswith("."):
                     continue
                 
                 todo_count = todo_count +  1
@@ -157,25 +179,99 @@ class WorkspaceEnvironment(Environment):
         await scan_dir(directory_path,deep)
         return str_result,todo_count
 
-
-    async def get_todo_by_path(self,path:str) -> AgentTodo:
-        pass
-    
-    async def get_todo(self,id:str) -> AgentTodo:
-        pass
-
-    async def create_todo(self,path:str,todo:AgentTodo) -> None:
-        if path is None:
-            dir_path = f"/todos/{todo.title}"
+    async def get_todo_list(self,agent_id:str,path:str = None)->List[AgentTodo]:
+        if path:
+            directory_path = self.root_path + "/todos/" + path
         else:
-            dir_path = f"/todos/{path}/{todo.title}"
+            directory_path = self.root_path + "/todos"
 
-        os.makedirs(self.root_path + dir_path)
+        result_list:List[AgentTodo] = []
+
+        async def scan_dir(directory_path:str,deep:int,parent:AgentTodo=None):
+            nonlocal result_list
+            if os.path.exists(directory_path) is False:
+                return 
+
+            for entry in os.scandir(directory_path):
+                is_dir = entry.is_dir()
+                if not is_dir:
+                    continue
+
+                if entry.name.startswith("."):
+                    continue
+                
+                todo = await self.get_todo_by_fullpath(entry.path)
+                if todo.worker != agent_id:
+                    continue
+
+                todo.rank = int(todo.create_time)>>deep
+                
+                if todo:
+                    if parent:
+                        parent.sub_todos.append(todo)
+                    result_list.append(todo)
+
+                await scan_dir(entry.path,deep + 1,todo)
+            
+            return 
+
+        await scan_dir(directory_path,0) 
+        #sort by rank
+        result_list.sort(key=lambda x:(x.rank,x.title))
+
+        return result_list
+
+    async def get_todo_by_fullpath(self,path:str) -> AgentTodo:
+        logger.info("get_todo_by_fullpath:%s",path)
+        detail_path = path + "/detail"
+
+        async with aiofiles.open(detail_path, mode='r', encoding="utf-8") as f:
+            content = await f.read(4096)
+            logger.debug("get_todo_by_fullpath:%s,content:%s",path,content)
+            todo_dict = json.loads(content)
+            result_todo =  AgentTodo.from_dict(todo_dict)
+            if result_todo:
+                result_todo.todo_path = path
+                self.known_todo[result_todo.todo_id] = result_todo
+            else:
+                logger.error("get_todo_by_path:%s,parse failed!",path)
+            
+            return result_todo
+        
+    async def get_todo(self,id:str) -> AgentTodo:
+        return self.known_todo.get(id)
+
+    async def create_todo(self,parent_id:str,todo:AgentTodo) -> None:
+        if parent_id:
+            parent_path = self.known_todo.get(parent_id).todo_path
+            dir_path = f"{parent_path}/{todo.title}"
+        else:
+            dir_path = f"{self.root_path}/todos/{todo.title}"
+
+        os.makedirs(dir_path)
         detail_path = f"{dir_path}/detail"
-        await self.create(detail_path,json.dumps(todo.to_dict()))
+        logger.info("create_todo %s",detail_path)
+        async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
+            await f.write(json.dumps(todo.to_dict()))
+            return True
 
-    async def update_todo(self,path:str,todo:AgentTodo)->None:
-        pass
+    async def update_todo(self,todo_id:str,new_stat:str)->bool:
+        todo : AgentTodo = self.known_todo.get(todo_id)
+        if todo:
+            todo.status = new_stat
+            if todo.raw_obj is None:
+                todo.raw_obj = todo.to_dict()
+            todo.raw_obj["status"] = new_stat
+
+            detail_path = todo.todo_path + "/detail"
+            async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
+                await f.write(json.dumps(todo.raw_obj))
+                return True
+        
+        return False
+    
+    async def append_do_result(self,todo:AgentTodo,result):
+        return True
 
 class CodeInterpreter:
     def __init__(self, language, debug_mode):

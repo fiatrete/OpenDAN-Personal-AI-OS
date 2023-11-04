@@ -458,6 +458,12 @@ class AIOS_Shell:
                     the_agent = await AgentManager.get_instance().get(target_id)
                     if the_agent is not None:
                         await the_agent._do_think()
+            case 'wakeup':
+                if len(args) >= 1:
+                    target_id = args[0]
+                    the_agent = await AgentManager.get_instance().get(target_id)
+                    if the_agent is not None:
+                        the_agent.wake_up()
             case 'open':
                 if len(args) >= 1:
                     target_id = args[0]

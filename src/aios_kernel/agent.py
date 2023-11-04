@@ -114,12 +114,12 @@ class AIAgent:
 
         self.review_todo_prompt = None
 
-        self.read_report_prompt = AgentPrompt(DEFAULT_AGENT_READ_REPORT_PROMPT)
+        self.read_report_prompt = None
 
-        self.do_prompt = AgentPrompt(DEFAULT_AGENT_DO_PROMPT)
-        self.self_check_prompt = AgentPrompt(DEFAULT_AGENT_SELF_CHECK_PROMPT)
+        self.do_prompt = None
+        self.check_prompt = None
 
-        self.goal_to_todo_prompt = AgentPrompt(DEFAULT_AGENT_GOAL_TO_TODO_PROMPT)
+        self.goal_to_todo_prompt = None
 
         self.learn_token_limit = 500
         self.learn_prompt = AgentPrompt(DEFAULT_AGENT_LEARN_PROMPT)
@@ -163,6 +163,11 @@ class AIAgent:
         if config.get("think_prompt") is not None:
             self.agent_think_prompt = AgentPrompt()
             self.agent_think_prompt.load_from_config(config["think_prompt"])
+
+        if config.get("do_prompt") is not None:
+            self.do_prompt = AgentPrompt()
+            self.do_prompt.load_from_config(config["do_prompt"])
+            self.wake_up()
 
         if config.get("guest_prompt") is not None:
             self.guest_prompt_str = config["guest_prompt"]
@@ -500,7 +505,7 @@ class AIAgent:
 
         final_result = llm_result.resp
 
-        await workspace.exec_op_list(llm_result.op_list)
+        await workspace.exec_op_list(llm_result.op_list,self.agent_id)
 
         is_ignore = False
         result_prompt_str = ""
@@ -653,13 +658,13 @@ class AIAgent:
         
     # 尝试完成自己的TOOD （不依赖任何其他Agnet）
     async def do_my_work(self) -> None:
-        workspace = self.get_current_workspace()
+        workspace : WorkspaceEnvironment = self.get_workspace_by_msg(None)
 
         # review todo能更整体的思考一次todo的优先级
         if await self.need_review_todos():
             await self._llm_review_todos(workspace)
 
-        todo_list = workspace.get_todo_list(self.agent_id)
+        todo_list = await workspace.get_todo_list(self.agent_id)
         
         for todo in todo_list:
             if self.agent_energy <= 0:
@@ -668,11 +673,11 @@ class AIAgent:
             if await self.can_do(todo,workspace) is False:
                 continue
 
-            if todo.try_count() < 2:
+            if todo.retry_count < 2:
                 need_think_todo_from_goal = False
-                do_result : AgentTodoResult = await self._llm_do(todo,workspace) 
+                await self._llm_do(todo,workspace) 
                 self.agent_energy -= 1
-                if do_result.result_state == "done":
+                if todo.state == "done":
                     await self._llm_check_todo(todo,workspace)
                     self.agent_energy -= 1
 
@@ -702,20 +707,24 @@ class AIAgent:
         
         return 
     
-    def get_do_prompt(self,todo_type:str) -> AgentPrompt:
+    def get_do_prompt(self,todo_type:str=None) -> AgentPrompt:
         return self.do_prompt
+    
+    def get_prompt_from_todo(self,todo:AgentTodo) -> AgentPrompt:
+        json_str = json.dumps(todo.raw_obj)
+        return AgentPrompt(json_str)
 
     async def can_do(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> bool:
-        return True
+        return todo.can_do()
 
     async def _llm_do(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> AgentTodoResult:
         prompt : AgentPrompt = AgentPrompt()
-        prompt.append(self.agent_prompt)
+        #prompt.append(self.agent_prompt)
         prompt.append(workspace.get_role_prompt(self.agent_id))
         
-        do_prompt = workspace.get_do_prompt(todo.type)
+        do_prompt = workspace.get_do_prompt()
         if do_prompt is None:
-            do_prompt = self.get_do_prompt(todo.type)
+            do_prompt = self.get_do_prompt()
 
         prompt.append(do_prompt)
 
@@ -725,17 +734,18 @@ class AIAgent:
         #prompt.append(do_log_prompt)
         prompt.append(self.get_prompt_from_todo(todo))
 
-        task_result:ComputeTaskResult = await self._do_llm_complection(prompt,workspace.get_inner_functions(todo.type))
-        
+        task_result:ComputeTaskResult = await self._do_llm_complection(prompt)
         if task_result.error_str is not None:
             logger.error(f"_llm_do compute error:{task_result.error_str}")
-            
         llm_result = LLMResult.from_str(task_result.result_str)
-        todo.append_do_result(self.agent_id,llm_result)
 
-
+        await workspace.exec_op_list(llm_result.op_list,self.agent_id)
+        await workspace.append_do_result(self.agent_id,llm_result)
 
         return task_result
+    
+    def get_check_prompt(self) -> AgentPrompt:
+        return self.check_prompt
 
     async def _llm_check_todo(self, todo:AgentTodo,workspace:WorkspaceEnvironment) -> bool:
         if self.get_check_prompt(todo) is None:
@@ -978,14 +988,14 @@ class AIAgent:
         return True
     
     def need_self_think(self) -> bool:
-        return True
+        return False
     
     def need_self_learn(self) -> bool:
-        return True
+        return False 
     
     def wake_up(self) -> None:
         if self.agent_task is None:
-            self.agent_task = asyncio.create_task(self._on_timer)
+            self.agent_task = asyncio.create_task(self._on_timer())
         else:
             logger.warning(f"agent {self.agent_id} is already wake up!")
 
@@ -993,27 +1003,36 @@ class AIAgent:
     async def _on_timer(self):
         while True:
             await asyncio.sleep(1)
-            now = time.time()
-            if now - self.last_recover_time > 60:
-                self.agent_energy += (now - self.last_recover_time) / 60
-                self.last_recover_time = now
-            else:
-                return
+            try:
+                now = time.time()
+                if self.last_recover_time is None:
+                    self.last_recover_time = now
+                else:
+                    if now - self.last_recover_time > 60:
+                        self.agent_energy += (now - self.last_recover_time) / 60
+                        self.last_recover_time = now
 
-            # complete todo
-            if self.need_work():
-                await self.do_my_work()
 
-            # review other's todo
-            # self.review_other_works()
+                if self.agent_energy <= 1:
+                    continue
 
-            # do work summary
-            if self.need_self_think():
-                await self.do_self_think()
+                # complete todo
+                if self.need_work():
+                    await self.do_my_work()
 
-            # 
-            if self.need_self_learn():
-                await self.do_self_learn()
+                # review other's todo
+                # self.review_other_works()
+
+                # do work summary
+                if self.need_self_think():
+                    await self.do_self_think()
+
+                # 
+                if self.need_self_learn():
+                    await self.do_self_learn()
+            except Exception as e:
+                logger.error(f"agent {self.agent_id} on timer error:{e}")
+                continue
 
         
      
