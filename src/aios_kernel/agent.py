@@ -1,3 +1,4 @@
+import traceback
 from typing import Optional
 
 from asyncio import Queue
@@ -9,6 +10,7 @@ import json
 import shlex
 import datetime
 import copy
+import sys
 
 from .agent_base import AgentMsg, AgentMsgStatus, AgentMsgType,FunctionItem,LLMResult,AgentPrompt,AgentReport,AgentTodo,AgentGoal,AgentTodoResult,AgentWorkLog
 from .chatsession import AIChatSession
@@ -659,6 +661,7 @@ class AIAgent:
     # 尝试完成自己的TOOD （不依赖任何其他Agnet）
     async def do_my_work(self) -> None:
         workspace : WorkspaceEnvironment = self.get_workspace_by_msg(None)
+        logger.info(f"agent {self.agent_id} do my work start!")
 
         # review todo能更整体的思考一次todo的优先级
         if await self.need_review_todos():
@@ -680,6 +683,8 @@ class AIAgent:
                 if todo.state == "done":
                     await self._llm_check_todo(todo,workspace)
                     self.agent_energy -= 1
+        
+        logger.info(f"agent {self.agent_id} do my work done!")
 
     def get_review_todo_prompt(self) -> AgentPrompt:
         return self.review_todo_prompt
@@ -981,9 +986,6 @@ class AIAgent:
             
         return task_result
     
-    async def execute_op_list(self,oplist:list,workspace:WorkspaceEnvironment):
-        pass
-    
     def need_work(self) -> bool:
         return True
     
@@ -1002,7 +1004,7 @@ class AIAgent:
     # agent loop
     async def _on_timer(self):
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(15)
             try:
                 now = time.time()
                 if self.last_recover_time is None:
@@ -1030,8 +1032,10 @@ class AIAgent:
                 # 
                 if self.need_self_learn():
                     await self.do_self_learn()
+
             except Exception as e:
-                logger.error(f"agent {self.agent_id} on timer error:{e}")
+                tb_str = traceback.format_exc()
+                logger.error(f"agent {self.agent_id} on timer error:{tb_str},{e}")
                 continue
 
         

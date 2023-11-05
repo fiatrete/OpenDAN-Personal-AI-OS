@@ -374,12 +374,13 @@ class AgentTodo:
         self.title = None
         self.detail = None
         self.todo_path = None # get parent todo,sub todo by path
+        #self.parent = None
         self.create_time = time.time()
         self.due_date = time.time() + 3600 * 24 * 2
         self.state = "pending"
 
         self.depend_todo_ids = []
-        self.sub_todos = []
+        self.sub_todos = {}
 
         self.need_check = True
         self.result : ComputeTaskResult = None
@@ -406,7 +407,7 @@ class AgentTodo:
         due_date = json_obj.get("due_date")
         if due_date:
             todo.due_date = datetime.fromisoformat(due_date).timestamp()
-        #todo.todo_path = json_obj.get("todo_path")
+        todo.todo_path = json_obj.get("todo_path")
         todo.depend_todo_ids = json_obj.get("depend_todo_ids")
         todo.need_check = json_obj.get("need_check")
         #todo.result = json_obj.get("result")
@@ -414,7 +415,9 @@ class AgentTodo:
         todo.worker = json_obj.get("worker")
         todo.checker = json_obj.get("checker")
         todo.createor = json_obj.get("createor")
-        #todo.retry_count = json_obj.get("retry_count")
+        if json_obj.get("retry_count"):
+            todo.retry_count = json_obj.get("retry_count")
+
         todo.raw_obj = json_obj
 
         return todo
@@ -422,6 +425,7 @@ class AgentTodo:
     def to_dict(self) -> dict:
         result = {}
         result["id"] = self.todo_id
+        result["todo_path"] = self.todo_path   
         #result["parent_id"] = self.parent_id
         result["title"] = self.title
         result["create_time"] = datetime.fromtimestamp(self.create_time).isoformat()
@@ -434,11 +438,12 @@ class AgentTodo:
         result["createor"] = self.createor
         result["retry_count"] = self.retry_count
 
-        return result
+        return result 
     def can_do(self) -> bool:
-        for sub_todo in self.sub_todos:
-            if sub_todo.state != "done":
-                return False
+        for sub_todo in self.sub_todos.values():
+            if sub_todo.state:
+                if sub_todo.state != "done":
+                    return False
         
         now = datetime.now().timestamp()
         time_diff = now - self.due_date

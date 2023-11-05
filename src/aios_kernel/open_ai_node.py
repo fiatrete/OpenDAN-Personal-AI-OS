@@ -4,10 +4,12 @@ import asyncio
 from asyncio import Queue
 import logging
 import json
+import aiohttp
 
 from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType,ComputeTaskResultCode
 from .compute_node import ComputeNode
 from .storage import AIStorage,UserConfig
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,8 @@ class OpenAI_ComputeNode(ComputeNode):
     async def remove_task(self, task_id: str):
         pass
 
-    def _run_task(self, task: ComputeTask):
+
+    async def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
         
         result = ComputeTaskResult()
@@ -110,16 +113,17 @@ class OpenAI_ComputeNode(ComputeNode):
                     max_token_size = 4000
 
                 result_token = max_token_size
+
                 try:
                     if llm_inner_functions is None:
                         logger.info(f"call openai {mode_name} prompts: {prompts}")
-                        resp = openai.ChatCompletion.create(model=mode_name,
+                        resp = await openai.ChatCompletion.acreate(model=mode_name,
                                                         messages=prompts,
                                                         #max_tokens=result_token,
                                                         temperature=0.7)
                     else:
                         logger.info(f"call openai {mode_name} prompts: \n\t {prompts} \nfunctions: \n\t{json.dumps(llm_inner_functions)}")
-                        resp = openai.ChatCompletion.create(model=mode_name,
+                        resp = await openai.ChatCompletion.acreate(model=mode_name,
                                                             messages=prompts,
                                                             functions=llm_inner_functions,
                                                             #max_tokens=result_token,
@@ -171,7 +175,7 @@ class OpenAI_ComputeNode(ComputeNode):
             while True:
                 task = await self.task_queue.get()
                 logger.info(f"openai_node get task: {task.display()}")
-                result = self._run_task(task)
+                result = await self._run_task(task)
                 if result is not None:
                     task.state = ComputeTaskState.DONE
                     task.result = result

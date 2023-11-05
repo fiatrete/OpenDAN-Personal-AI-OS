@@ -151,7 +151,9 @@ class ComputeKernel:
             time_out_result = ComputeTaskResult()
             time_out_result.result_code = ComputeTaskResultCode.TIMEOUT
             time_out_result.set_from_task(task_req)
-            ## craete timeout task_result
+            task_req.result = time_out_result
+            return time_out_result
+
 
     async def do_llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0, inner_functions = None) -> str:
         task_req = self.llm_completion(prompt, mode_name, max_token,inner_functions)

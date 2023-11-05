@@ -58,7 +58,10 @@ class WorkspaceEnvironment(Environment):
             if op["op"] == "create":
                 return await self.create(op["path"],op["content"])
             elif op["op"] == "write_file":
-                return await self.write(op["path"],op["content"],op["mode"])
+                is_append = op.get("is_append")
+                if is_append is None:
+                    is_append = False
+                return await self.write(op["path"],op["content"],is_append)
             elif op["op"] == "delete":
                 return await self.delete(op["path"])
             elif op["op"] == "rename":
@@ -173,13 +176,14 @@ class WorkspaceEnvironment(Environment):
                     continue
                 
                 todo_count = todo_count +  1
-                str_result = str_result + f"{'  '*(4-deep)}└─{entry.name}\n"
+                str_result = str_result + f"{'  '*(4-deep)}{entry.name}\n"
                 await scan_dir(entry.path,deep-1)
 
         await scan_dir(directory_path,deep)
         return str_result,todo_count
 
     async def get_todo_list(self,agent_id:str,path:str = None)->List[AgentTodo]:
+        logger.info("get_todo_list:%s,%s",agent_id,path)
         if path:
             directory_path = self.root_path + "/todos/" + path
         else:
@@ -208,7 +212,7 @@ class WorkspaceEnvironment(Environment):
                 
                 if todo:
                     if parent:
-                        parent.sub_todos.append(todo)
+                        parent.sub_todos[todo.todo_id] = todo
                     result_list.append(todo)
 
                 await scan_dir(entry.path,deep + 1,todo)
@@ -218,11 +222,11 @@ class WorkspaceEnvironment(Environment):
         await scan_dir(directory_path,0) 
         #sort by rank
         result_list.sort(key=lambda x:(x.rank,x.title))
-
+        logger.info("get_todo_list return,todolist.length() is %d",len(result_list))
         return result_list
 
     async def get_todo_by_fullpath(self,path:str) -> AgentTodo:
-        logger.info("get_todo_by_fullpath:%s",path)
+        #logger.info("get_todo_by_fullpath:%s",path)
         detail_path = path + "/detail"
 
         async with aiofiles.open(detail_path, mode='r', encoding="utf-8") as f:
@@ -231,7 +235,10 @@ class WorkspaceEnvironment(Environment):
             todo_dict = json.loads(content)
             result_todo =  AgentTodo.from_dict(todo_dict)
             if result_todo:
-                result_todo.todo_path = path
+                relative_path = os.path.relpath(path, self.root_path + "/todos/")
+                if not relative_path.startswith('/'):
+                    relative_path = '/' + relative_path
+                result_todo.todo_path = relative_path
                 self.known_todo[result_todo.todo_id] = result_todo
             else:
                 logger.error("get_todo_by_path:%s,parse failed!",path)
@@ -243,16 +250,25 @@ class WorkspaceEnvironment(Environment):
 
     async def create_todo(self,parent_id:str,todo:AgentTodo) -> None:
         if parent_id:
+            if parent_id not in self.known_todo:
+                logger.error("create_todo failed: parent_id not found!")
+                return False
+            
             parent_path = self.known_todo.get(parent_id).todo_path
-            dir_path = f"{parent_path}/{todo.title}"
+            todo_path = f"{parent_path}/{todo.title}"
         else:
-            dir_path = f"{self.root_path}/todos/{todo.title}"
+            todo_path = todo.title
 
+        dir_path = f"{self.root_path}/todos/{todo_path}"
+ 
         os.makedirs(dir_path)
         detail_path = f"{dir_path}/detail"
+        if todo.todo_path is None:
+            todo.todo_path = todo_path
         logger.info("create_todo %s",detail_path)
         async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
             await f.write(json.dumps(todo.to_dict()))
+            self.known_todo[todo.todo_id] = todo
             return True
 
     async def update_todo(self,todo_id:str,new_stat:str)->bool:
@@ -263,7 +279,7 @@ class WorkspaceEnvironment(Environment):
                 todo.raw_obj = todo.to_dict()
             todo.raw_obj["status"] = new_stat
 
-            detail_path = todo.todo_path + "/detail"
+            detail_path =  f"{self.root_path}/todos/{todo.todo_path}/detail"
             async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
                 await f.write(json.dumps(todo.raw_obj))
                 return True
