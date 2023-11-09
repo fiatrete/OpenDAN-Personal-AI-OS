@@ -52,7 +52,8 @@ class ChatSessionDB:
                     SessionTopic TEXT,
                     StartTime TEXT,
                     SummarizePos INTEGER,
-                    Summary TEXT
+                    Summary TEXT,
+                    ThreadID TEXT
                 );
             """)
 
@@ -89,14 +90,14 @@ class ChatSessionDB:
         except Error as e:
             logging.error("Error occurred while creating tables: %s", e)
 
-    def insert_chatsession(self, session_id, session_owner,session_topic, start_time):
+    def insert_chatsession(self, session_id, session_owner,session_topic, start_time,thread_id = ""):
         """ insert a new session into the ChatSessions table """
         try:
             conn = self._get_conn()
             conn.execute("""
-                INSERT INTO ChatSessions (SessionID, SessionOwner,SessionTopic, StartTime,SummarizePos,Summary)
-                VALUES (?,?, ?, ?,0,"")
-            """, (session_id, session_owner,session_topic, start_time))
+                INSERT INTO ChatSessions (SessionID, SessionOwner,SessionTopic, StartTime,SummarizePos,Summary,ThreadID)
+                VALUES (?,?, ?, ?,0,"",?)
+            """, (session_id, session_owner,session_topic, start_time,thread_id))
             conn.commit()
             return 0  # return 0 if successful
         except Error as e:
@@ -253,6 +254,21 @@ class ChatSessionDB:
         except Error as e:
             logging.error("Error occurred while updating session summary: %s", e)
             return -1
+        
+    def update_session_thread_id(self, session_id, thread_id):
+        """ update the threadid of a session """
+        try:
+            conn = self._get_conn()
+            conn.execute("""
+                UPDATE ChatSessions
+                SET ThreadID = ?
+                WHERE SessionID = ?
+            """, (thread_id, session_id))
+            conn.commit()
+            return 0  # return 0 if successful
+        except Error as e:
+            logging.error("Error occurred while updating session threadid: %s", e)
+            return -1
 
 # chat session store the chat history between owner and agent
 # chat session might be large, so can read / write at stream mode.
@@ -286,6 +302,7 @@ class AIChatSession:
             result.topic = session_topic
             result.summarize_pos = session[4]
             result.summary = session[5]
+            result.openai_thread_id = session[6]
 
         return result
     
@@ -305,6 +322,7 @@ class AIChatSession:
             result.topic = session[2]
             result.summarize_pos = session[4]
             result.summary = session[5]
+            result.openai_thread_id = session[6]
 
         return result        
 
@@ -331,6 +349,7 @@ class AIChatSession:
         self.start_time : str = None
         self.summarize_pos : int = 0
         self.summary = None
+        self.openai_thread_id = None
 
     def get_owner_id(self) -> str:
         return self.owner_id
@@ -375,6 +394,10 @@ class AIChatSession:
         self.db.update_session_summary(self.session_id,progress,new_summary)
         self.summarize_pos = progress
         self.summary = new_summary
+
+    def update_openai_thread_id(self,thread_id:str) -> None:
+        self.db.update_session_thread_id(self.session_id,thread_id)
+        self.openai_thread_id = thread_id
 
     #def attach_event_handler(self,handler) -> None:
     #    """chat session changed event handler"""

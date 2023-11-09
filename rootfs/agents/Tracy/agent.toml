@@ -1,6 +1,5 @@
 instance_id = "Tracy"
 fullname = "Tracy"
-
 [[prompt]]
 role = "system"
 content = """

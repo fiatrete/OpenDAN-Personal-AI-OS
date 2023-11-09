@@ -2,49 +2,13 @@ from typing import List
 import toml
 import time
 from datetime import datetime
-class Contact:
-    def __init__(self, name, phone=None, email=None, telegram=None,added_by=None, tags=[], notes=""):
-        self.name = name
-        self.phone = phone
-        self.email = email
-        self.telegram = telegram
-        self.added_by = added_by
-        self.tags = tags
-        self.notes = notes
-        self.is_family_member = False
+from .agent_base import AgentMsg
+from .tunnel import AgentTunnel
+from .contact import Contact,FamilyMember
+import logging
 
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "phone": self.phone,
-            "email": self.email,
-            "telegram" : self.telegram,
+logger = logging.getLogger(__name__)    
 
-            "added_by": self.added_by,
-            "tags": self.tags,
-            "notes": self.notes,
-            "now" : datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
-
-    @classmethod
-    def from_dict(cls, data):
-        return Contact(data.get("name"), data.get("phone"), data.get("email"), data.get("telegram"),data.get("added_by"), data.get("tags"), data.get("notes"))
-
-class FamilyMember(Contact):
-    def __init__(self, name, relationship,phone=None, email=None,telegram=None):
-        super().__init__(name, phone, email, telegram)
-        self.name = name
-        self.relationship = relationship  
-        self.is_family_member = True
-
-    def to_dict(self):
-        result = super().to_dict()
-        result["relationship"] = self.relationship
-        return result
-
-    @classmethod
-    def from_dict(cls, data):
-        return FamilyMember(data.get("name"),data.get("relationship"),data.get("phone"), data.get("email"),data.get("telegram"))
 
 class ContactManager:
     _instance = None
@@ -153,6 +117,9 @@ class ContactManager:
 
     def list_family_members(self):
         return self.family_members
+    
+    #def register_to_ai_bus(self, ai_bus:AIBus):
+    #    ai_bus.register_message_handler("contact_manager", self.process_msg)
     
 
     #async def process_msg(self,msg:AgentMsg):

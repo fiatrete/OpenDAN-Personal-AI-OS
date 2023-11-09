@@ -92,6 +92,11 @@ class AIOS_Shell:
         if a_workflow is not None:
             bus.register_message_handler(target_id,a_workflow._process_msg)
             return True
+        
+        a_contact = await ContactManager.get_instance().get_contact(target_id)
+        if a_contact is not None:
+            bus.register_message_handler(target_id,a_contact._process_msg)
+            return True
 
         return False
 
@@ -184,7 +189,7 @@ class AIOS_Shell:
         await ComputeKernel.get_instance().start()
 
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
-        AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+        #AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
         
         
         pipelines = KnowledgePipelineManager.initial(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge/pipelines"))
@@ -212,6 +217,7 @@ class AIOS_Shell:
         return "0.5.1"
 
     async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None) -> str:
+        #AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
         agent_msg = AgentMsg()
         agent_msg.set(sender,target_id,msg)
         agent_msg.topic = topic
@@ -241,6 +247,11 @@ class AIOS_Shell:
                 input_table["allow"] = UserConfigItem("allow group (default is member,you can choose contact or guest)")
             case "email":
                 tunnel_config["type"] = "EmailTunnel"
+                input_table["email"] = UserConfigItem("email address agent will use \n")
+                input_table["imap"] = UserConfigItem("imap server address,like hostname:port")
+                input_table["smtp"] = UserConfigItem("smtp server address,like hostname:port")
+                input_table["user"] = UserConfigItem("mail server login user name")
+                input_table["password"] = UserConfigItem("main server login password")
             case _:
                 error_text = FormattedText([("class:error", f"tunnel type {tunnel_type}not support!")])
                 print_formatted_text(error_text,style=shell_style)
@@ -406,13 +417,21 @@ class AIOS_Shell:
         match func_name:
             case 'send':
                 show_text = FormattedText([("class:error", f'send args error,/send Tracy "Hello! It is a good day!" default')])
+                sender = None
                 if len(args) == 3:
                     target_id = args[0]
                     msg_content = args[1]
                     topic = args[2]
-                    resp = await self.send_msg(msg_content,target_id,topic,self.username)
-                    show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
-                                            ("class:content", resp)])
+                    sender = self.username
+                elif len(args) == 4:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    topic = args[2]
+                    sender = args[3]
+
+                resp = await self.send_msg(msg_content,target_id,topic,sender)
+                show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
+                                        ("class:content", resp)])
                 return show_text
             case 'set_config':
                 show_text = FormattedText([("class:error", f"set config args error,/set_config $config_item! ")])

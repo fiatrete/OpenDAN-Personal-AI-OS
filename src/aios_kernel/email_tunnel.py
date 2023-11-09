@@ -9,6 +9,7 @@ import time
 import datetime
 from .tunnel import AgentTunnel
 from .agent_base import AgentMsg
+from .contact_manager import ContactManager
 
 from email.message import EmailMessage
 
@@ -30,7 +31,7 @@ class EmailTunnel(AgentTunnel):
         self.target_id = config["target"]
         self.tunnel_id = config["tunnel_id"]
 
-        self.type = "TelegramTunnel"
+        self.type = "EmailTunnel"
         self.email = config["email"]
         self.imap_server = config["imap"]
         s = self.imap_server.split(":")
@@ -46,8 +47,10 @@ class EmailTunnel(AgentTunnel):
 
         self.login_user = config["user"]
         self.login_password = config["password"]
-        self.folder = config["folder"]
-        self.check_interval = config["interval"]
+        if config.get("folder") is not None:
+            self.folder = config["folder"]
+        if config.get("interval") is not None:
+            self.check_interval = config["interval"]
 
         return True  
     
@@ -55,6 +58,8 @@ class EmailTunnel(AgentTunnel):
         super().__init__()
         self.is_start = False
         self.read_email = {}
+        self.folder = "INBOX"
+        self.check_interval = 60
 
     async def on_new_email(self,mail:mailparser.MailParser) -> None:
         remote_email_addr = mail.from_[0][1]
@@ -86,7 +91,32 @@ class EmailTunnel(AgentTunnel):
             password=self.login_password,
             )
 
+    async def post_message(self, msg: AgentMsg) -> None:
+        cm = ContactManager.get_instance()
+        contact = cm.find_contact_by_name(msg.target)
+        if contact is None:
+            logger.error(f"can't find contact {msg.target} , post message through email_tunnel failed!")
+            return
+        
+        target_email = contact.email
+        if target_email is None:
+            logger.error(f"contact {msg.target} has no email, post message through email_tunnel failed!")
+            return
+        
+        email_msg = EmailMessage()
+        email_msg['Subject'] = f"{msg.topic},From AIAgent {msg.sender}"
+        email_msg['From'] = self.email
+        email_msg['To'] = target_email
+        email_msg.set_content(msg)
 
+        await aiosmtplib.send(
+            email_msg,
+            hostname = self.smtp_server,
+            port=self.smtp_port,
+            username=self.login_user,
+            password=self.login_password,
+        )
+        
 
     def conver_mail_to_agent_msg(self,mail:mailparser.MailParser) -> AgentMsg:
         msg = AgentMsg()
@@ -141,4 +171,5 @@ class EmailTunnel(AgentTunnel):
 
     async def _process_message(self, msg: AgentMsg) -> None:
         logger.warn(f"process message {msg.msg_id} from {msg.sender} to {msg.target}")
+
         

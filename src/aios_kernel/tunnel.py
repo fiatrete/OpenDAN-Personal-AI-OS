@@ -54,6 +54,14 @@ class AgentTunnel(ABC):
 
         return False
     
+    @classmethod
+    async def get_tunnel_by_agentid(cls,agent_id:str):
+        result = []
+        for tunnel in cls._all_tunnels.values():
+            if tunnel.target_id == agent_id:
+                result.append(tunnel)
+        return result
+    
 
     def __init__(self) -> None:
         super().__init__()
@@ -75,6 +83,9 @@ class AgentTunnel(ABC):
         self.ai_bus = ai_bus
         self.is_connected = True
 
+    @abstractmethod
+    def post_message(self, msg: AgentMsg) -> None:
+        pass
         
 
     @abstractmethod

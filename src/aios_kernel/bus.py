@@ -109,6 +109,9 @@ class AIBus:
     # means sub
     def register_message_handler(self,handler_name:str,handler:Any) -> Queue:
         handler_node =  AIBusHandler(handler,self)
+        if self.handlers.get(handler_name) is not None:
+            logger.warn(f"handler {handler_name} already register on AI_BUS!")
+                        
         self.handlers[handler_name] = handler_node
         return handler_node.queue
 

@@ -21,7 +21,8 @@ from .agent_base import AgentMsg,AgentMsgType
 logger = logging.getLogger(__name__)
 
 class TelegramTunnel(AgentTunnel):
-
+    all_bots = {}
+    default_chatid = {}
     @classmethod
     def register_to_loader(cls):
         async def load_tg_tunnel(config:dict) -> AgentTunnel:
@@ -55,6 +56,7 @@ class TelegramTunnel(AgentTunnel):
         self.update_queue = None
         self.allow_group = "contact"
         self.in_process_tg_msg = {}
+        self.chatid_record = {}
 
     async def _do_process_raw_message(self,bot: Bot, update_id: int) -> int:
         # Request updates after the last update_id
@@ -81,6 +83,7 @@ class TelegramTunnel(AgentTunnel):
         self.update_queue = asyncio.Queue()
         self.bot_updater = Updater(self.bot,update_queue=self.update_queue)
 
+        TelegramTunnel.all_bots[self.target_id] = self.bot
 
         async def _run_app():
             try:
@@ -110,8 +113,41 @@ class TelegramTunnel(AgentTunnel):
     async def close(self) -> None:
         pass
 
-    async def _process_message(self, msg: AgentMsg) -> None:
-        logger.warn(f"process message {msg.msg_id} from {msg.sender} to {msg.target}")
+    async def _process_message(self, msg: AgentMsg) -> bool:
+       logger.warn(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target}")
+
+    # async def _process_message(self, msg: AgentMsg) -> bool:
+    #     logger.info(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target}")
+    #     cm = ContactManager.get_instance()
+    #     contact = cm.find_contact_by_name(msg.target)
+    #     bot = TelegramTunnel.all_bots.get(msg.sender)
+    #     chatid_index = f"{self.target_id}#{msg.target}"
+    #     chatid = TelegramTunnel.default_chatid.get(chatid_index)
+    #     if chatid is None:
+    #         logger.warning(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target} failed! chatid not found!")
+    #         return None
+        
+    #     if bot is None:
+    #         logger.warning(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target} failed! bot not found!")
+    #         return None
+
+    #     if contact:
+    #         if contact.telegram:
+    #             await bot.send_message(chat_id=chatid,text=msg.body)
+    #             logging.info(f"tg_tunnel send message {msg.msg_id} from agent {msg.sender} to human {msg.target} @ chatid:{chatid}success!")
+    #             return None
+        
+    #     logger.warning(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target} failed! contact not found!")
+    #     return None
+
+    async def post_message(self, msg: AgentMsg) -> None:
+        chatid = self.chatid_record.get(msg.target)
+        if chatid:
+            # TODO: support image and audio
+            await self.bot.send_message(chat_id=chatid,text=msg.body)
+            logging.info(f"tg_tunnel send message {msg.msg_id} from agent {msg.sender} to human {msg.target} @ chatid:{chatid}success!")
+        else:
+            logger.warning(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target} failed! chatid not found!")
 
 
     async def conver_tg_msg_to_agent_msg(self,message:Message) -> AgentMsg:
@@ -189,6 +225,8 @@ class TelegramTunnel(AgentTunnel):
 
         if contact is not None:
             reomte_user_name = contact.name
+
+            #TelegramTunnel.default_chatid[f"{self.target_id}#{reomte_user_name}"] = update.effective_chat.id
             if not contact.is_family_member:
                 if self.allow_group != "contact" and self.allow_group !="guest":
                     await update.message.reply_text(f"You're not supposed to talk to me! Please contact my father~")
@@ -209,7 +247,11 @@ class TelegramTunnel(AgentTunnel):
                 contact.added_by = self.target_id
                 cm.add_contact(contact.name, contact)
                 reomte_user_name = contact.name
-             
+
+        if contact is not None:
+            contact.set_active_tunnel(self.target_id,self)
+            self.chatid_record[reomte_user_name] = update.effective_chat.id
+            self.ai_bus.register_message_handler(reomte_user_name,contact._process_msg) 
 
         agent_msg.sender = reomte_user_name
         logger.info(f"process message {agent_msg.msg_id} from {agent_msg.sender} to {agent_msg.target}")
@@ -217,7 +259,7 @@ class TelegramTunnel(AgentTunnel):
             self.ai_bus.register_message_handler(agent_msg.target, self._process_message)
             resp_msg = await self.ai_bus.send_message(agent_msg,self.target_id,agent_msg.target)
         else:
-            self.ai_bus.register_message_handler(reomte_user_name, self._process_message)
+            #self.ai_bus.register_message_handler(reomte_user_name, self._process_message)
             resp_msg = await self.ai_bus.send_message(agent_msg)
         #await bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
