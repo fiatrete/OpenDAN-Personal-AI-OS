@@ -356,10 +356,13 @@ class AIOS_Shell:
             pipelines = KnowledgePipelineManager.get_instance().get_pipelines()
             print_formatted_text("\r\n".join(pipeline.get_name() for pipeline in pipelines))
         if sub_cmd == "journal":
-            name = args[1]
-            topn = 10 if len(args) == 2 else int(args[2])
-            journals = [str(journal) for journal in KnowledgePipelineManager.get_instance().get_pipeline(name).get_journal().latest_journals(topn)]
-            print_formatted_text("\r\n".join(str(journal) for journal in journals))
+            try:
+                name = args[1]
+                topn = 10 if len(args) == 2 else int(args[2])
+                journals = [str(journal) for journal in KnowledgePipelineManager.get_instance().get_pipeline(name).get_journal().latest_journals(topn)]
+                print_formatted_text("\r\n".join(str(journal) for journal in journals))
+            except ValueError:
+                return FormattedText([("class:title", f"/knowledge journal failed: {args[1]} is not a valid integer.\n")])
         if sub_cmd == "query":
             if len(args) < 2:
                 return show_text
@@ -404,8 +407,8 @@ class AIOS_Shell:
                 if len(args) < 4:
                     return show_text
                 
-                model_name = args[3]
-                url = args[4]
+                model_name = args[2]
+                url = args[3]
                 ComputeNodeConfig.get_instance().remove_node("llama", url, model_name)
                 ComputeNodeConfig.get_instance().save()
             else:
@@ -760,6 +763,7 @@ async def main():
                                '/disable $feature',
                                '/node add llama $model_name $url',
                                '/node rm llama $model_name $url',
+                               '/node list',
                                '/show',
                                '/exit',
                                '/help'], ignore_case=True)
