@@ -485,12 +485,12 @@ class AIAgent:
             summary = self.llm_select_session_summary(msg,chatsession)
             prompt.append(AgentPrompt(summary))
         
-        known_info_str = "# 已知信息\n"
+        known_info_str = "# Known information\n"
         have_known_info = False
         todos_str,todo_count = await workspace.get_todo_tree()
         if todo_count > 0:
             have_known_info = True
-            known_info_str += f"## 已有todo\n{todos_str}\n"
+            known_info_str += f"## todo\n{todos_str}\n"
         inner_functions,function_token_len = self._get_inner_functions()
         system_prompt_len = prompt.get_prompt_token_len()
         input_len = len(msg.body)
@@ -879,40 +879,63 @@ class AIAgent:
         
     # 尝试自我学习，会主动获取、读取资料并进行整理
     # LLM的本质能力是处理海量知识，应该让LLM能基于知识把自己的工作处理的更好
-    def do_self_learn(self) -> None:
+    async def do_self_learn(self) -> None:
         # 不同的workspace是否应该有不同的学习方法？ 
-        learn_power = self.get_learn_power()
-        kb = self.get_knowledge_base()
-        for item in kb.un_learn_items():
-            if learn_power <= 0:
+        workspace = self.get_workspace_by_msg(None)
+        hash_list = workspace.kb_db.get_knowledge_without_llm_title()
+        for hash in hash_list:
+            if self.agent_energy <= 0:
                 break
-            match item.type():
-                case "book":
-                    self.llm_read_book(kb,item)
-                    learn_power -= 1
-                case "article":
-                    # 可以用vdb 对不同目录的名字进行选择后，先进行一次快速的插入。有时间再慢慢用LLM整理
-                    self.llm_read_article(kb,item)
-                    learn_power -= 1
-                case "video":
-                    self.llm_watch_video(kb,item)
-                    learn_power -= 1
-                case "audio":
-                    self.llm_listen_audio(kb,item)
-                    learn_power -= 1
-                case "code_project":
-                    self.llm_read_code_project(kb,item)
-                    learn_power -= 1
-                case "image":
-                    self.llm_view_image(kb,item)
-                    learn_power -= 1
-                case "other":
-                    self.llm_read_other(kb,item)
-                    learn_power -= 1
-                case _:
-                    self.llm_learn_any(kb,item)
-                    pass
-        
+
+            knowledge = workspace.kb_db.get_knowledge_by_hash(hash)
+            if knowledge is None:
+                continue
+
+            if os.path.exists(knowledge.path) is False:
+                logger.warning(f"do_self_learn: knowledge {knowledge.path} is not exists!")
+                continue
+
+             #TODO 可以用v-db 对不同目录的名字进行选择后，先进行一次快速的插入。有时间再慢慢用LLM整理
+            llm_result = await self._llm_read_article(knowledge)
+
+            #根据结果更新knowledge
+            if llm_result is not None:
+                workspace.kb_db.update_knowledge_by_hash(hash,llm_result)
+                # 在知识库中创建软链接
+
+
+
+            self.agent_energy -= 1
+
+            # match item.type():
+            #     case "book":
+            #         self.llm_read_book(kb,item)
+            #         learn_power -= 1
+            #     case "article":
+            #        
+            #         self.llm_read_article(kb,item)
+            #         learn_power -= 1
+            #     case "video":
+            #         self.llm_watch_video(kb,item)
+            #         learn_power -= 1
+            #     case "audio":
+            #         self.llm_listen_audio(kb,item)
+            #         learn_power -= 1
+            #     case "code_project":
+            #         self.llm_read_code_project(kb,item)
+            #         learn_power -= 1
+            #     case "image":
+            #         self.llm_view_image(kb,item)
+            #         learn_power -= 1
+            #     case "other":
+            #         self.llm_read_other(kb,item)
+            #         learn_power -= 1
+            #     case _:
+            #         self.llm_learn_any(kb,item)
+            #         pass
+
+
+    async def do_blance_knowledge_base(selft):
         # 整理自己的知识库(让分类更平衡，更由于自己以后的工作)，并尝试更新学习目标
         current_path = "/"
         current_list = kb.get_list(current_path)
@@ -933,48 +956,86 @@ class AIAgent:
     def parser_learn_llm_result(self,llm_result:LLMResult):
         pass
 
-    async def _llm_read_article(self,item:KnowledgeObject) -> ComputeTaskResult:
-        full_content = item.get_article_full_content()
-        full_content_len = ComputeKernel.llm_num_tokens_from_text(full_content,self.get_llm_model_name())
+    async def gen_known_info_for_knowledge_prompt(self,knowledge_item:dict,need_catalogs = False) -> AgentPrompt:
+        #已知信息：   
+        #   组织的工作总结（如有）待完成
+        #   现在知识库的结构（注意大小控制）gen_kb_tree_prompt (当为空的时候应该让LLM生成一个合适的初始目录结构)
+        #   原始路径，现在标题，摘要，目录
+        workspace =self.get_workspace_by_msg(None)
+        kb_tree = await workspace.get_knowledege_catalog()
+        known_obj = {}
+        title  = knowledge_item.get("title")
+        if title:
+            known_obj["title"] = title
+        summary = knowledge_item.get("summary")
+        if summary:
+            known_obj["summary"] = summary
+        tags = knowledge_item.get("tags")
+        if tags:
+            known_obj["tags"] = tags   
+        if need_catalogs:
+            catalogs = knowledge_item.get("catalogs")
+            if catalogs:
+                known_obj["catalogs"] = catalogs
+        
+        org_path = knowledge_item.get("path")
+        known_obj["orginal_path"] = org_path
+        know_info_str = f"# Known information\n{json.dumps(known_obj)}\n"
+        return AgentPrompt(know_info_str)
+
+        
+
+
+
+
+    async def _llm_read_article(self,knowledge_item:dict) -> ComputeTaskResult:
+        #目标：
+        #   得到更好的标题，摘要，目录 （如有必要）,tags
+        #   应放的合适的位置 （结合组织的目标）
+        #已知信息：   
+        #   整理是为什么目标服务的 learn_prompt
+        #   组织的工作总结（如有）
+        #   现在知识库的结构（注意大小控制）gen_kb_tree_prompt (当为空的时候应该让LLM生成一个合适的初始目录结构)
+        #   原始路径，现在标题，摘要，目录
+
+
+        # 整理长文件（通用技巧）
+        #   告诉输入的是部分内容，让LLM为任务产生中间结果
+        #   依次输入内容，在最后一个内容块输入时，LLM得到结果
+        
+        #full_content = item.get_article_full_content()
+        workspace = self.get_workspace_by_msg(None)
+        full_content = await workspace.load_knowledge_content(knowledge_item["hash"])
+        if full_content is None:
+            return 
+        full_content_len = self.token_len(full_content)
         if full_content_len < self.get_llm_learn_token_limit():
             
             # 短文章不用总结catelog
             #path_list,summary = llm_get_summary(summary,full_content)
-            prompt = self.get_agent_role_prompt()
-            learn_prompt = self.get_learn_prompt()
-            cotent_prompt = AgentPrompt(full_content)
-            prompt.append(learn_prompt)
-            prompt.append(cotent_prompt)
-            
-            env_functions = self._get_inner_functions()
-            
+            #prompt = self.get_agent_role_prompt()
+            prompt = self.get_learn_prompt()
+            known_info_prompt = await self.gen_known_info_for_knowledge_prompt(knowledge_item)
+            prompt.append(known_info_prompt)
+            content_prompt = AgentPrompt(full_content)
+            prompt.append(content_prompt)
+  
+            env_functions = workspace.get_knowledge_base_ai_functions()
             task_result:ComputeTaskResult = await self._do_llm_complection(prompt,env_functions)
             if task_result.result_code != ComputeTaskResultCode.OK:
-                return task_result
-            llm_result = LLMResult.from_str(task_result.result_str)
-            path_list,summary = self.parser_learn_llm_result(llm_result)
+                result_obj = {}
+                result_obj["error_str"] = task_result.error_str
+                return result_obj
+            
+            result_obj = json.loads(task_result.result_str)
+            return result_obj
 
         else:
-            # 用传统方法对文章进行一些处理，目的是尽可能减少LLM调用的次数
-            catelog = item.get_articl_catelog()
-            chunk_content = full_content.read(self.get_llm_learn_token_limit())
-            summary = kb.try_get_summary(catelog,full_content)
-        
-            while chunk_content is not None:
-                #path_list,summarycatelog = llm_get_summary(summary,chunk_content)
-                #learn_prompt = self.get_learn_prompt_with_summary()
-
-                prompt = AgentPrompt("summary")
-                learn_prompt.append(prompt)
-                prompt = AgentPrompt(chunk_content)
-                learn_prompt.append(prompt)
-                
-                #llm_result = self.do_llm_competion(learn_prompt)
-                #path_list,summary,catelog = parser_learn_llm_result(llm_result)
-
-                #chunk_content = full_content.read(self.get_llm_learn_token_limit())
+            logger.warning(f"llm_read_article: article {knowledge_item['path']} is too long,just read summary!")
+            result_obj = {}
+            result_obj["error_str"] = f"llm_read_article: article {knowledge_item['path']} is too long,just read summary!"
+            return result_obj
             
-        kb.insert_item(path_list,item,catelog,summary) 
 
     async def do_self_think(self):
         session_id_list = AIChatSession.list_session(self.agent_id,self.chat_db)
@@ -1043,7 +1104,7 @@ class AIAgent:
         known_info = ""
         if chatsession.summary is not None:
             if len(chatsession.summary) > 1:  
-                known_info += f"## 最近交流的总结 \n {chatsession.summary}\n"
+                known_info += f"## Recent conversation summary \n {chatsession.summary}\n"
                 result_token_len -= len(chatsession.summary)
                 have_known_info = True
 
@@ -1062,7 +1123,7 @@ class AIAgent:
                 logger.warning(f"_get_prompt_from_session reach limit of token,just read {read_history_msg} history message.")
                 break
         
-        known_info += f"## 最近的沟通记录 \n {histroy_str}\n"
+        known_info += f"## Recent conversation history \n {histroy_str}\n"
  
         if have_known_info:
             return known_info,result_token_len
@@ -1103,6 +1164,8 @@ class AIAgent:
         return False
     
     def need_self_learn(self) -> bool:
+        if self.learn_prompt is not None:
+            return True
         return False 
     
     def wake_up(self) -> None:
@@ -1144,6 +1207,9 @@ class AIAgent:
                 tb_str = traceback.format_exc()
                 logger.error(f"agent {self.agent_id} on timer error:{e},{tb_str}")
                 continue
+
+    def token_len(self,text:str) -> int:
+        return ComputeKernel.llm_num_tokens_from_text(text,self.get_llm_model_name())
 
         
      

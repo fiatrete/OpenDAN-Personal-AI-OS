@@ -1,5 +1,6 @@
 # this env is designed for workflow owner filesystem, support file/directory operations
 
+import hashlib
 import json
 import subprocess
 import logging
@@ -17,10 +18,13 @@ from typing import Any,List
 import os
 import chardet
 
+from markdown import Markdown
+import PyPDF2
 from .agent_base import AgentMsg,AgentTodo,AgentPrompt,AgentTodoResult
 from .environment import Environment,EnvironmentEvent
 from .ai_function import AIFunction,SimpleAIFunction
 from .storage import AIStorage,ResourceLocation
+from .simple_kb_db import SimpleKnowledgeDB
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +37,10 @@ class WorkspaceEnvironment(Environment):
             os.makedirs(self.root_path+"/todos")
 
         self.known_todo = {}
+        self.kb_db = SimpleKnowledgeDB(f"{self.root_path}/kb.db")
+        self.doc_dirs = {}
+        self._scan_thread = None 
+        self._scan_dirthread = None
         
 
     def set_root_path(self,path:str):
@@ -44,8 +52,9 @@ class WorkspaceEnvironment(Environment):
     def get_role_prompt(self,role_id:str) -> AgentPrompt:
         return None
 
-    def get_knowledge_base(self) -> str:
+    def get_knowledge_base(self,root_dir=None,indent=0) -> str:
         pass
+
 
     def get_do_prompt(self,todo:AgentTodo=None)->AgentPrompt:
         return None
@@ -94,7 +103,9 @@ class WorkspaceEnvironment(Environment):
     
         
         return result_str,have_error
-
+    
+    # file system operation: list,read,write,delete,move,stat
+    # inner_function
     async def list(self,path:str,only_dir:bool=False) -> str:
         directory_path = self.root_path + path
         items = []
@@ -108,7 +119,8 @@ class WorkspaceEnvironment(Environment):
                 items.append({"name": entry.name, "type": item_type})
 
         return json.dumps(items)
-
+    
+    # inner_function
     async def read(self,path:str) -> str:
         file_path = self.root_path + path
         cur_encode = "utf-8"
@@ -119,10 +131,8 @@ class WorkspaceEnvironment(Environment):
             content = await f.read(2048)
         return content
     
-    # use diff to update large file content
-    async def write_diff(self,path:str,diff):
-        pass 
 
+    # operation or inner_function (MOST IMPORTANT FUNCTION)
     async def write(self,path:str,content:str,is_append:bool=False) -> str:
         file_path = self.root_path + path
         try:
@@ -130,24 +140,24 @@ class WorkspaceEnvironment(Environment):
                 async with aiofiles.open(file_path, mode='a', encoding="utf-8") as f:
                     await f.write(content)
             else:
-                async with aiofiles.open(file_path, mode='w', encoding="utf-8") as f:
-                    await f.write(content)
+                if content is None:
+                    # create dir
+                    dir_path = self.root_path + path
+                    os.makedirs(dir_path)
+                    return True
+                else:
+                    file_path = self.root_path + path
+                    os.makedirs(os.path.dirname(file_path),exist_ok=True)
+                    async with aiofiles.open(file_path, mode='w', encoding="utf-8") as f:
+                        await f.write(content)
+                    return True
+        
         except Exception as e:
             return str(e)
         return None
-
-    async def create(self,path:str,content:str=None) -> bool:
-        if content is None:
-            # create dir
-            dir_path = self.root_path + path
-            os.makedirs(dir_path)
-            return True
-        else:
-            file_path = self.root_path + path
-            async with aiofiles.open(file_path, mode='w', encoding="utf-8") as f:
-                await f.write(content)
-            return True
+    
         
+    # operation or inner_function
     async def delete(self,path:str) -> str:
         try:
             file_path = self.root_path + path
@@ -157,21 +167,107 @@ class WorkspaceEnvironment(Environment):
         
         return None
     
-    async def mkdir(self,path:str) -> bool:
-        dir_path = self.root_path + path
-        os.makedirs(dir_path)
-        return True
-    
-    async def rename(self,path:str,new_name:str) -> str:
+    # operation or inner_function
+    async def move(self,path:str,new_path:str) -> str:
         try:
             file_path = self.root_path + path
-            new_path = self.root_path + new_name
+            new_path = self.root_path + new_path
             os.rename(file_path,new_path)
         except Exception as e:
             return str(e)
         
         return None
+    
+    # inner_function
+    async def stat(self,path:str) -> str:
+        try:
+            file_path = self.root_path + path
+            stat = os.stat(file_path)
+            return json.dumps(stat)
+        except Exception as e:
+            return str(e)
 
+    # operation or inner_function   
+    async def symlink(self,path:str,target:str) -> str:
+        try:
+            file_path = self.root_path + path
+            target_path = self.root_path + target
+            os.symlink(file_path,target_path)
+        except Exception as e:
+            return str(e)
+        
+        return None
+        
+    # TODO use diff to update large file content
+    async def update_by_diff(self,path:str,diff):
+
+        pass 
+    
+    # doc system （read_only,agent cann't modify doc）
+
+    # inner_function
+    async def list_db(self) -> str:
+        pass
+    # inner_function
+    async def get_db_desc(self,db_name:str) -> str:
+        pass  
+    # inner_function
+    async def query(self,db_name:str,sql:str) -> str:
+        pass
+
+    # search (web)
+    # inner_function
+    async def google_search(self,keyword:str,opt=None) -> str:
+        pass
+
+    # inner_function
+    async def local_search(self,keyword:str,root_path=None ,opt=None) -> str:
+        pass
+    
+    # inner_function, might be return a image is better
+    async def web_get(self,url:str) -> str:
+        pass
+    
+    # inner_function
+    async def blockchain_get(self,chainid:str,query:dict) -> str:
+        pass
+
+    # code interpreter
+    # inner_function or operation
+    async def eval_code(self,pycode:str) -> str:
+        pass
+    
+    # operation or inner_function
+    async def improve_code(self,path:str):
+        pass
+    
+    # operation or inner_function
+    async def run(self,file_path:str)->str:
+        pass
+
+    # operation or inner_function
+    async def pub_service(self,project_path:str):
+        pass
+
+    # operation or inner_function
+    async def exec_tx(self,chain_id:str,tx:dict) -> str:
+        pass
+    
+    # social ability
+    # operation or inner_function
+    async def post_message(self,target:str,msg:AgentMsg,wait_time) -> AgentMsg:
+        pass
+    
+    # operation or inner_function
+    async def add_contact(self,name:str,contact_info) -> str:
+        pass
+
+    # inner_function , include contact realtime info
+    async def get_contact(self,name_list:List[str],opt:dict) -> List:
+        pass
+
+
+    # Task/todo system , create,update,delete,query
     async def get_todo_tree(self,path:str = None,deep:int = 4):
         if path:
             directory_path = self.root_path + "/todos/" + path
@@ -334,163 +430,243 @@ class WorkspaceEnvironment(Environment):
             json_obj["logs"] = logs
             await f.write(json.dumps(json_obj))
 
-class CodeInterpreter:
-    def __init__(self, language, debug_mode):
-        self.language = language
-        self.proc = None
-        self.active_line = None
-        self.debug_mode = debug_mode
+    async def set_wakeup_timer(self,todo_id:str,timestamp:int) -> str:
+        pass
 
-    def start_process(self):
-        start_cmd = sys.executable + " -i -q -u"
-        self.proc = subprocess.Popen(start_cmd.split(),
-                                        stdin=subprocess.PIPE,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE,
-                                        text=True,
-                                        bufsize=0)
+    # knowledge base system
+    def get_knowledge_base_ai_functions(self):
+        func_result = {}
 
-        # Start watching ^ its `stdout` and `stderr` streams
-        threading.Thread(target=self.save_and_display_stream,
-                            args=(self.proc.stdout, False), # Passes False to is_error_stream
-                            daemon=True).start()
-        threading.Thread(target=self.save_and_display_stream,
-                            args=(self.proc.stderr, True), # Passes True to is_error_stream
-                            daemon=True).start()
+        func_result["get_knowledge_catalog"] = SimpleAIFunction("get_knowledge_catalog","get knowledge catalog in tree format",
+                                                                self.get_knowledege_catalog,
+                                                                {"path":f"catalog path,none is /","depth":"max depth of catalog tree,default is 4"})
+        func_result["get_knowledge"] = SimpleAIFunction("get_knowledge","get knowledge metadata",
+                                                                self.get_knowledge,
+                                                                {"path":f"knowledge path"})
+        func_result["load_knowledge_content"] = SimpleAIFunction("load_knowledge_content","load knowledge content",
+                                                                 self.load_knowledge_content,
+                                                                 {"path":f"knowledge path","pos":"start position of content","length":"length of content"})
+        return func_result
 
-    def warp_code(self,pycode:str)->str:
-        # Add import traceback
-        code = "import traceback\n" + pycode
-        # Parse the input code into an AST
-        parsed_code = ast.parse(code)
-        # Wrap the entire code's AST in a single try-except block
-        try_except = ast.Try(
-            body=parsed_code.body,
-            handlers=[
-                ast.ExceptHandler(
-                    type=ast.Name(id="Exception", ctx=ast.Load()),
-                    name=None,
-                    body=[
-                        ast.Expr(
-                            value=ast.Call(
-                                func=ast.Attribute(value=ast.Name(id="traceback", ctx=ast.Load()), attr="print_exc", ctx=ast.Load()),
-                                args=[],
-                                keywords=[]
-                            )
-                        ),
-                    ]
-                )
-            ],
-            orelse=[],
-            finalbody=[]
-        )
-
-        parsed_code.body = [try_except]
-        return ast.unparse(parsed_code)
-        
-    def run(self,py_code:str):
-        """
-        Executes code.
-        """
-        # Get code to execute
-        self.code = py_code 
-
-        # Start the subprocess if it hasn't been started
-        if not self.proc:
-            try:
-                self.start_process()
-            except Exception as e:
-                # Sometimes start_process will fail!
-                # Like if they don't have `node` installed or something.
-                
-                traceback_string = traceback.format_exc()
-                self.output = traceback_string
-                # Before you return, wait for the display to catch up?
-                # (I'm not sure why this works)
-                time.sleep(0.1)
-        
-                return self.output
-
-        self.output = ""
-
-        self.print_cmd = 'print("{}")'
-        code = self.warp_code(py_code)
-
-        if self.debug_mode:
-            print("Running code:")
-            print(code)
-            print("---")
-
-        self.done = threading.Event()
-        self.done.clear()
-
-        # Write code to stdin of the process
-        try:
-            self.proc.stdin.write(code + "\n")
-            self.proc.stdin.flush()
-        except BrokenPipeError:
-            return
-        self.done.wait()
-        time.sleep(0.1)
-        return self.output
-
-    def save_and_display_stream(self, stream, is_error_stream):
-
-        for line in iter(stream.readline, ''):
-            if self.debug_mode:
-                print("Recieved output line:")
-                print(line)
-                print("---")
-            
-            line = line.strip()
-            if is_error_stream and "KeyboardInterrupt" in line:
-                raise KeyboardInterrupt
-            elif "END_OF_EXECUTION" in line:
-                self.done.set()
-                self.active_line = None
-            else:
-                self.output += "\n" + line
-                self.output = self.output.strip()
-
-
-  
-class ShellEnvironment(Environment):
-    def __init__(self, env_id: str) -> None:
-        super().__init__(env_id)
-
-        operator_param = {
-            "command": "command will execute",
-        }
-        self.add_ai_function(SimpleAIFunction("shell_exec",
-                                        "execute shell command in linux bash",
-                                        self.shell_exec,operator_param))
-        
-        #run_code_param = {
-        #    "pycode": "python code will execute",
-        #}
-        #self.add_ai_function(SimpleAIFunction("run_code",
-        #                                "execute python code",
-        #                                self.run_code,run_code_param))
-        
-
-    async def shell_exec(self,command:str) -> str:
-        import asyncio.subprocess
-        process = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
-        returncode = process.returncode
-        if returncode == 0:
-            return f"Execute success! stdout is:\n{stdout}\n"
+    async def get_knowledege_catalog(self,path:str=None,only_dir =True,max_depth:int=5)->str:
+        if path:
+            full_path = f"{self.root_path}/knowledge/{path}"
         else:
-            return f"Execute failed! stderr is:\n{stderr}\n"
+            full_path = f"{self.root_path}/knowledge"
+        
+        catlogs,file_count = await self.get_directory_structure(full_path,max_depth,only_dir)
+        return catlogs
+ 
+    async def get_directory_structure(self,root_dir, max_depth:int=4, only_dir=True, indent=1):
+        file_count = 0
+        structure_str = ''
+        if os.path.isdir(root_dir):
+            sub_files = []
+            with os.scandir(root_dir) as it:
+                for entry in it:
+                    if entry.is_dir():
+                        sub_structure, sub_count = await self.get_directory_structure(entry.path, max_depth, only_dir, indent + 1)
+                        if sub_structure:
+                            structure_str += sub_structure
+                        file_count += sub_count
+                    else:
+                        file_count += 1
+                        sub_files.append(entry.name)
 
-    async def run_code(self,pycode:str) -> str:
-        interpreter = CodeInterpreter("python",True)
-        return interpreter.run(pycode)
+                if only_dir is False:
+                    for file_name in sub_files:
+                        structure_str = structure_str + '  ' * (indent+1) + file_name + '\n' 
+
+            dir_name = os.path.basename(root_dir)
+            dir_info = f"{dir_name} <count: {file_count}>"
+        
+
+            structure_str = '  ' * indent + dir_info + '\n' + structure_str
+
+        if indent - 1 >= max_depth:
+            return None, file_count
+        else:
+            return structure_str, file_count
+
+    # inner_function    
+    async def get_knowledge(self,path:str) -> str:
+        full_path = f"{self.root_path}/knowledge/{path}"
+        if os.islink(full_path):
+            org_path = os.readlink(full_path)
+            hash = self.kb_db.get_hash_by_doc_path(org_path)
+            if hash:
+                return self.kb_db.get_knowledge(org_path)
+        
+        return "not found"
+
+    async def load_knowledge_content(self,path:str,pos:int=0,length:int=0) -> str:
+        full_path = f"{self.root_path}/knowledge/{path}"
+        if os.islink(full_path):
+            org_path = os.readlink(full_path)
+            if full_path.endswith("pdf"):
+                logger.info("load_knowledge_content:pdf")
+                return "pdf is not support now!"
+            else:
+                async with aiofiles.open(full_path,'rb') as f:
+                    cur_encode = chardet.detect(f.read(1024))['encoding']
+
+                async with aiofiles.open(full_path, mode='r', encoding=cur_encode) as f:
+                    f.seek(pos)
+                    content = await f.read(length)
+                    return content
+
+        return "load content failed."
+
+    def _add_document_dir(self,path:str):
+        self.doc_dirs[path] = 0
+
+    def _start_scan_document(self):
+        if self._scan_thread is None:
+            self._scan_thread = threading.Thread(target=self._scan_document)
+            self._scan_thread.start()
+        if self._scan_dirthread is None:
+            self._scan_dirthread = threading.Thread(target=self._scan_dir)
+            self._scan_dirthread.start()
+
+    def _parse_pdf_bookmarks(self,bookmarks, parent:list):
+
+        for item in bookmarks:
+            if isinstance(item,list):
+                self._parse_pdf_bookmarks(item,parent)
+            else:
+                if item.title:
+                    new_item = {}
+                    new_item["page"] = item.page.idnum
+                    new_item["title"] = item.title 
+                    my_childs = []
+                    if item.childs:
+                        if len(item.childs) > 0:
+                            self._parse_pdf_bookmarks(item.childs, my_childs)
+                            new_item["childs"] = my_childs
+                    parent.append(new_item)
+                else:
+                    logger.warning("parse pdf bookmarks failed: item.title is None!")
+
+        return
+
+    def _parse_pdf(self,doc_path:str):
+        
+        metadata = {}
+        with open(doc_path, 'rb') as file:
+            reader = PyPDF2.PdfReader(file)
+            doc_info = reader.metadata
+            if doc_info:
+                if doc_info.title:
+                    metadata["title"] = doc_info.title
+                if doc_info.author:
+                    metadata["authors"] = doc_info.author
+   
+            bookmarks = reader.outline
+            if bookmarks:
+                catalogs = []
+                self._parse_pdf_bookmarks(bookmarks,catalogs)
+                metadata["catalogs"] = json.dumps(catalogs)
+
+        return metadata
+
+    def _parse_txt(self,doc_path:str):
+        return {}
+
+    def _parse_md(self,doc_path:str):
+        metadata = {} 
+        cur_encode = "utf-8"
+        with open(doc_path,'rb') as f:
+            cur_encode = chardet.detect(f.read(1024))['encoding']
+
+        with open(doc_path, mode='r', encoding=cur_encode) as f:
+            content = f.read()
+            match = re.search(r'^# (.*)', content, re.MULTILINE)
+            if match:
+                metadata['title'] = match.group(1).strip()
+            md = Markdown(extensions=['toc'])
+            html_str = md.convert(content)
+            toc = md.toc
+            if toc:
+                metadata['catalogs'] = toc
+            
+        return metadata
+
+    def _parse_document(self,doc_path:str):
+        hash_result = None
+        title = os.path.basename(doc_path)
+        meta_data = {}
+
+        with open(doc_path, "rb") as f:
+            hash_md5 = hashlib.md5()
+            for chunk in iter(lambda: f.read(1024*1024), b""):
+                hash_md5.update(chunk)
+            hash_result = hash_md5.hexdigest()
+        try:
+            if doc_path.endswith(".md"):
+                meta_data = self._parse_md(doc_path)
+            elif doc_path.endswith(".pdf"):
+                meta_data = self._parse_pdf(doc_path)
+        except Exception as e:
+            logger.error("parse document %s failed:%s",doc_path,e)
+            traceback.print_exc()
+
+        if meta_data.get("title"):
+            title = meta_data["title"]
+        
+        return hash_result,title,meta_data
+
+
+    def _support_file(self,file_name:str) -> bool:
+        if file_name.endswith(".pdf"):
+            return True
+        if file_name.endswith(".md"):
+            return True
+        if file_name.endswith(".txt"):
+            return True
+        return False
+
+    def _scan_dir(self):
+        while True:
+            time.sleep(10)
+            for directory in self.doc_dirs.keys():
+                now = time.time()
+                if now - self.doc_dirs[directory] > 60*15:
+                    self.doc_dirs[directory] = time.time()
+                else:
+                    continue
+
+                for root, dirs, files in os.walk(directory):
+                    for file in files:
+                        if self._support_file(file):
+                            full_path = os.path.join(root, file)
+                            full_path = os.path.normpath(full_path)
+                            if self.kb_db.is_doc_exist(full_path):
+                                continue
+                            
+                            file_stat = os.stat(full_path)
+                            if file_stat.st_size < 1:
+                                continue
+
+                            if file_stat.st_size < 1024*1024*8:
+                                #parse and insert
+                                hash,title,meta_data = self._parse_document(full_path)
+                                self.kb_db.add_doc(full_path,file_stat.st_size,file_stat.st_mtime,hash)
+                                self.kb_db.add_knowledge(hash,title,meta_data)
+                                
+                            else:
+                                self.kb_db.add_doc(full_path,file_stat.st_size,file_stat.st_mtime)
+
+    def _scan_document(self):
+       while True:
+        time.sleep(10)
+        parse_queue = self.kb_db.get_docs_without_hash()
+        for doc_path in parse_queue:
+                hash,title,meta_data = self._parse_document(doc_path)
+                self.kb_db.set_doc_hash(doc_path,hash)
+                self.kb_db.add_knowledge(hash,title,meta_data)
+        
     
+
 
 # merge to standard workspace env, **ABANDON this!**
 class KnowledgeBaseFileSystemEnvironment(Environment):
@@ -536,4 +712,38 @@ class KnowledgeBaseFileSystemEnvironment(Environment):
         async with aiofiles.open(file_path, mode='r', encoding=cur_encode) as f:
             content = await f.read(2048)
         return content
+
+
+class ShellEnvironment(Environment):
+    def __init__(self, env_id: str) -> None:
+        super().__init__(env_id)
+
+        operator_param = {
+            "command": "command will execute",
+        }
+        self.add_ai_function(SimpleAIFunction("shell_exec",
+                                        "execute shell command in linux bash",
+                                        self.shell_exec,operator_param))
+        
+        #run_code_param = {
+        #    "pycode": "python code will execute",
+        #}
+        #self.add_ai_function(SimpleAIFunction("run_code",
+        #                                "execute python code",
+        #                                self.run_code,run_code_param))
+        
+
+    async def shell_exec(self,command:str) -> str:
+        import asyncio.subprocess
+        process = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        returncode = process.returncode
+        if returncode == 0:
+            return f"Execute success! stdout is:\n{stdout}\n"
+        else:
+            return f"Execute failed! stderr is:\n{stderr}\n"
 

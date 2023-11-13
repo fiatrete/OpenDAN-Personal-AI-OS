@@ -217,7 +217,9 @@ class AIOS_Shell:
         return "0.5.1"
 
     async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None) -> str:
-        #AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+        if sender == self.username:
+            AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+        
         agent_msg = AgentMsg()
         agent_msg.set(sender,target_id,msg)
         agent_msg.topic = topic

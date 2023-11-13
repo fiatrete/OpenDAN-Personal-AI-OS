@@ -43,7 +43,8 @@ class Contact:
                 self.active_tunnels[msg.sender] = tunnel
                 await tunnel.post_message(msg)
                 return None
-            
+        
+        
         logger.warn(f"contact {self.name} cann't get tunnel,post message failed!")
 
     def get_active_tunnel(self,agent_id) -> AgentTunnel:

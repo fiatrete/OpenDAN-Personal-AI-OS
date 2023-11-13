@@ -164,6 +164,7 @@ class TelegramTunnel(AgentTunnel):
             agent_msg.mentions = []
         else:
             agent_msg.msg_type = AgentMsgType.TYPE_MSG
+            agent_msg.mentions = []
 
         if message.entities:
             for entity in message.entities:

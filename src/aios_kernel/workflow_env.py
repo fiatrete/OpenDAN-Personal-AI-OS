@@ -266,9 +266,6 @@ class CalenderEnvironment(Environment):
 
             return f"Execute set_contact OK , contact {name} updated!"
 
-            
-
-
     async def start(self) -> None:
         if self.is_run:
             return

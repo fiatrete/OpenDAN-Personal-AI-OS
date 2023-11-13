@@ -12,15 +12,15 @@ from .agent_base import AgentMsgType, AgentMsg, AgentMsgStatus
 class ChatSessionDB:
     def __init__(self, db_file):
         """ initialize db connection """
-        self.local = threading.local()
         self.db_file = db_file
         self._get_conn()
 
     def _get_conn(self):
         """ get db connection """
-        if not hasattr(self.local, 'conn'):
-            self.local.conn = self._create_connection(self.db_file)
-        return self.local.conn
+        local = threading.local()
+        if not hasattr(local, 'conn'):
+            local.conn = self._create_connection(self.db_file)
+        return local.conn
 
     def _create_connection(self, db_file):
         """ create a database connection to a SQLite database """
