@@ -119,11 +119,11 @@ class ComputeKernel:
 
 
     # friendly interface for use:
-    def llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0,inner_functions = None):
+    def llm_completion(self, prompt: AgentPrompt, resp_mode:str="text",mode_name: Optional[str] = None, max_token: int = 0,inner_functions = None):
         # craete a llm_work_task ,push on queue's end
         # then task_schedule would run this task.(might schedule some work_task to another host)
         task_req = ComputeTask()
-        task_req.set_llm_params(prompt, mode_name, max_token,inner_functions)
+        task_req.set_llm_params(prompt,resp_mode,mode_name, max_token,inner_functions)
         self.run(task_req)
         return task_req
     
@@ -155,8 +155,8 @@ class ComputeKernel:
             return time_out_result
 
 
-    async def do_llm_completion(self, prompt: AgentPrompt, mode_name: Optional[str] = None, max_token: int = 0, inner_functions = None) -> str:
-        task_req = self.llm_completion(prompt, mode_name, max_token,inner_functions)
+    async def do_llm_completion(self, prompt: AgentPrompt,resp_mode:str="text", mode_name: Optional[str] = None, max_token: int = 0, inner_functions = None) -> str:
+        task_req = self.llm_completion(prompt, resp_mode,mode_name, max_token,inner_functions)
         return await self._wait_task(task_req)
 
 

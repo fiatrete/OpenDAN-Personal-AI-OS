@@ -40,6 +40,17 @@ class UserConfig:
         self.config_table = {}
         self.user_config_path:str = None
 
+        self._init_default_value("llm_model_name","gpt-4-1106-preview")
+
+    def _init_default_value(self,key:str,value:Any) -> None:
+        if self.config_table.get(key) is not None:
+            logger.warning("user config key %s already exist, will be overrided",key)
+        
+        new_config_item = UserConfigItem()
+        new_config_item.default_value = value
+        new_config_item.is_optional = True
+        self.config_table[key] = new_config_item
+
 
     def add_user_config(self,key:str,desc:str,is_optional:bool,default_value:Any=None,item_type="str") -> None:
         if self.config_table.get(key) is not None:

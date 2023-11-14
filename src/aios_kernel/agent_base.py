@@ -237,7 +237,9 @@ class LLMResult:
     def __init__(self) -> None:
         self.state : str = "ignore"
         self.resp : str = ""
+        self.raw_resp = None 
         self.paragraphs : dict[str,FunctionItem] = []
+        
 
         self.post_msgs : List[AgentMsg] = []
         self.send_msgs : List[AgentMsg] = []
@@ -257,6 +259,7 @@ class LLMResult:
         llm_json = json.loads(llm_json_str)
         r.state = llm_json.get("state")
         r.resp = llm_json.get("resp")
+        r.raw_resp = llm_json
 
         post_msgs = llm_json.get("post_msg")
         r.post_msgs = []

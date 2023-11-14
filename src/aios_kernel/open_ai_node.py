@@ -1,4 +1,5 @@
 import openai
+from openai import AsyncOpenAI
 import os
 import asyncio
 from asyncio import Queue
@@ -59,6 +60,35 @@ class OpenAI_ComputeNode(ComputeNode):
     async def remove_task(self, task_id: str):
         pass
 
+    def message_to_dict(self, message)->dict:
+        result = message.dict()
+        # result_msg = {}
+        # #message.json()
+        # if message.content:
+        #     result_msg["content"] = message.content
+        # result_msg["role"] = message.role
+        # if message.function_call:
+        #     function_call = {}
+        #     function_call["arguments"] = message.function_call.arguments
+        #     function_call["name"] = message.function_call.name
+        #     result_msg["function_call"] = function_call
+        
+        # if message.tool_calls:
+        #     tool_calls = []
+        #     for tool_call in message.tool_calls:
+        #         tool_call_dict = {}
+        #         tool_call_dict["id"] = tool_call.id
+        #         tool_call_dict["type"] = tool_call.type
+        #         func_call_dict = {}
+        #         func_call_dict["name"] = tool_call.function.name
+        #         func_call_dict["arguments"] = tool_call.function.arguments
+        #         tool_call_dict["function"] = func_call_dict
+
+        #         tool_calls.append(tool_call_dict)
+        #     result_msg["tool_calls"] = message.tool_calls
+    
+        # result["message"] = result_msg
+        return result
 
     async def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
@@ -107,27 +137,34 @@ class OpenAI_ComputeNode(ComputeNode):
             case ComputeTaskType.LLM_COMPLETION:
                 mode_name = task.params["model_name"]
                 prompts = task.params["prompts"]
+                resp_mode = task.params["resp_mode"]
+                if resp_mode == "json":
+                    response_format = { "type": "json_object" }
+                else:
+                    response_format = None
                 max_token_size = task.params.get("max_token_size")
                 llm_inner_functions = task.params.get("inner_functions")
                 if max_token_size is None:
                     max_token_size = 4000
 
                 result_token = max_token_size
-
+                client = AsyncOpenAI()
                 try:
                     if llm_inner_functions is None:
                         logger.info(f"call openai {mode_name} prompts: {prompts}")
-                        resp = await openai.ChatCompletion.acreate(model=mode_name,
+                        resp = await client.chat.completions.create(model=mode_name,
                                                         messages=prompts,
+                                                        response_format = response_format,
                                                         #max_tokens=result_token,
-                                                        temperature=0.7)
+                                                        )
                     else:
                         logger.info(f"call openai {mode_name} prompts: \n\t {prompts} \nfunctions: \n\t{json.dumps(llm_inner_functions)}")
-                        resp = await openai.ChatCompletion.acreate(model=mode_name,
+                        resp = await client.chat.completions.create(model=mode_name,
                                                             messages=prompts,
+                                                            response_format = response_format,
                                                             functions=llm_inner_functions,
                                                             #max_tokens=result_token,
-                                                            temperature=0.7) # TODO: add temperature to task params?
+                                                            ) # TODO: add temperature to task params?
                 except Exception as e:
                     logger.error(f"openai run LLM_COMPLETION task error: {e}")
                     task.state = ComputeTaskState.ERROR
@@ -135,10 +172,10 @@ class OpenAI_ComputeNode(ComputeNode):
                     result.error_str = str(e)
                     return result
 
-                logger.info(f"openai response: {json.dumps(resp, indent=4)}")
+                logger.info(f"openai response: {resp}")
+                status_code = resp.choices[0].finish_reason
+                token_usage = resp.usage
 
-                status_code = resp["choices"][0]["finish_reason"]
-                token_usage = resp.get("usage")
                 match status_code:
                     case "function_call":
                         task.state = ComputeTaskState.DONE
@@ -153,8 +190,9 @@ class OpenAI_ComputeNode(ComputeNode):
 
                 result.result_code = ComputeTaskResultCode.OK
                 result.worker_id = self.node_id
-                result.result_str = resp["choices"][0]["message"]["content"]
-                result.result["message"] = resp["choices"][0]["message"]
+                result.result_str = resp.choices[0].message.content
+
+                result.result["message"] = self.message_to_dict(resp.choices[0].message)
 
                 if token_usage:
                     result.result_refers["token_usage"] = token_usage

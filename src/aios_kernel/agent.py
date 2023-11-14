@@ -518,15 +518,17 @@ class AIAgent:
         
         final_result = task_result.result_str
         if final_result is not None:
-            if final_result[0] == "{":
-                llm_result = LLMResult.from_json_str(final_result)
-            else:
-                llm_result : LLMResult = LLMResult.from_str(final_result)
+            llm_result : LLMResult = LLMResult.from_str(final_result)
         else:
             llm_result = LLMResult()
             llm_result.state = "ignore"
 
-        final_result = llm_result.resp
+        if llm_result.resp is None:
+            if llm_result.raw_resp:
+                final_result = json.dumps(llm_result.raw_resp)
+        else:
+            final_result = llm_result.resp
+
 
         await workspace.exec_op_list(llm_result.op_list,self.agent_id)
 
@@ -866,7 +868,7 @@ class AIAgent:
         prompt.append(todo.detail)
         prompt.append(todo.result)
 
-        task_result:ComputeTaskResult = await self._do_llm_complection(prompt,workspace.get_inner_functions())
+        task_result:ComputeTaskResult = await self._do_llm_complection(prompt,workspace.get_inner_functions(),None,True)
 
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"_llm_check_todo compute error:{task_result.error_str}")
@@ -1129,10 +1131,13 @@ class AIAgent:
             return known_info,result_token_len
         return None,0
     
-    async def _do_llm_complection(self,prompt:AgentPrompt,inner_functions:dict=None,org_msg:AgentMsg=None) -> ComputeTaskResult:
+    async def _do_llm_complection(self,prompt:AgentPrompt,inner_functions:dict=None,org_msg:AgentMsg=None,is_json_resp = False) -> ComputeTaskResult:
         from .compute_kernel import ComputeKernel
         #logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
-        task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
+        if is_json_resp:
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,"json",self.llm_model_name,self.max_token_size,inner_functions)
+        else:
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,"text",self.llm_model_name,self.max_token_size,inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"_do_llm_complection llm compute error:{task_result.error_str}")
             #error_resp = msg.create_error_resp(task_result.error_str)

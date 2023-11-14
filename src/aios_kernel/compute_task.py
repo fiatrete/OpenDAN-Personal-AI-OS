@@ -4,6 +4,7 @@ import uuid
 import time
 from typing import Union
 from knowledge import ObjectID
+from .storage import AIStorage
 
 class ComputeTaskResultCode(Enum):
     OK = 0
@@ -45,16 +46,16 @@ class ComputeTask:
         self.result = None
         self.error_str = None
 
-    def set_llm_params(self, prompts, model_name, max_token_size, inner_functions = None, callchain_id=None):
+    def set_llm_params(self, prompts, resp_mode,model_name, max_token_size, inner_functions = None, callchain_id=None):
         self.task_type = ComputeTaskType.LLM_COMPLETION
         self.create_time = time.time()
         self.task_id = uuid.uuid4().hex
         self.callchain_id = callchain_id
         self.params["prompts"] = prompts.to_message_list()
-        if model_name is not None:
-            self.params["model_name"] = model_name
-        else:
-            self.params["model_name"] = "gpt-4-0613"
+        self.params["resp_mode"] = resp_mode
+        if model_name is None:
+             model_name = AIStorage.get_instance().get_user_config().get_value("llm_model_name")
+        self.params["model_name"] = model_name
         if max_token_size is None:
             self.params["max_token_size"] = 4000
         else:
@@ -115,6 +116,7 @@ class ComputeTaskResult:
 
         self.result_refers: dict = {}
         self.pading_data: bytearray = None
+        
 
     def set_from_task(self, task: ComputeTask):
         self.task_id = task.task_id
