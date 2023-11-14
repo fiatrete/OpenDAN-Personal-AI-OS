@@ -23,10 +23,6 @@ class KnowledgePipelineManager:
             "names": {},
             "running": []
         }
-        from .input import local_dir
-        self.register_input("local_dir", local_dir.init)
-        from .parser import embedding
-        self.register_parser("embedding", embedding.init)
 
     def register_input(self, name: str, init_method):
         self.input_modules[name] = init_method
@@ -84,6 +80,6 @@ class KnowledgePipelineManager:
             config = toml.load(f)
         for path in config["pipelines"]:
             pipeline_path = os.path.join(root, path)
-            with open(os.path.join(pipeline_path, "pipeline.toml")) as f:
+            with open(os.path.join(pipeline_path, "pipeline.toml"), 'r', encoding='utf-8') as f:
                 pipeline_config = toml.load(f)
                 self.add_pipeline(pipeline_config, pipeline_path)

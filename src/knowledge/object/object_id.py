@@ -13,6 +13,17 @@ class ObjectType(IntEnum):
     Document = 103
     RichText = 104
     Email = 105
+    UserDef = 200
+
+    def is_user_def(self) -> bool:
+        return self.value >= 200
+    
+    def get_user_def_type_code(self):
+        return (self.value - 200) if self.is_user_def() else None
+    
+    @classmethod
+    def from_user_def_type_code(value):
+        return value + 200
 
 
 # define a object ID class to identify a object

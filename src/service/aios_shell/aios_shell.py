@@ -45,7 +45,6 @@ shell_style = Style.from_dict({
     'error': '#8F0000 bold'
 })
 
-
 class AIOS_Shell:
     def __init__(self,username:str) -> None:
         self.username = username

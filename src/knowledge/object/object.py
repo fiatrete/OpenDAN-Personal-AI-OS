@@ -51,13 +51,13 @@ class KnowledgeObject(ABC):
     def get_summary(self) -> str:
         return self.desc.get("summary")
     
-    def get_articl_catelog(self) -> str:
-        assert self.object_type == ObjectType.Document
-        return self.desc.get("catelog")
+    # def get_articl_catelog(self) -> str:
+    #     assert self.object_type == ObjectType.Document
+    #     return self.desc.get("catelog")
     
-    def get_article_full_content(self) -> str:
-        assert self.object_type == ObjectType.Document
-        return self.body
+    # def get_article_full_content(self) -> str:
+    #     assert self.object_type == ObjectType.Document
+    #     return self.body
 
     def calculate_id(self):
         # Convert the object_type and desc to string and compute the SHA256 hash
@@ -73,6 +73,6 @@ class KnowledgeObject(ABC):
     def encode(self) -> bytes:
         return pickle.dumps(self)
 
-    @staticmethod
-    def decode(data: bytes) -> "ImageObject":
-        return pickle.loads(data)
+    # @staticmethod
+    # def decode(data: bytes) -> "ImageObject":
+    #     return pickle.loads(data)

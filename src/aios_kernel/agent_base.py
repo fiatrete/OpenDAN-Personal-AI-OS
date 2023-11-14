@@ -11,8 +11,10 @@ import shlex
 import json
 from typing import List
 
-from .ai_function import FunctionItem
-from .compute_task import ComputeTaskResult
+from .ai_function import FunctionItem, AIFunction
+from .compute_task import ComputeTaskResult,ComputeTaskResultCode
+from .environment import Environment
+
 
 logger = logging.getLogger(__name__)
 
@@ -592,3 +594,114 @@ class CustomAIAgent(BaseAIAgent):
 
     def get_llm_learn_token_limit(self) -> int:
         return self.llm_learn_token_limit
+
+class BaseAIAgent:
+    def __init__(self) -> None:
+        pass
+    
+    @classmethod
+    def _get_inner_functions(cls, env:Environment) -> (dict,int):
+        if env is None:
+            return None,0
+
+        all_inner_function = env.get_all_ai_functions()
+        if all_inner_function is None:
+            return None,0
+
+        result_func = []
+        result_len = 0
+        for inner_func in all_inner_function:
+            func_name = inner_func.get_name()
+            this_func = {}
+            this_func["name"] = func_name
+            this_func["description"] = inner_func.get_description()
+            this_func["parameters"] = inner_func.get_parameters()
+            result_len += len(json.dumps(this_func)) / 4
+            result_func.append(this_func)
+
+        return result_func,result_len
+
+    @classmethod
+    async def do_llm_complection(
+        cls,
+        env:Environment,
+        prompt:AgentPrompt,
+        org_msg:AgentMsg, 
+        llm_model_name:str, 
+        max_token_size:int
+    ) -> ComputeTaskResult:
+        from .compute_kernel import ComputeKernel
+        #logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
+        inner_functions,inner_functions_len = cls._get_inner_functions(env)
+        task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,llm_model_name,max_token_size,inner_functions)
+        if task_result.result_code != ComputeTaskResultCode.OK:
+            logger.error(f"llm compute error:{task_result.error_str}")
+            #error_resp = msg.create_error_resp(task_result.error_str)
+            return task_result
+
+        result_message = task_result.result.get("message")
+        inner_func_call_node = None
+        if result_message:
+            inner_func_call_node = result_message.get("function_call")
+
+        if inner_func_call_node:
+            call_prompt : AgentPrompt = copy.deepcopy(prompt)
+            task_result = await cls._execute_func(env,inner_func_call_node,call_prompt,inner_functions,org_msg,llm_model_name,max_token_size)
+            
+        return task_result
+    
+    @classmethod
+    async def _execute_func(
+        cls, 
+        env: Environment, 
+        inner_func_call_node: dict,
+        prompt: AgentPrompt, 
+        inner_functions: dict, 
+        org_msg:AgentMsg,
+        llm_model_name:str, 
+        max_token_size:int,
+        stack_limit = 5
+    ) -> ComputeTaskResult:
+        from .compute_kernel import ComputeKernel
+        func_name = inner_func_call_node.get("name")
+        arguments = json.loads(inner_func_call_node.get("arguments"))
+        logger.info(f"llm execute inner func:{func_name} ({json.dumps(arguments)})")
+
+        func_node : AIFunction = env.get_ai_function(func_name)
+        if func_node is None:
+            result_str = f"execute {func_name} error,function not found"
+        else:
+            if org_msg:
+                ineternal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
+
+            try:
+                result_str:str = await func_node.execute(**arguments)
+            except Exception as e:
+                result_str = f"execute {func_name} error:{str(e)}"
+                logger.error(f"llm execute inner func:{func_name} error:{e}")
+
+
+        logger.info("llm execute inner func result:" + result_str)
+        
+        prompt.messages.append({"role":"function","content":result_str,"name":func_name})
+        task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,llm_model_name,max_token_size,inner_functions)
+        if task_result.result_code != ComputeTaskResultCode.OK:
+            logger.error(f"llm compute error:{task_result.error_str}")
+            return task_result
+        
+        ineternal_call_record.result_str = task_result.result_str
+        ineternal_call_record.done_time = time.time()
+        if org_msg:
+            org_msg.inner_call_chain.append(ineternal_call_record)
+
+        inner_func_call_node = None
+        if stack_limit > 0:
+            result_message : dict = task_result.result.get("message")
+            if result_message:
+                inner_func_call_node = result_message.get("function_call")
+
+        if inner_func_call_node:
+            return await cls._execute_func(env,inner_func_call_node,prompt,inner_functions,org_msg,llm_model_name,max_token_size,stack_limit-1)
+        else:
+            return task_result
+>>>>>>> 2f9cee9 (a issue parser of email)

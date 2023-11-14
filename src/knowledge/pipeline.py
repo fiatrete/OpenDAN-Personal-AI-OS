@@ -14,6 +14,9 @@ class KnowledgePipelineJournal:
     
     def is_finish(self) -> bool:
         return self.object_id is None
+    
+    def get_object_id(self) -> ObjectID:
+        return self.object_id
 
     def get_input(self) -> str:
         return self.input

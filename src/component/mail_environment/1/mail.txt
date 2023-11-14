@@ -1,0 +1,51 @@
+最小功能集：4.15准备好oktc合约和客户端工具；4.21之前完成一些矿场节点部署；
+Oktc合约和rust接口 （秋总）
+实现以DMC结算的bill 和 order （done）
+实现链上挑战—— merkle联通证明；用户提交低深度半路径；矿工提供叶子原文和高深度半路径；（doing）
+实现按照价格和质押率索引的spv节点 —— 支持用户按参数匹配下单；（doing）
+实现对eth发起的http请求 auth 头认证 —— 支持https实现 链下的 write/restore/challenge 身份认证；（doing）
+实现oktc client event listener的block number本地持久化；（doing）
+用户端工具：面向普通存储用户，一键备份和恢复；
+源数据管理服务：
+注册本地路径，生成链下挑战密码本 ——随机偏移和长度QA（done）
+ 生成链上挑战密码本 —— merkle根和半深度茎节点（doing）；
+账号服务：
+添加本地路径，选择bill id发起order（done）
+按参数匹配order ——依赖按参数索引的spv 服务（doing）
+生成order提交到交付服务；（done）
+交付服务
+注册order和关联的源数据（done）
+提交merkle根（done）
+监听链事件，同步order状态，向miner写入源数据；（done）
+使用密码本持续发起链下挑战（done）
+实现链上挑战（doing）
+恢复数据到本地目录（done）
+关键日志服务
+关键状态改变日志写入（doing）
+关键状态日志事件监听接口（doing）
+轻量命令行客户端
+服务部署脚本（doing）
+传入本地文件 和 order参数一键完成备份 （doing）
+一键恢复（doing）
+链下挑战失效时，自动发起链上挑战 ——依赖关键日志服务（doing）
+mysql实现移植到sqlite（看时间和问题多不多；undo）
+矿场端工具：本版本不是发布重点；保证能在自由的节点上稳定运行即可；结构上保证了一定的伸缩性；
+存储扇区管理服务：包括gateway 和 node；保证简单部署和扩展，可靠性暂时不需实现；
+扇区gateway服务：注册node，分发扇区读写请求到node；（doing）
+扇区node服务：注册本地目录到node，注册为可用扇区；（测试中单node可以直接接入，done）
+账号服务：
+添加扇区和挂单参数，生成bill（done）；
+监听链事件，响应新的order转入交付服务；（done）
+监听链事件，响应链上挑战转入交付服务；（doing）
+交付服务：
+注册order和关联的扇区；（done）
+对user提供交付相关http接口：
+查询miner端order状态（done）
+写入源数据（done）
+完成写入后准备生成merkle root准备证明（done）
+恢复源数据（done）
+接收链下挑战返回证明（done）
+自动提交链上挑战（doing）
+关键日志服务
+关键状态改变日志写入（可推迟实现；undo）
+自有节点部署
