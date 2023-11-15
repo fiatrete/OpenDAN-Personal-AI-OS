@@ -1,13 +1,16 @@
+import abc
 import copy
+from abc import abstractmethod
 from datetime import datetime, timedelta
 import logging
 from enum import Enum
 import uuid
-import time 
+import time
 import re
 import shlex
 import json
 from typing import List
+
 from .ai_function import FunctionItem
 from .compute_task import ComputeTaskResult
 
@@ -47,9 +50,9 @@ class AgentMsg:
     def __init__(self,msg_type=AgentMsgType.TYPE_MSG) -> None:
         self.msg_id = "msg#" + uuid.uuid4().hex
         self.msg_type:AgentMsgType = msg_type
-        
+
         self.prev_msg_id:str = None
-        self.quote_msg_id:str = None    
+        self.quote_msg_id:str = None
         self.rely_msg_id:str = None # if not none means this is a respone msg
         self.session_id:str = None
 
@@ -68,7 +71,7 @@ class AgentMsg:
         self.body_mime:str = None #//default is "text/plain",encode is utf8
 
         #type is call / action
-        self.func_name = None 
+        self.func_name = None
         self.args = None
         self.result_str = None
 
@@ -95,7 +98,7 @@ class AgentMsg:
         msg.prev_msg_id = prev_msg_id
         msg.sender = caller
         return msg
-    
+
     def create_action_msg(self,action_name:str,args:dict,caller:str):
         msg = AgentMsg(AgentMsgType.TYPE_ACTION)
         msg.create_time = time.time()
@@ -105,11 +108,11 @@ class AgentMsg:
         msg.topic  = self.topic
         msg.sender = caller
         return msg
-    
+
     def create_error_resp(self,error_msg:str):
         resp_msg = AgentMsg(AgentMsgType.TYPE_SYSTEM)
         resp_msg.create_time = time.time()
-        
+
         resp_msg.rely_msg_id = self.msg_id
         resp_msg.body = error_msg
         resp_msg.topic  = self.topic
@@ -129,7 +132,7 @@ class AgentMsg:
         resp_msg.topic = self.topic
 
         return resp_msg
-    
+
     def create_group_resp_msg(self,sender_id,resp_body):
         resp_msg = AgentMsg(AgentMsgType.TYPE_GROUPMSG)
         resp_msg.create_time = time.time()
@@ -158,13 +161,13 @@ class AgentMsg:
 
     def get_target(self) -> str:
         return self.target
-    
+
     def get_prev_msg_id(self) -> str:
         return self.prev_msg_id
-    
+
     def get_quote_msg_id(self) -> str:
         return self.quote_msg_id
-    
+
     @classmethod
     def parse_function_call(cls,func_string:str):
         str_list = shlex.split(func_string)
@@ -237,9 +240,9 @@ class LLMResult:
     def __init__(self) -> None:
         self.state : str = "ignore"
         self.resp : str = ""
-        self.raw_resp = None 
+        self.raw_resp = None
         self.paragraphs : dict[str,FunctionItem] = []
-        
+
 
         self.post_msgs : List[AgentMsg] = []
         self.send_msgs : List[AgentMsg] = []
@@ -281,14 +284,14 @@ class LLMResult:
     @classmethod
     def from_str(self,llm_result_str:str,valid_func:List[str]=None) -> 'LLMResult':
         r = LLMResult()
-        
+
         if llm_result_str is None:
             r.state = "ignore"
             return r
         if llm_result_str == "ignore":
             r.state = "ignore"
             return r
-        
+
         if llm_result_str[0] == "{":
             return LLMResult.from_json_str(llm_result_str)
 
@@ -300,7 +303,7 @@ class LLMResult:
                 case "send_msg":# /send_msg $target_id
                     if len(func_args) != 1:
                         return False
-                    
+
                     new_msg = AgentMsg()
                     target_id = func_item.args[0]
                     msg_content = func_item.body
@@ -313,7 +316,7 @@ class LLMResult:
                 case "post_msg":# /post_msg $target_id
                     if len(func_args) != 1:
                         return False
-                    
+
                     new_msg = AgentMsg()
                     target_id = func_item.args[0]
                     msg_content = func_item.body
@@ -333,9 +336,9 @@ class LLMResult:
                         if func_name in valid_func:
                             r.paragraphs[func_name] = func_item
                             return True
-            
+
             return False
-                
+
 
         current_func : FunctionItem = None
         for line in lines:
@@ -361,11 +364,11 @@ class LLMResult:
         else:
             r.state = "reponsed"
 
-        return r   
+        return r
 
 class AgentReport:
     def __init__(self):
-        pass 
+        pass
 
 class AgentTodoResult:
     TODO_RESULT_CODE_OK = 0,
@@ -386,7 +389,7 @@ class AgentTodoResult:
         result["error_str"] = self.error_str
         result["op_list"] = self.op_list
         return result
-        
+
 
 class AgentTodo:
     TODO_STATE_WAIT_ASSIGN = "wait_assign"
@@ -400,7 +403,7 @@ class AgentTodo:
     TODO_STATE_CASNCEL = "cancel"
     TODO_STATE_DONE = "done"
     TODO_STATE_EXPIRED = "expired"
-    
+
     def __init__(self):
         self.todo_id = "todo#" + uuid.uuid4().hex
         self.title = None
@@ -409,9 +412,9 @@ class AgentTodo:
         #self.parent = None
         self.create_time = time.time()
 
-        self.state = "wait_assign" 
-        self.worker = None 
-        self.checker = None 
+        self.state = "wait_assign"
+        self.worker = None
+        self.checker = None
         self.createor = None
 
         self.need_check = True
@@ -433,7 +436,7 @@ class AgentTodo:
         todo = AgentTodo()
         if json_obj.get("id") is not None:
             todo.todo_id = json_obj.get("id")
-        
+
         todo.title = json_obj.get("title")
         todo.state = json_obj.get("state")
         create_time = json_obj.get("create_time")
@@ -448,7 +451,7 @@ class AgentTodo:
         last_do_time = json_obj.get("last_do_time")
         if last_do_time:
             todo.last_do_time = datetime.fromisoformat(last_do_time).timestamp()
-        last_check_time = json_obj.get("last_check_time")   
+        last_check_time = json_obj.get("last_check_time")
         if last_check_time:
             todo.last_check_time = datetime.fromisoformat(last_check_time).timestamp()
         last_review_time = json_obj.get("last_review_time")
@@ -492,21 +495,21 @@ class AgentTodo:
         result["createor"] = self.createor
         result["retry_count"] = self.retry_count
 
-        return result 
-    
+        return result
+
     def can_check(self)->bool:
         if self.state != AgentTodo.TODO_STATE_WAITING_CHECK:
             return False
-        
+
         now = datetime.now().timestamp()
         if self.last_check_time:
             time_diff = now - self.last_check_time
             if time_diff < 60*15:
                 logger.info(f"todo {self.title} is already checked, ignore")
-                return False  
-            
+                return False
+
         return True
-    
+
     def can_do(self) -> bool:
         match self.state:
             case AgentTodo.TODO_STATE_DONE:
@@ -522,32 +525,70 @@ class AgentTodo:
                 if self.retry_count > 3:
                     logger.info(f"todo {self.title} retry count ({self.retry_count}) is too many, ignore")
                     return False
-                    
+
         now = datetime.now().timestamp()
-        time_diff = self.due_date - now 
+        time_diff = self.due_date - now
         if time_diff < 0:
             logger.info(f"todo {self.title} is expired, ignore")
             self.state = AgentTodo.TODO_STATE_EXPIRED
             return False
-        
+
         if time_diff > 7*24*3600:
             logger.info(f"todo {self.title} is far before due date, ignore")
             return False
-        
+
         if self.last_do_time:
             time_diff = now - self.last_do_time
             if time_diff < 60*15:
                 logger.info(f"todo {self.title} is already do ignore")
-                return False     
-                
+                return False
+
         logger.info(f"todo {self.title} can do.")
         return True
-        
+
 
 class AgentWorkLog:
     def __init__(self) -> None:
         pass
 
-class BaseAIAgent:
-    def __init__(self) -> None:
+
+class BaseAIAgent(abc.ABC):
+    @abstractmethod
+    def get_id(self) -> str:
         pass
+
+    @abstractmethod
+    def get_llm_model_name(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_max_token_size(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_llm_learn_token_limit(self) -> int:
+        pass
+
+    @abstractmethod
+    async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
+        pass
+
+
+class CustomAIAgent(BaseAIAgent):
+    def __init__(self, agent_id: str, llm_model_name: str, max_token_size: int, llm_learn_token_limit: int) -> None:
+        self.agent_id = agent_id
+        self.llm_model_name = llm_model_name
+        self.max_token_size = max_token_size
+        self.llm_learn_token_limit = llm_learn_token_limit
+
+    def get_id(self) -> str:
+        return self.agent_id
+
+    def get_llm_model_name(self) -> str:
+        return self.llm_model_name
+
+    def get_max_token_size(self) -> int:
+        return self.max_token_size
+
+    def get_llm_learn_token_limit(self) -> int:
+        return self.llm_learn_token_limit
