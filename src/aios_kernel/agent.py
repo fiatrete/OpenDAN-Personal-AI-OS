@@ -21,6 +21,7 @@ from .contact_manager import ContactManager,Contact,FamilyMember
 from .compute_kernel import ComputeKernel
 from .bus import AIBus
 from .workspace_env import WorkspaceEnvironment
+from .storage import AIStorage
 
 from knowledge import *
 
@@ -53,11 +54,36 @@ DEFAULT_AGENT_GOAL_TO_TODO_PROMPT = """
 """
 
 DEFAULT_AGENT_LEARN_PROMPT = """
-你拥有非常优秀的资料整理技能。我给你一段内容，你会尝试对其进行摘要，并在已有的资料库中找到合适的位置存放该文章。
-1. 结合你的角色和组织的工作目标构建摘要，尽量精简，长度不要超过256个字
-2. 资料库以文件系统的形式组织，浏览知识库是成本高昂的操作，应尝试从根目录往子目录深入来找到最合适的信息。必要的情况下，你可以在合适的位置创建新的目录。为了方便浏览，每一层目录的文件夹数不超过32个，名称长度不超过16个字符，目录深度不超过6层
-3. 你可以从不同的角度给出最多3个合适的位置
-4. 返回一个json来保存摘要和建议保存位置信息
+我是一名软件工程师，拥有非常优秀的资料学习能力。下面是我学习和整理资料的方法
+1. 结合我的角色为资料产生长度不超过256个Token的摘要;尝试产生不超过16个tag;
+2. 现有资料库以文件系统的形式组织，我未来借助资料的摘要来浏览知识库
+3. 我将学习过的资料另存在资料库的合适位置（以/开始的完整路径）。保存位置的目录深度不超过5层，文件夹名称长度不超过16个字符。
+4. 当存在已知信息时，需参考已知信息的内容来思考结果。
+5. 由于LLM的Token限制，我学习的可能只是资料的部分内容，此时我应能产生合适的中间结果，中间结果保存在metadata中。当我决定构建中间结果时，我只构建中间结果。
+6. 当我收到最后一部分内容时，我能结合已知的中间结果产生最终结果。
+7. 总是以json格式返回思考结果，json格式如下
+{
+    think:"$think_result",
+    metadata:{...} , # temp result for long content
+    tags:["tag1","tag2"...],
+    path:["/graphic/opengl","/database/mysql"], # list of directories to save to.
+    title:"$article_title",
+    summary:"$summary",
+    catalogs: [{                     # optional,catalogs is a tree
+            title:"$catalog_name1",
+            pos:"$pos:$length"
+            children:[
+                {
+                    title:"$catalog_name 1.1",
+                    pos:"$pos:$length"  
+                } 
+            ]},
+            {
+            title:"$catalog_name2",
+            pos:"$pos:$length"
+            }
+            ]    
+}
 """
 
 DEFAULT_AGENT_LEARN_LONG_CONENT_PROMPT = """
@@ -125,7 +151,7 @@ class AIAgent:
 
         self.goal_to_todo_prompt = None
 
-        self.learn_token_limit = 500
+        self.learn_token_limit = 4000
         self.learn_prompt = AgentPrompt(DEFAULT_AGENT_LEARN_PROMPT)
 
         self.chat_db = None
@@ -217,6 +243,9 @@ class AIAgent:
         return self.template_id
 
     def get_llm_model_name(self) -> str:
+        if self.llm_model_name is None:
+            return AIStorage.get_instance().get_user_config().get_value("llm_model_name")
+        
         return self.llm_model_name
 
     def get_max_token_size(self) -> int:
@@ -889,22 +918,32 @@ class AIAgent:
             if self.agent_energy <= 0:
                 break
 
-            knowledge = workspace.kb_db.get_knowledge_by_hash(hash)
+            knowledge = workspace.kb_db.get_knowledge(hash)
             if knowledge is None:
                 continue
 
-            if os.path.exists(knowledge.path) is False:
-                logger.warning(f"do_self_learn: knowledge {knowledge.path} is not exists!")
+            full_path = knowledge.get("full_path")
+            if full_path is None:
+                continue
+
+            if os.path.exists(full_path) is False:
+                logger.warning(f"do_self_learn: knowledge {full_path} is not exists!")
                 continue
 
              #TODO 可以用v-db 对不同目录的名字进行选择后，先进行一次快速的插入。有时间再慢慢用LLM整理
-            llm_result = await self._llm_read_article(knowledge)
+            result_obj = await self._llm_read_article(knowledge,full_path)
 
             #根据结果更新knowledge
-            if llm_result is not None:
-                workspace.kb_db.update_knowledge_by_hash(hash,llm_result)
+            if result_obj is not None:
+                workspace.kb_db.set_knowledge_llm_result(hash,result_obj)
                 # 在知识库中创建软链接
-
+                path_list = result_obj.get("path")
+                new_title = result_obj.get("title")
+                if path_list:
+                    for new_path in path_list:
+                        full_new_path = f"/knowledge{new_path}/{new_title}"
+                        await workspace.symlink(full_path,full_new_path)
+                        logger.info(f"create soft link {full_path} -> {full_new_path}")
 
 
             self.agent_energy -= 1
@@ -958,13 +997,11 @@ class AIAgent:
     def parser_learn_llm_result(self,llm_result:LLMResult):
         pass
 
-    async def gen_known_info_for_knowledge_prompt(self,knowledge_item:dict,need_catalogs = False) -> AgentPrompt:
-        #已知信息：   
-        #   组织的工作总结（如有）待完成
-        #   现在知识库的结构（注意大小控制）gen_kb_tree_prompt (当为空的时候应该让LLM生成一个合适的初始目录结构)
-        #   原始路径，现在标题，摘要，目录
+    async def gen_known_info_for_knowledge_prompt(self,knowledge_item:dict,temp_meta = None,need_catalogs = False) -> AgentPrompt:
         workspace =self.get_workspace_by_msg(None)
         kb_tree = await workspace.get_knowledege_catalog()
+
+
         known_obj = {}
         title  = knowledge_item.get("title")
         if title:
@@ -979,37 +1016,41 @@ class AIAgent:
             catalogs = knowledge_item.get("catalogs")
             if catalogs:
                 known_obj["catalogs"] = catalogs
-        
-        org_path = knowledge_item.get("path")
+
+        if temp_meta:       
+            for key in temp_meta.keys():
+                known_obj[key] = temp_meta[key]
+
+        org_path = knowledge_item.get("full_path")
         known_obj["orginal_path"] = org_path
-        know_info_str = f"# Known information\n{json.dumps(known_obj)}\n"
+        know_info_str = f"# Known information:\n## Current directory structure:\n{kb_tree}\n## Knowlege Metadata:\n{json.dumps(known_obj)}\n"
         return AgentPrompt(know_info_str)
 
-        
+    async def _llm_read_article(self,knowledge_item:dict,full_path:str) -> ComputeTaskResult:
+        # Objectives:
+        #   Obtain better titles, abstracts, table of contents (if necessary), tags
+        #   Determine the appropriate place to put it (in line with the organization's goals)
+        # Known information:   
+        #   The reason why the target service's learn_prompt is being sorted
+        #   Summary of the organization's work (if any)
+        #   The current structure of the knowledge base (note the size control) gen_kb_tree_prompt (when empty, LLM should generate an appropriate initial directory structure)
+        #   Original path, current title, abstract, table of contents
 
+        # Sorting long files (general tricks)
+        #   Indicate that the input is part of the content, let LLM generate intermediate results for the task
+        #   Enter the content in sequence, when the last content block is input, LLM gets the result
 
-
-
-    async def _llm_read_article(self,knowledge_item:dict) -> ComputeTaskResult:
-        #目标：
-        #   得到更好的标题，摘要，目录 （如有必要）,tags
-        #   应放的合适的位置 （结合组织的目标）
-        #已知信息：   
-        #   整理是为什么目标服务的 learn_prompt
-        #   组织的工作总结（如有）
-        #   现在知识库的结构（注意大小控制）gen_kb_tree_prompt (当为空的时候应该让LLM生成一个合适的初始目录结构)
-        #   原始路径，现在标题，摘要，目录
-
-
-        # 整理长文件（通用技巧）
-        #   告诉输入的是部分内容，让LLM为任务产生中间结果
-        #   依次输入内容，在最后一个内容块输入时，LLM得到结果
         
         #full_content = item.get_article_full_content()
         workspace = self.get_workspace_by_msg(None)
-        full_content = await workspace.load_knowledge_content(knowledge_item["hash"])
+        full_content = await workspace.load_knowledge_content(full_path)
         if full_content is None:
-            return 
+            return None
+        
+        if len(full_content) < 16:
+            logger.warning(f"llm_read_article: article {knowledge_item['path']} is too short,just read summary!")
+            return None 
+        
         full_content_len = self.token_len(full_content)
         if full_content_len < self.get_llm_learn_token_limit():
             
@@ -1021,9 +1062,9 @@ class AIAgent:
             prompt.append(known_info_prompt)
             content_prompt = AgentPrompt(full_content)
             prompt.append(content_prompt)
-  
-            env_functions = workspace.get_knowledge_base_ai_functions()
-            task_result:ComputeTaskResult = await self._do_llm_complection(prompt,env_functions)
+            env_functions = None
+            #env_functions,function_len = workspace.get_knowledge_base_ai_functions()
+            task_result:ComputeTaskResult = await self._do_llm_complection(prompt,env_functions,None,True)
             if task_result.result_code != ComputeTaskResultCode.OK:
                 result_obj = {}
                 result_obj["error_str"] = task_result.error_str
@@ -1033,10 +1074,41 @@ class AIAgent:
             return result_obj
 
         else:
-            logger.warning(f"llm_read_article: article {knowledge_item['path']} is too long,just read summary!")
-            result_obj = {}
-            result_obj["error_str"] = f"llm_read_article: article {knowledge_item['path']} is too long,just read summary!"
-            return result_obj
+            logger.warning(f"llm_read_article: article {full_path} use LLM loop learn!")
+            pos = 0
+            read_len = int(self.get_llm_learn_token_limit() * 1.5)
+
+            temp_meta_data = {}
+            is_final = False
+            while pos < full_content_len:
+                _content = full_content[pos:pos+read_len]
+                if len(_content) < read_len:
+                    # last chunk
+                    is_final = True
+                    part_content = f"<<Final Part:start at {pos}>>\n{_content}"
+                else:
+                    part_content = f"<<Part:start at {pos}>>\n{_content}"
+                pos = pos + read_len
+
+                prompt = self.get_learn_prompt()
+                known_info_prompt = await self.gen_known_info_for_knowledge_prompt(knowledge_item,temp_meta_data)
+                prompt.append(known_info_prompt)
+                content_prompt = AgentPrompt(part_content)
+                prompt.append(content_prompt)
+                env_functions = None
+                #env_functions,function_len = workspace.get_knowledge_base_ai_functions()
+                task_result:ComputeTaskResult = await self._do_llm_complection(prompt,env_functions,None,True)
+                if task_result.result_code != ComputeTaskResultCode.OK:
+                    result_obj = {}
+                    result_obj["error_str"] = task_result.error_str
+                    return result_obj
+            
+                result_obj = json.loads(task_result.result_str)
+                temp_meta_data = result_obj.get("metadata")
+                if is_final:
+                    return result_obj
+
+            return None
             
 
     async def do_self_think(self):

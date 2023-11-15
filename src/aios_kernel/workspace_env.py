@@ -190,10 +190,13 @@ class WorkspaceEnvironment(Environment):
     # operation or inner_function   
     async def symlink(self,path:str,target:str) -> str:
         try:
-            file_path = self.root_path + path
+            #file_path = self.root_path + path
             target_path = self.root_path + target
-            os.symlink(file_path,target_path)
+            dir_path = os.path.dirname(target_path)
+            os.makedirs(dir_path,exist_ok=True)
+            os.symlink(path,target_path)
         except Exception as e:
+            logger.error("symlink failed:%s",e)
             return str(e)
         
         return None
@@ -435,18 +438,30 @@ class WorkspaceEnvironment(Environment):
 
     # knowledge base system
     def get_knowledge_base_ai_functions(self):
-        func_result = {}
+        all_inner_function = []
 
-        func_result["get_knowledge_catalog"] = SimpleAIFunction("get_knowledge_catalog","get knowledge catalog in tree format",
+        all_inner_function.append(SimpleAIFunction("get_knowledge_catalog","get knowledge catalog in tree format",
                                                                 self.get_knowledege_catalog,
-                                                                {"path":f"catalog path,none is /","depth":"max depth of catalog tree,default is 4"})
-        func_result["get_knowledge"] = SimpleAIFunction("get_knowledge","get knowledge metadata",
+                                                                {"path":f"catalog path,none is /","depth":"max depth of catalog tree,default is 4"}))
+        all_inner_function.append(SimpleAIFunction("get_knowledge","get knowledge metadata",
                                                                 self.get_knowledge,
-                                                                {"path":f"knowledge path"})
-        func_result["load_knowledge_content"] = SimpleAIFunction("load_knowledge_content","load knowledge content",
+                                                                {"path":f"knowledge path"}))
+        all_inner_function.append(SimpleAIFunction("load_knowledge_content","load knowledge content",
                                                                  self.load_knowledge_content,
-                                                                 {"path":f"knowledge path","pos":"start position of content","length":"length of content"})
-        return func_result
+                                                                  {"path":f"knowledge path","pos":"start position of content","length":"length of content"}))
+        result_func = []
+        result_len = 0
+        for inner_func in all_inner_function:
+            func_name = inner_func.get_name()
+
+            this_func = {}
+            this_func["name"] = func_name
+            this_func["description"] = inner_func.get_description()
+            this_func["parameters"] = inner_func.get_parameters()
+            result_len += len(json.dumps(this_func)) / 4
+            result_func.append(this_func)
+
+        return result_func,result_len                                                        
 
     async def get_knowledege_catalog(self,path:str=None,only_dir =True,max_depth:int=5)->str:
         if path:
@@ -499,21 +514,26 @@ class WorkspaceEnvironment(Environment):
         
         return "not found"
 
-    async def load_knowledge_content(self,path:str,pos:int=0,length:int=0) -> str:
-        full_path = f"{self.root_path}/knowledge/{path}"
-        if os.islink(full_path):
-            org_path = os.readlink(full_path)
-            if full_path.endswith("pdf"):
-                logger.info("load_knowledge_content:pdf")
-                return "pdf is not support now!"
-            else:
-                async with aiofiles.open(full_path,'rb') as f:
-                    cur_encode = chardet.detect(f.read(1024))['encoding']
+    async def load_knowledge_content(self,path:str,pos:int=0,length:int=None) -> str:
+        if path.endswith("pdf"):
+            logger.info("load_knowledge_content:pdf")
+            dir_path = os.path.dirname(path)
+            base_name = os.path.basename(path)
+            text_content_path = f"{dir_path}/.{base_name}.txt"
+            if os.path.exists(text_content_path) is False:
+                return None
+            async with aiofiles.open(path, mode='r', encoding=cur_encode) as f:
+                await f.seek(pos)
+                content = await f.read(length)
+                return content
+        else:
+            async with aiofiles.open(path,'rb') as f:
+                cur_encode = chardet.detect(await f.read(1024))['encoding']
 
-                async with aiofiles.open(full_path, mode='r', encoding=cur_encode) as f:
-                    f.seek(pos)
-                    content = await f.read(length)
-                    return content
+            async with aiofiles.open(path, mode='r', encoding=cur_encode) as f:
+                await f.seek(pos)
+                content = await f.read(length)
+                return content
 
         return "load content failed."
 
@@ -550,22 +570,38 @@ class WorkspaceEnvironment(Environment):
         return
 
     def _parse_pdf(self,doc_path:str):
-        
         metadata = {}
         with open(doc_path, 'rb') as file:
             reader = PyPDF2.PdfReader(file)
-            doc_info = reader.metadata
-            if doc_info:
-                if doc_info.title:
-                    metadata["title"] = doc_info.title
-                if doc_info.author:
-                    metadata["authors"] = doc_info.author
-   
-            bookmarks = reader.outline
-            if bookmarks:
-                catalogs = []
-                self._parse_pdf_bookmarks(bookmarks,catalogs)
-                metadata["catalogs"] = json.dumps(catalogs)
+            try:
+                doc_info = reader.metadata
+                if doc_info:
+                    if doc_info.title:
+                        metadata["title"] = doc_info.title
+                    if doc_info.author:
+                        metadata["authors"] = doc_info.author
+            except Exception as e:
+                logger.warn("parse pdf metadata failed:%s",e)
+
+            dir_path = os.path.dirname(doc_path)
+            base_name = os.path.basename(doc_path)
+            text_content_path = f"{dir_path}/.{base_name}.txt"
+            full_text = ""
+
+            for page in reader.pages:
+                text = page.extract_text()
+                full_text += text
+            with open(text_content_path, 'w', encoding='utf-8') as f:
+                f.write(full_text)
+
+            try:
+                bookmarks = reader.outline
+                if bookmarks:
+                    catalogs = []
+                    self._parse_pdf_bookmarks(bookmarks,catalogs)
+                    metadata["catalogs"] = json.dumps(catalogs)
+            except Exception as e:
+                logger.warn("parse pdf bookmarks failed:%s",e)
 
         return metadata
 
@@ -612,11 +648,14 @@ class WorkspaceEnvironment(Environment):
 
         if meta_data.get("title"):
             title = meta_data["title"]
-        
+        logger.info("parse document %s!",doc_path)
         return hash_result,title,meta_data
 
 
     def _support_file(self,file_name:str) -> bool:
+        if file_name.startswith("."):
+            return False
+        
         if file_name.endswith(".pdf"):
             return True
         if file_name.endswith(".md"):

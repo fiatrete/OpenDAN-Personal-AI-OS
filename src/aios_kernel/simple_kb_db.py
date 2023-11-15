@@ -142,7 +142,7 @@ class SimpleKnowledgeDB:
 
         title = llm_result.get("title", "")
         summary = llm_result.get("summary", "")
-        catalogs = json.dumps(llm_result.get("catalogs", []))
+        catalogs = json.dumps(llm_result.get("catalogs", {}))
         tags = ','.join(llm_result.get("tags", []))
 
         cursor.execute('''
@@ -187,13 +187,16 @@ class SimpleKnowledgeDB:
         if row2 is None:
             return None
         doc_path = row2[0]
+    
 
         return {
             "full_path": doc_path,
             "title": row[0],
             "summary": row[1],
-            "catalogs": json.loads(row[2]),
-            "tags": row[3].split(","),
+            "catalogs": row[2],
+            "tags": row[3],
+            "llm_title" : row[4],
+            "llm_summary" : row[5],
         }
 
     def get_knowledge_without_llm_title(self,limit:int=16) -> List[str]:
