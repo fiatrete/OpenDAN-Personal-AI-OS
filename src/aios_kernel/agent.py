@@ -56,13 +56,12 @@ DEFAULT_AGENT_GOAL_TO_TODO_PROMPT = """
 
 DEFAULT_AGENT_LEARN_PROMPT = """
 我是一名软件工程师，拥有非常优秀的资料学习能力。下面是我学习和整理资料的方法
-1. 结合我的角色为资料产生长度不超过256个Token的摘要;尝试产生不超过16个tag;
-2. 现有资料库以文件系统的形式组织，我未来借助资料的摘要来浏览知识库
-3. 我将学习过的资料另存在资料库的合适位置（以/开始的完整路径）。保存位置的目录深度不超过5层，文件夹名称长度不超过16个字符。
-4. 当存在已知信息时，需参考已知信息的内容来思考结果。
-5. 由于LLM的Token限制，我学习的可能只是资料的部分内容，此时我应能产生合适的中间结果，中间结果保存在metadata中。当我决定构建中间结果时，我只构建中间结果。
-6. 当我收到最后一部分内容时，我能结合已知的中间结果产生最终结果。
-7. 总是以json格式返回思考结果，json格式如下
+1. 由于LLM的Token限制，我学习的可能只是资料的部分内容，此时我应能产生合适的学习中间结果，中间结果保存在metadata中。我要么产生中间结果，要么产生最终结果。
+2. 当存在已知信息时，需参考已知信息的内容来思考结果。
+3. 当我收到最后一部分内容时，我能结合已知的中间结果产生最终结果。
+4. 现有资料库以文件系统的形式组织，我未来借助资料的摘要来浏览知识库
+5. 我将学习过的资料另存在资料库的合适位置（以/开始的完整路径）。保存位置的目录深度不超过5层，文件夹名称长度不超过16个字符。
+6. 总是以json格式返回思考结果，json格式如下
 {
     think:"$think_result",
     metadata:{...} , # temp result for long content
@@ -123,7 +122,7 @@ class AIAgent(BaseAIAgent):
         self.agent_prompt:AgentPrompt = None
         self.agent_think_prompt:AgentPrompt = None
         self.llm_model_name:str = None
-        self.max_token_size:int = 3600
+        self.max_token_size:int = 128000
         self.agent_energy = 15
         self.agent_task = None
         self.last_recover_time = time.time()
@@ -1044,21 +1043,15 @@ class AIAgent(BaseAIAgent):
 
         #full_content = item.get_article_full_content()
         workspace = self.get_workspace_by_msg(None)
-        full_content = await workspace.load_knowledge_content(full_path)
-        if full_content is None:
-            return None
-
-        if len(full_content) < 16:
-            logger.warning(f"llm_read_article: article {knowledge_item['path']} is too short,just read summary!")
-            return None
-
         full_content_len = self.token_len(full_content)
+
         if full_content_len < self.get_llm_learn_token_limit():
 
             # 短文章不用总结catelog
             #path_list,summary = llm_get_summary(summary,full_content)
             #prompt = self.get_agent_role_prompt()
-            prompt = self.get_learn_prompt()
+            prompt = AgentPrompt()
+            prompt.append(self.get_learn_prompt())
             known_info_prompt = await self.gen_known_info_for_knowledge_prompt(knowledge_item)
             prompt.append(known_info_prompt)
             content_prompt = AgentPrompt(full_content)
@@ -1077,21 +1070,23 @@ class AIAgent(BaseAIAgent):
         else:
             logger.warning(f"llm_read_article: article {full_path} use LLM loop learn!")
             pos = 0
-            read_len = int(self.get_llm_learn_token_limit() * 1.5)
+            read_len = int(self.get_llm_learn_token_limit() * 1.2)
 
             temp_meta_data = {}
             is_final = False
-            while pos < full_content_len:
+            while pos < str_len:
                 _content = full_content[pos:pos+read_len]
-                if len(_content) < read_len:
+                part_cotent_len = len(_content)
+                if part_cotent_len < read_len:
                     # last chunk
                     is_final = True
                     part_content = f"<<Final Part:start at {pos}>>\n{_content}"
                 else:
                     part_content = f"<<Part:start at {pos}>>\n{_content}"
-                pos = pos + read_len
 
-                prompt = self.get_learn_prompt()
+                pos = pos + read_len
+                prompt = AgentPrompt()
+                prompt.append(self.get_learn_prompt())
                 known_info_prompt = await self.gen_known_info_for_knowledge_prompt(knowledge_item,temp_meta_data)
                 prompt.append(known_info_prompt)
                 content_prompt = AgentPrompt(part_content)
@@ -1105,7 +1100,7 @@ class AIAgent(BaseAIAgent):
                     return result_obj
 
                 result_obj = json.loads(task_result.result_str)
-                temp_meta_data = result_obj.get("metadata")
+                temp_meta_data = result_obj
                 if is_final:
                     return result_obj
 
