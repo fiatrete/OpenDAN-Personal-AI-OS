@@ -528,7 +528,7 @@ class WorkspaceEnvironment(Environment):
                 return content
         else:
             async with aiofiles.open(path,'rb') as f:
-                cur_encode = chardet.detect(await f.read(1024))['encoding']
+                cur_encode = chardet.detect(await f.read())['encoding']
 
             async with aiofiles.open(path, mode='r', encoding=cur_encode) as f:
                 await f.seek(pos)
