@@ -1,11 +1,13 @@
-
+import importlib
 import logging
 import toml
 import os
+import sys
 import runpy
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from aios_kernel import AIAgent,AIAgentTemplete,AIStorage,Environment
+from aios_kernel.agent_base import BaseAIAgent
 from package_manager import PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
 
 logger = logging.getLogger(__name__)
@@ -17,19 +19,19 @@ cache = "./.agents"
 
 class AgentManager:
     _instance = None
-   
+
     @classmethod
     def get_instance(cls)->'AgentManager':
         if cls._instance is None:
             cls._instance = AgentManager()
         return cls._instance
-    
+
     def __init__(self) -> None:
         self.agent_templete_env : PackageEnv = None
         self.agent_env : PackageEnv = None
-        self.db_path : str = None 
-        self.loaded_agent_instance : Dict[str,AIAgent] = None
-    
+        self.db_path : str = None
+        self.loaded_agent_instance : Dict[str,BaseAIAgent] = None
+
     async def initial(self) -> None:
         system_app_dir = AIStorage.get_instance().get_system_app_dir()
         user_data_dir = AIStorage.get_instance().get_myai_dir()
@@ -43,13 +45,13 @@ class AgentManager:
 
         self.db_path = f"{user_data_dir}/messages.db"
         self.loaded_agent_instance = {}
-        
+
         return True
-    
+
     async def scan_all_agent(self)->None:
         pass
-        
-    
+
+
     async def is_exist(self,agent_id:str) -> bool:
         the_aget = await self.get(agent_id)
         if the_aget:
@@ -60,17 +62,17 @@ class AgentManager:
         the_agent = self.loaded_agent_instance.get(agent_id)
         if the_agent:
             return the_agent
-        
+
         # try load from disk
         agent_media_info = self.agent_env.load(agent_id)
         if agent_media_info is None:
             return None
-        
+
         the_agent : AIAgent = await self._load_agent_from_media(agent_media_info)
         if the_agent is None:
             logger.warn(f"load agent {agent_id} from media failed!")
             return None
-            
+
         the_agent.chat_db = self.db_path
         return the_agent
 
@@ -86,19 +88,19 @@ class AgentManager:
     def install(self,templete_id) -> PackageInstallTask:
         installer = self.agent_templete_env.get_installer()
         return installer.install(templete_id)
-    
+
     def uninstall(self,templete_id) -> int:
-        pass 
-    
+        pass
+
     async def _load_templete_from_media(self,templete_media:PackageMediaInfo) -> AIAgentTemplete:
         pass
 
-    async def _load_agent_from_media(self,agent_media:PackageMediaInfo) -> AIAgent:
+    async def _load_agent_from_media(self,agent_media:PackageMediaInfo) -> BaseAIAgent:
         reader = self.agent_env._create_media_loader(agent_media)
         if reader is None:
             logger.error(f"create media loader for {agent_media} failed!")
             return None
-        
+
         try:
             config_file = await reader.read("agent.toml","r")
             if config_file is None:
@@ -125,11 +127,22 @@ class AgentManager:
                 return None
             return result_agent
         except Exception as e:
-            logger.error(f"read agent.toml cfg from {agent_media} failed! unexpected error occurred: {str(e)}")
-            return None
- 
+            custom_agent = os.path.join(agent_media.full_path,"agent.py")
+            if not os.path.exists(custom_agent):
+                logger.error(f"read agent.toml cfg from {agent_media} failed! unexpected error occurred: {str(e)}")
+                return None
 
-    
+            agent_name = os.path.split(agent_media.full_path)[1]
+            spec = importlib.util.spec_from_file_location(agent_name, custom_agent)
+            the_api = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(the_api)
+            if not hasattr(the_api,"Agent"):
+                logger.error(f"read agent.toml cfg from {agent_media} failed! unexpected error occurred: {str(e)}")
+                return None
+            return the_api.Agent()
+
+
+
     def create(self,template,agent_name,agent_last_name,agent_introduce) -> AIAgent:
         pass
 

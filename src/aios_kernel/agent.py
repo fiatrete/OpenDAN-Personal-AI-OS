@@ -12,7 +12,8 @@ import datetime
 import copy
 import sys
 
-from .agent_base import AgentMsg, AgentMsgStatus, AgentMsgType,FunctionItem,LLMResult,AgentPrompt,AgentReport,AgentTodo,AgentTodoResult,AgentWorkLog
+from .agent_base import AgentMsg, AgentMsgStatus, AgentMsgType, FunctionItem, LLMResult, AgentPrompt, AgentReport, \
+    AgentTodo, AgentTodoResult, AgentWorkLog, BaseAIAgent
 from .chatsession import AIChatSession
 from .compute_task import ComputeTaskResult,ComputeTaskResultCode
 from .ai_function import AIFunction
@@ -115,7 +116,7 @@ class AIAgentTemplete:
         return True
 
 
-class AIAgent:
+class AIAgent(BaseAIAgent):
     def __init__(self) -> None:
         self.role_prompt:AgentPrompt = None
         self.agent_prompt:AgentPrompt = None
@@ -127,7 +128,7 @@ class AIAgent:
         self.last_recover_time = time.time()
         self.enable_thread = False
         self.can_do_unassigned_task = True
-        
+
 
         self.agent_id:str = None
         self.template_id:str = None
@@ -136,7 +137,7 @@ class AIAgent:
         self.enable = True
         self.enable_kb = False
         self.enable_timestamp = False
-        self.guest_prompt_str = None 
+        self.guest_prompt_str = None
         self.owner_promp_str = None
         self.contact_prompt_str = None
         self.history_len = 10
@@ -158,7 +159,7 @@ class AIAgent:
         self.owner_env : Environment = None
         self.owenr_bus = None
         self.enable_function_list = None
-        
+
 
     @classmethod
     def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
@@ -191,7 +192,7 @@ class AIAgent:
         if config.get("prompt") is not None:
             self.agent_prompt = AgentPrompt()
             self.agent_prompt.load_from_config(config["prompt"])
-        
+
         if config.get("think_prompt") is not None:
             self.agent_think_prompt = AgentPrompt()
             self.agent_think_prompt.load_from_config(config["think_prompt"])
@@ -206,13 +207,13 @@ class AIAgent:
 
         if config.get("owner_prompt") is not None:
             self.owner_promp_str = config["owner_prompt"]
-        
+
         if config.get("contact_prompt") is not None:
             self.contact_prompt_str = config["contact_prompt"]
 
         if config.get("owner_env") is not None:
             self.owner_env = config.get("owner_env")
-       
+
 
         if config.get("powerby") is not None:
             self.powerby = config["powerby"]
@@ -231,7 +232,7 @@ class AIAgent:
         if config.get("history_len"):
             self.history_len = int(config.get("history_len"))
         return True
-    
+
     def get_id(self) -> str:
         return self.agent_id
 
@@ -244,22 +245,22 @@ class AIAgent:
     def get_llm_model_name(self) -> str:
         if self.llm_model_name is None:
             return AIStorage.get_instance().get_user_config().get_value("llm_model_name")
-        
+
         return self.llm_model_name
 
     def get_max_token_size(self) -> int:
         return self.max_token_size
-    
+
     def get_llm_learn_token_limit(self) -> int:
         return self.learn_token_limit
-    
+
     def get_learn_prompt(self) -> AgentPrompt:
         return self.learn_prompt
-    
+
     def get_agent_role_prompt(self) -> AgentPrompt:
         return self.role_prompt
 
-    
+
     def _get_remote_user_prompt(self,remote_user:str) -> AgentPrompt:
         cm = ContactManager.get_instance()
         contact = cm.find_contact_by_name(remote_user)
@@ -283,7 +284,7 @@ class AIAgent:
                     prompt = AgentPrompt()
                     prompt.system_message = {"role":"system","content":real_str}
                     return prompt
-                
+
         return None
 
     def _get_inner_functions(self) -> dict:
@@ -333,13 +334,13 @@ class AIAgent:
 
 
         logger.info("llm execute inner func result:" + result_str)
-        
+
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
         task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"_execute_func llm compute error:{task_result.error_str}")
             return task_result
-        
+
         ineternal_call_record.result_str = task_result.result_str
         ineternal_call_record.done_time = time.time()
         if org_msg:
@@ -355,10 +356,10 @@ class AIAgent:
             return await self._execute_func(inner_func_call_node,prompt,org_msg,stack_limit-1)
         else:
             return task_result
-        
+
     def get_agent_prompt(self) -> AgentPrompt:
         return self.agent_prompt
-    
+
     async def _get_agent_think_prompt(self) -> AgentPrompt:
         return self.agent_think_prompt
 
@@ -373,11 +374,11 @@ class AIAgent:
     async def _handle_event(self,event):
         if event.type == "AgentThink":
             return await self.do_self_think()
-        
 
 
 
-    # async def _process_group_chat_msg(self,msg:AgentMsg) -> AgentMsg:  
+
+    # async def _process_group_chat_msg(self,msg:AgentMsg) -> AgentMsg:
     #     session_topic = msg.target + "#" + msg.topic
     #     chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
     #     workspace = self.get_current_workspace()
@@ -409,7 +410,7 @@ class AIAgent:
 
     #         self._format_msg_by_env_value(prompt)
     #         inner_functions,function_token_len = self._get_inner_functions()
-       
+
     #         system_prompt_len = prompt.get_prompt_token_len()
     #         input_len = len(msg.body)
 
@@ -422,7 +423,7 @@ class AIAgent:
     #         if task_result.result_code != ComputeTaskResultCode.OK:
     #             error_resp = msg.create_error_resp(task_result.error_str)
     #             return error_resp
-            
+
     #         final_result = task_result.result_str
     #         llm_result : LLMResult = LLMResult.from_str(final_result)
     #         is_ignore = False
@@ -455,12 +456,12 @@ class AIAgent:
     #         return None
     def get_workspace_by_msg(self,msg:AgentMsg) -> WorkspaceEnvironment:
         return self.agent_workspace
-    
+
     def need_session_summmary(self,msg:AgentMsg,session:AIChatSession) -> bool:
         return False
-    
+
     async def _create_openai_thread(self) -> str:
-        return None 
+        return None
 
     async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
         msg_prompt = AgentPrompt()
@@ -474,7 +475,7 @@ class AIAgent:
                 if self.agent_id in msg.mentions:
                     need_process = True
                     logger.info(f"agent {self.agent_id} recv a group chat message from {msg.sender},but is not mentioned,ignore!")
-            
+
             if need_process is not True:
                 chatsession.append(msg)
                 resp_msg = msg.create_group_resp_msg(self.agent_id,"")
@@ -490,7 +491,7 @@ class AIAgent:
                         need_create_thread = True
                 else:
                     need_create_thread = True
-                
+
                 if need_create_thread:
                     openai_thread_id = await self._create_openai_thread()
                     if openai_thread_id is not None:
@@ -507,12 +508,12 @@ class AIAgent:
         prompt.append(self.get_agent_prompt())
         prompt.append(self._get_remote_user_prompt(msg.sender))
         self._format_msg_by_env_value(prompt)
-    
+
         if self.need_session_summmary(msg,chatsession):
             # get relate session(todos) summary
             summary = self.llm_select_session_summary(msg,chatsession)
             prompt.append(AgentPrompt(summary))
-        
+
         known_info_str = "# Known information\n"
         have_known_info = False
         todos_str,todo_count = await workspace.get_todo_tree()
@@ -525,25 +526,25 @@ class AIAgent:
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
             history_str,history_token_len = await self._get_prompt_from_session_for_groupchat(chatsession,system_prompt_len + function_token_len,input_len)
         else:
-            history_str,history_token_len = await self.get_prompt_from_session(chatsession,system_prompt_len + function_token_len,input_len)      
+            history_str,history_token_len = await self.get_prompt_from_session(chatsession,system_prompt_len + function_token_len,input_len)
         if history_str:
             have_known_info = True
             known_info_str += history_str
-        
+
         if have_known_info:
             known_info_prompt = AgentPrompt(known_info_str)
             prompt.append(known_info_prompt) # chat context
 
         prompt.append(msg_prompt)
 
-        
+
         logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
         #task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
         task_result = await self._do_llm_complection(prompt,inner_functions,msg)
         if task_result.result_code != ComputeTaskResultCode.OK:
             error_resp = msg.create_error_resp(task_result.error_str)
             return error_resp
-        
+
         final_result = task_result.result_str
         if final_result is not None:
             llm_result : LLMResult = LLMResult.from_str(final_result)
@@ -593,11 +594,11 @@ class AIAgent:
         return None
 
 
-    
+
     async def _get_history_prompt_for_think(self,chatsession:AIChatSession,summary:str,system_token_len:int,pos:int)->(AgentPrompt,int):
 
         history_len = (self.max_token_size * 0.7) - system_token_len
-        
+
         messages = chatsession.read_history(self.history_len,pos,"natural") # read
         result_token_len = 0
         result_prompt = AgentPrompt()
@@ -605,7 +606,7 @@ class AIAgent:
         if summary is not None:
             if len(summary) > 1:
                 have_summary = True
-        
+
         if have_summary:
                 result_prompt.messages.append({"role":"user","content":summary})
                 result_token_len -= len(summary)
@@ -627,10 +628,10 @@ class AIAgent:
             if history_len < 0:
                 logger.warning(f"_get_prompt_from_session reach limit of token,just read {read_history_msg} history message.")
                 break
-        
+
         result_prompt.messages.append({"role":"user","content":history_str})
         return result_prompt,pos+read_history_msg
-    
+
     async def _get_prompt_from_session_for_groupchat(self,chatsession:AIChatSession,system_token_len,input_token_len,is_groupchat=False):
         history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
         messages = chatsession.read_history(self.history_len) # read
@@ -647,7 +648,7 @@ class AIAgent:
                     result_prompt.messages.append({"role":"assistant","content":f"(create on {formatted_time}) {msg.body} "})
                 else:
                     result_prompt.messages.append({"role":"assistant","content":msg.body})
-                
+
             else:
                 if self.enable_timestamp:
                     result_prompt.messages.append({"role":"user","content":f"(create on {formatted_time}) {msg.body} "})
@@ -665,11 +666,11 @@ class AIAgent:
 
 
     async def _llm_summary_work(self,workspace:WorkspaceEnvironment):
-        # read report ,and update work summary of 
+        # read report ,and update work summary of
         # build todo list from work summary and goals
-        # 
+        #
         report_list = self.get_unread_reports()
-        
+
         for report in report_list:
             if self.agent_energy <= 0:
                 break
@@ -690,7 +691,7 @@ class AIAgent:
 
     async def _llm_review_unassigned_todos(self,workspace:WorkspaceEnvironment):
         pass
- 
+
     async def _llm_read_report(self,report:AgentReport,worksapce:WorkspaceEnvironment):
         work_summary = worksapce.get_work_summary(self.agent_id)
         prompt : AgentPrompt = AgentPrompt()
@@ -709,7 +710,7 @@ class AIAgent:
 
         worksapce.set_work_summary(self.agent_id,task_result.result_str)
 
-        
+
     # 尝试完成自己的TOOD （不依赖任何其他Agnet）
     async def do_my_work(self) -> None:
         workspace : WorkspaceEnvironment = self.get_workspace_by_msg(None)
@@ -722,7 +723,7 @@ class AIAgent:
         todo_list = await workspace.get_todo_list(self.agent_id)
         check_count = 0
         do_count = 0
-        
+
         for todo in todo_list:
             if self.agent_energy <= 0:
                 break
@@ -739,7 +740,7 @@ class AIAgent:
                     case AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR:
                         continue
                     case AgentTodoResult.TODO_RESULT_CODE_OK:
-                        await workspace.update_todo(todo.todo_id,AgentTodo.TODO_STATE_DONE)                       
+                        await workspace.update_todo(todo.todo_id,AgentTodo.TODO_STATE_DONE)
                     case AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR:
                         await workspace.update_todo(todo.todo_id,AgentTodo.TDDO_STATE_CHECKFAILED)
 
@@ -747,7 +748,7 @@ class AIAgent:
                 self.agent_energy -= 1
                 check_count += 1
             elif await self.can_do(todo,workspace):
-                do_result : AgentTodoResult = await self._llm_do(todo,workspace) 
+                do_result : AgentTodoResult = await self._llm_do(todo,workspace)
                 todo.last_do_time = datetime.datetime.now().timestamp()
                 todo.retry_count += 1
 
@@ -755,14 +756,14 @@ class AIAgent:
                     case AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR:
                         continue
                     case AgentTodoResult.TODO_RESULT_CODE_OK:
-                        await workspace.update_todo(todo.todo_id,AgentTodo.TODO_STATE_WAITING_CHECK) 
+                        await workspace.update_todo(todo.todo_id,AgentTodo.TODO_STATE_WAITING_CHECK)
                     case AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR:
                         await workspace.update_todo(todo.todo_id,AgentTodo.TODO_STATE_EXEC_FAILED)
 
-                await workspace.append_worklog(todo,do_result)    
+                await workspace.append_worklog(todo,do_result)
                 self.agent_energy -= 2
                 do_count += 1
-        
+
         logger.info(f"agent {self.agent_id} ,check:{check_count} todo,do:{do_count} todo.")
 
     def get_review_todo_prompt(self,todo:AgentTodo) -> AgentPrompt:
@@ -783,50 +784,50 @@ class AIAgent:
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"_llm_review_todos compute error:{task_result.error_str}")
             return
-        
-        return 
-    
+
+        return
+
     def get_do_prompt(self,todo:AgentTodo) -> AgentPrompt:
         return self.do_prompt
-    
+
     def get_prompt_from_todo(self,todo:AgentTodo) -> AgentPrompt:
         json_str = json.dumps(todo.raw_obj)
         return AgentPrompt(json_str)
-    
+
     async def need_review_todo(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> bool:
         return False
 
     async def can_check(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> bool:
         if self.get_check_prompt(todo) is None:
             return False
-        
+
         if todo.can_check() is False:
             return False
-        
+
         if todo.checker is not None:
             if todo.checker != self.agent_id:
                 return False
         else:
             if self.can_do_unassigned_task is False:
                 return False
-            else:   
+            else:
                 todo.checker = self.agent_id
-        
+
         return True
 
     async def can_do(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> bool:
         if todo.can_do() is False:
             return False
-        
+
         if todo.worker is not None:
             if todo.worker != self.agent_id:
                 return False
         else:
             if self.can_do_unassigned_task is False:
                 return False
-            else:   
-                todo.worker = self.agent_id 
-        
+            else:
+                todo.worker = self.agent_id
+
         return True
 
     async def _llm_do(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> AgentTodoResult:
@@ -834,7 +835,7 @@ class AIAgent:
         prompt : AgentPrompt = AgentPrompt()
         #prompt.append(self.agent_prompt)
         prompt.append(workspace.get_role_prompt(self.agent_id))
-        
+
         do_prompt = workspace.get_do_prompt(todo)
         if do_prompt is None:
             do_prompt = self.get_do_prompt(todo)
@@ -853,7 +854,7 @@ class AIAgent:
             result.result_code = AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR
             result.error_str = task_result.error_str
             return result
-        
+
         llm_result = LLMResult.from_str(task_result.result_str)
         # result_str is the explain of how to do this todo
         result.result_str = llm_result.resp
@@ -873,19 +874,19 @@ class AIAgent:
             result.result_code = AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR
             #result.error_str = error_str
             return result
-        
+
         return result
-    
+
     async def append_toddo_result(self,todo,worksapce,llm_result,result_str):
         pass
-    
+
     def get_check_prompt(self,todo:AgentTodo) -> AgentPrompt:
         return self.check_prompt
 
     async def _llm_check_todo(self, todo:AgentTodo,workspace:WorkspaceEnvironment) :
         if self.get_check_prompt(todo) is None:
             return None
-        
+
         prompt : AgentPrompt = AgentPrompt()
         prompt.append(self.agent_prompt)
         prompt.append(workspace.get_role_prompt(self.agent_id))
@@ -906,11 +907,11 @@ class AIAgent:
             return True
         todo.last_check_result = task_result.result_str
         return False
-        
+
     # 尝试自我学习，会主动获取、读取资料并进行整理
     # LLM的本质能力是处理海量知识，应该让LLM能基于知识把自己的工作处理的更好
     async def do_self_learn(self) -> None:
-        # 不同的workspace是否应该有不同的学习方法？ 
+        # 不同的workspace是否应该有不同的学习方法？
         workspace = self.get_workspace_by_msg(None)
         hash_list = workspace.kb_db.get_knowledge_without_llm_title()
         for hash in hash_list:
@@ -952,7 +953,7 @@ class AIAgent:
             #         self.llm_read_book(kb,item)
             #         learn_power -= 1
             #     case "article":
-            #        
+            #
             #         self.llm_read_article(kb,item)
             #         learn_power -= 1
             #     case "video":
@@ -981,8 +982,8 @@ class AIAgent:
         current_list = kb.get_list(current_path)
         self_assessment_with_goal = self.get_self_assessment_with_goal()
         learn_goal = {}
-        
-        
+
+
         llm_blance_knowledge_base(current_path,current_list,self_assessment_with_goal,learn_goal,learn_power)
 
         # 主动学习
@@ -991,7 +992,7 @@ class AIAgent:
             self.llm_learn_with_search_engine(kb,goal,learn_power)
             if learn_power <= 0:
                 break
-           
+
 
     def parser_learn_llm_result(self,llm_result:LLMResult):
         pass
@@ -1010,13 +1011,13 @@ class AIAgent:
             known_obj["summary"] = summary
         tags = knowledge_item.get("tags")
         if tags:
-            known_obj["tags"] = tags   
+            known_obj["tags"] = tags
         if need_catalogs:
             catalogs = knowledge_item.get("catalogs")
             if catalogs:
                 known_obj["catalogs"] = catalogs
 
-        if temp_meta:       
+        if temp_meta:
             for key in temp_meta.keys():
                 known_obj[key] = temp_meta[key]
 
@@ -1029,7 +1030,7 @@ class AIAgent:
         # Objectives:
         #   Obtain better titles, abstracts, table of contents (if necessary), tags
         #   Determine the appropriate place to put it (in line with the organization's goals)
-        # Known information:   
+        # Known information:
         #   The reason why the target service's learn_prompt is being sorted
         #   Summary of the organization's work (if any)
         #   The current structure of the knowledge base (note the size control) gen_kb_tree_prompt (when empty, LLM should generate an appropriate initial directory structure)
@@ -1039,26 +1040,13 @@ class AIAgent:
         #   Indicate that the input is part of the content, let LLM generate intermediate results for the task
         #   Enter the content in sequence, when the last content block is input, LLM gets the result
 
-        
+
         #full_content = item.get_article_full_content()
         workspace = self.get_workspace_by_msg(None)
-        try:
-            full_content = await workspace.load_knowledge_content(full_path)
-            if full_content is None:
-                return None
-        except Exception as e:
-            logger.error(f"llm_read_article: load knowledge {full_path} error:{e}")
-            return None 
-        
-        if len(full_content) < 16:
-            logger.warning(f"llm_read_article: article {knowledge_item['path']} is too short,just read summary!")
-            return None 
-        
-        str_len = len(full_content)
         full_content_len = self.token_len(full_content)
 
         if full_content_len < self.get_llm_learn_token_limit():
-            
+
             # 短文章不用总结catelog
             #path_list,summary = llm_get_summary(summary,full_content)
             #prompt = self.get_agent_role_prompt()
@@ -1075,7 +1063,7 @@ class AIAgent:
                 result_obj = {}
                 result_obj["error_str"] = task_result.error_str
                 return result_obj
-            
+
             result_obj = json.loads(task_result.result_str)
             return result_obj
 
@@ -1110,14 +1098,14 @@ class AIAgent:
                     result_obj = {}
                     result_obj["error_str"] = task_result.error_str
                     return result_obj
-            
+
                 result_obj = json.loads(task_result.result_str)
                 temp_meta_data = result_obj
                 if is_final:
                     return result_obj
 
             return None
-            
+
 
     async def do_self_think(self):
         session_id_list = AIChatSession.list_session(self.agent_id,self.chat_db)
@@ -1134,8 +1122,8 @@ class AIAgent:
             used_energy = await self.think_todo_log(todo_log)
             self.agent_energy -= used_energy
 
-        return 
-    
+        return
+
 
     async def think_todo_log(self,todo_log:AgentWorkLog):
         pass
@@ -1168,24 +1156,24 @@ class AIAgent:
             else:
                 new_summary= task_result.result_str
                 logger.info(f"agent {self.agent_id} think session {session_id} from {cur_pos} to {next_pos} summary:{new_summary}")
-                chatsession.update_think_progress(next_pos,new_summary)    
-        return 
-    
+                chatsession.update_think_progress(next_pos,new_summary)
+        return
+
     async def get_prompt_from_session(self,chatsession:AIChatSession,system_token_len,input_token_len) -> AgentPrompt:
         # TODO: get prompt from group chat is different from single chat
         if self.enable_thread:
             return None
-        
+
         history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
         messages = chatsession.read_history(self.history_len) # read
         result_token_len = 0
-        
+
         read_history_msg = 0
         have_known_info = False
-        
+
         known_info = ""
         if chatsession.summary is not None:
-            if len(chatsession.summary) > 1:  
+            if len(chatsession.summary) > 1:
                 known_info += f"## Recent conversation summary \n {chatsession.summary}\n"
                 result_token_len -= len(chatsession.summary)
                 have_known_info = True
@@ -1204,13 +1192,13 @@ class AIAgent:
             if history_len < 0:
                 logger.warning(f"_get_prompt_from_session reach limit of token,just read {read_history_msg} history message.")
                 break
-        
+
         known_info += f"## Recent conversation history \n {histroy_str}\n"
- 
+
         if have_known_info:
             return known_info,result_token_len
         return None,0
-    
+
     async def _do_llm_complection(self,prompt:AgentPrompt,inner_functions:dict=None,org_msg:AgentMsg=None,is_json_resp = False) -> ComputeTaskResult:
         from .compute_kernel import ComputeKernel
         #logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
@@ -1231,28 +1219,28 @@ class AIAgent:
         if inner_func_call_node:
             call_prompt : AgentPrompt = copy.deepcopy(prompt)
             task_result = await self._execute_func(inner_func_call_node,call_prompt,inner_functions,org_msg)
-            
+
         return task_result
-    
+
     def need_work(self) -> bool:
         if self.do_prompt is not None:
             return True
         if self.check_prompt is not None:
             return True
-        
+
         if self.agent_energy > 2:
             return True
-        
+
         return False
-    
+
     def need_self_think(self) -> bool:
         return False
-    
+
     def need_self_learn(self) -> bool:
         if self.learn_prompt is not None:
             return True
-        return False 
-    
+        return False
+
     def wake_up(self) -> None:
         if self.agent_task is None:
             self.agent_task = asyncio.create_task(self._on_timer())
@@ -1296,7 +1284,7 @@ class AIAgent:
     def token_len(self,text:str) -> int:
         return ComputeKernel.llm_num_tokens_from_text(text,self.get_llm_model_name())
 
-        
-     
-        
-    
+
+
+
+
