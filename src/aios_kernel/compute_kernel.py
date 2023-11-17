@@ -228,5 +228,13 @@ class ComputeKernel:
         # if task_req.state == ComputeTaskState.DONE:
         #     return None, task_result
 
-        # return task_req.error_str, None
+    def image_2_text(self, image_path: str, prompt:str, model_name:Optional[str] = None, negative_prompt = None):
+        task = ComputeTask()
+        task.set_image_2_text_params(image_path,prompt,model_name, negative_prompt)
+        self.run(task)
+        return task
+    async def do_image_2_text(self, image_path: str, prompt:str, model_name:Optional[str] = None, negative_prompt = None) -> ComputeTaskResult:
+        task = self.image_2_text(image_path,prompt, model_name, negative_prompt)
+        task = await self._wait_task(task)
+        return task.result
 

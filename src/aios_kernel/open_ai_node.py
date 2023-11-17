@@ -6,6 +6,8 @@ from asyncio import Queue
 import logging
 import json
 import aiohttp
+import base64
+import requests
 
 from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType,ComputeTaskResultCode
 from .compute_node import ComputeNode
@@ -89,6 +91,50 @@ class OpenAI_ComputeNode(ComputeNode):
     
         # result["message"] = result_msg
         return result
+    
+    def _image_2_text(self, task: ComputeTask):
+        logger.info('openai image_2_text')
+        # 本地图片处理
+        def encode_image(image_path):
+            with open(image_path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode('utf-8')
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.openai_api_key }"
+        }
+        model_name = task.params["model_name"]
+        base64_image = encode_image(task.params["image_path"])
+        payload = {
+            "model": model_name,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": task.params["prompt"]
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": 300
+        }
+        logger.info('openai send image_2_text request ')
+        # openai 的库的Vision只支持传图片的url地址。本地图片得用request
+        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+        if response.status_code == 200:
+            logger.info('openai image_2_text success')
+            return response.json()
+        else:
+            logger.error('openai image_2_text error')
+            logger.error(response.json())
+            return None
 
     async def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
@@ -133,6 +179,12 @@ class OpenAI_ComputeNode(ComputeNode):
                 result.worker_id = self.node_id
                 result.result_str = resp["data"][0]["embedding"]
 
+                return result
+            case ComputeTaskType.IMAGE_2_TEXT:
+                result.result_code = ComputeTaskResultCode.OK
+                result.worker_id = self.node_id
+                # result.result_str = resp["data"][0]["image_2_text"]
+                result.result["message"] = self._image_2_text(task)
                 return result
             case ComputeTaskType.LLM_COMPLETION:
                 mode_name = task.params["model_name"]
@@ -238,6 +290,10 @@ class OpenAI_ComputeNode(ComputeNode):
             if model_name.startswith("gpt-"):
                 return True
         
+        if task.task_type == ComputeTaskType.IMAGE_2_TEXT:
+            model_name : str = task.params["model_name"]
+            if model_name.startswith("gpt-4"):
+                return True
         #if task.task_type == ComputeTaskType.TEXT_EMBEDDING:
         #    if task.params["model_name"] == "text-embedding-ada-002":
         #        return True
