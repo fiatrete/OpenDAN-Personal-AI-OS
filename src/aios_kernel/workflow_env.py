@@ -9,6 +9,7 @@ import logging
 from typing import Optional
 
 from .text_to_speech_function import TextToSpeechFunction
+from .image_2_text_function import Image2TextFunction
 from .compute_kernel import ComputeKernel, ComputeTaskResultCode
 from .environment import Environment,EnvironmentEvent
 from .ai_function import SimpleAIFunction
@@ -344,6 +345,7 @@ class WorkflowEnvironment(Environment):
         self.local = threading.local()
         self.table_name = "WorkflowEnv_" + env_id
         self.add_ai_function(TextToSpeechFunction())
+        self.add_ai_function(Image2TextFunction())
 
 
     def _get_conn(self):

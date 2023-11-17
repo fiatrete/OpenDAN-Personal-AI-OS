@@ -24,6 +24,7 @@ class ComputeTaskType(Enum):
     NONE = "None"
     LLM_COMPLETION = "llm_completion"
     TEXT_2_IMAGE = "text_2_image"
+    IMAGE_2_TEXT = "image_2_text"
     IMAGE_2_IMAGE = "image_2_image"
     VOICE_2_TEXT = "voice_2_text"
     TEXT_2_VOICE = "text_2_voice"
@@ -97,6 +98,23 @@ class ComputeTask:
             self.params["model_name"] = model_name
         else:
             self.params["model_name"] = "v1-5-pruned-emaonly"
+
+    def set_image_2_text_params(self, image_path: str, prompt: str, model_name, negative_prompt="", callchain_id=None):
+        self.task_type = ComputeTaskType.IMAGE_2_TEXT
+        self.create_time = time.time()
+        self.task_id = uuid.uuid4().hex
+        self.callchain_id = callchain_id
+        self.params["image_path"] = image_path
+        if prompt == '':
+            self.params["prompt"] = "What's in this image?"
+        else:
+            self.params["prompt"] = prompt
+        self.params["negative_prompt"] = negative_prompt
+        if model_name is not None:
+            self.params["model_name"] = model_name
+        else:
+            self.params["model_name"] = "gpt-4-vision-preview"
+
 
     def display(self) -> str:
         return f"ComputeTask: {self.task_id} {self.task_type} {self.state}"
