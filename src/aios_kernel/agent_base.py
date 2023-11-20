@@ -567,38 +567,6 @@ class BaseAIAgent(abc.ABC):
     def get_max_token_size(self) -> int:
         pass
 
-    @abstractmethod
-    def get_llm_learn_token_limit(self) -> int:
-        pass
-
-    @abstractmethod
-    async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
-        pass
-
-
-class CustomAIAgent(BaseAIAgent):
-    def __init__(self, agent_id: str, llm_model_name: str, max_token_size: int, llm_learn_token_limit: int) -> None:
-        self.agent_id = agent_id
-        self.llm_model_name = llm_model_name
-        self.max_token_size = max_token_size
-        self.llm_learn_token_limit = llm_learn_token_limit
-
-    def get_id(self) -> str:
-        return self.agent_id
-
-    def get_llm_model_name(self) -> str:
-        return self.llm_model_name
-
-    def get_max_token_size(self) -> int:
-        return self.max_token_size
-
-    def get_llm_learn_token_limit(self) -> int:
-        return self.llm_learn_token_limit
-
-class BaseAIAgent:
-    def __init__(self) -> None:
-        pass
-    
     @classmethod
     def get_inner_functions(cls, env:Environment) -> (dict,int):
         if env is None:
@@ -621,12 +589,9 @@ class BaseAIAgent:
 
         return result_func,result_len
 
-    @classmethod
     async def do_llm_complection(
-        cls,
+        self,
         prompt:AgentPrompt,
-        llm_model_name:str, 
-        max_token_size:int,
         org_msg:AgentMsg=None, 
         env:Environment=None,
         inner_functions=None,
@@ -635,11 +600,11 @@ class BaseAIAgent:
         from .compute_kernel import ComputeKernel
         #logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
         if inner_functions is None and env is not None:
-            inner_functions,_ = cls.get_inner_functions(env)
+            inner_functions,_ = BaseAIAgent.get_inner_functions(env)
         if is_json_resp:
-            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,"json",llm_model_name,max_token_size,inner_functions,timeout=None)
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,resp_mode="json",mode_name=self.get_llm_model_name(),max_token=self.get_max_token_size(),inner_functions=inner_functions,timeout=None)
         else:
-            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,"text",llm_model_name,max_token_size,inner_functions,timeout=None)
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,resp_mode="text",mode_name=self.get_llm_model_name(),max_token=self.get_max_token_size(),inner_functions=inner_functions,timeout=None)
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"_do_llm_complection llm compute error:{task_result.error_str}")
             #error_resp = msg.create_error_resp(task_result.error_str)
@@ -652,20 +617,17 @@ class BaseAIAgent:
 
         if inner_func_call_node:
             call_prompt : AgentPrompt = copy.deepcopy(prompt)
-            task_result = await cls._execute_func(env,inner_func_call_node,call_prompt,inner_functions,org_msg,llm_model_name,max_token_size)
+            task_result = await self._execute_func(env,inner_func_call_node,call_prompt,inner_functions,org_msg)
             
         return task_result
      
-    @classmethod
     async def _execute_func(
-        cls, 
+        self, 
         env: Environment, 
         inner_func_call_node: dict,
         prompt: AgentPrompt, 
         inner_functions: dict, 
         org_msg:AgentMsg,
-        llm_model_name:str, 
-        max_token_size:int,
         stack_limit = 5
     ) -> ComputeTaskResult:
         from .compute_kernel import ComputeKernel
@@ -677,9 +639,6 @@ class BaseAIAgent:
         if func_node is None:
             result_str = f"execute {func_name} error,function not found"
         else:
-            if org_msg:
-                ineternal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
-
             try:
                 result_str:str = await func_node.execute(**arguments)
             except Exception as e:
@@ -690,15 +649,16 @@ class BaseAIAgent:
         logger.info("llm execute inner func result:" + result_str)
         
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
-        task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,llm_model_name,max_token_size,inner_functions)
+        task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,mode_name=self.get_llm_model_name(),max_token=self.get_max_token_size(),inner_functions=inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"llm compute error:{task_result.error_str}")
             return task_result
-        
-        ineternal_call_record.result_str = task_result.result_str
-        ineternal_call_record.done_time = time.time()
+       
         if org_msg:
-            org_msg.inner_call_chain.append(ineternal_call_record)
+            internal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
+            internal_call_record.result_str = task_result.result_str
+            internal_call_record.done_time = time.time()
+            org_msg.inner_call_chain.append(internal_call_record)
 
         inner_func_call_node = None
         if stack_limit > 0:
@@ -707,7 +667,22 @@ class BaseAIAgent:
                 inner_func_call_node = result_message.get("function_call")
 
         if inner_func_call_node:
-            return await cls._execute_func(env,inner_func_call_node,prompt,inner_functions,org_msg,llm_model_name,max_token_size,stack_limit-1)
+            return await self._execute_func(env,inner_func_call_node,prompt,inner_functions,org_msg,stack_limit-1)
         else:
             return task_result
->>>>>>> 2f9cee9 (a issue parser of email)
+
+
+class CustomAIAgent(BaseAIAgent):
+    def __init__(self, agent_id: str, llm_model_name: str, max_token_size: int) -> None:
+        self.agent_id = agent_id
+        self.llm_model_name = llm_model_name
+        self.max_token_size = max_token_size
+
+    def get_id(self) -> str:
+        return self.agent_id
+
+    def get_llm_model_name(self) -> str:
+        return self.llm_model_name
+
+    def get_max_token_size(self) -> int:
+        return self.max_token_size

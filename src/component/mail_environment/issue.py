@@ -1,7 +1,7 @@
 # define a knowledge base class
 import json
 import string
-from aios_kernel import ComputeKernel, AIStorage, Environment, SimpleAIFunction, BaseAIAgent, AgentPrompt, AgentMsg
+from aios_kernel import AIStorage, Environment, SimpleAIFunction, CustomAIAgent, AgentPrompt, AgentMsg
 from knowledge import *
 from .mail import MailStorage, Mail
 
@@ -309,6 +309,6 @@ class IssueParser:
         prompt.append(AgentPrompt(f'''Mail is {mail_str}, issue is {issue_str}. Answer me the function's return value or None if igonred.               
         '''))
 
-        llm_result = await BaseAIAgent.do_llm_complection(prompt, "gpt-4-1106-preview", 4000, env=self.llm_env)
+        llm_result = await CustomAIAgent("issue parser", "gpt-4-1106-preview", 4000).do_llm_complection(prompt, env=self.llm_env)
         return "update issue"
 
