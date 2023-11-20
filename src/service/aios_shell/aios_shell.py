@@ -23,7 +23,9 @@ from prompt_toolkit.styles import Style
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
-
+# import os
+# os.environ['HTTP_PROXY'] = '127.0.0.1:10809'
+# os.environ['HTTPS_PROXY'] = '127.0.0.1:10809'
 
 import proxy
 from aios_kernel import *
@@ -44,7 +46,6 @@ shell_style = Style.from_dict({
     'prompt': '#00FF00',
     'error': '#8F0000 bold'
 })
-
 
 class AIOS_Shell:
     def __init__(self,username:str) -> None:

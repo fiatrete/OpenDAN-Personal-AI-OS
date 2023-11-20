@@ -45,8 +45,8 @@ class Environment:
 
     #@abstractmethod
     #TODO: how to use env? different env has different prompt
-    #def get_env_prompt(self) -> str:
-    #    pass
+    def get_env_prompt(self) -> str:
+       pass
 
     def add_ai_function(self,func:AIFunction) -> None:
         if self.functions.get(func.get_name()) is not None:

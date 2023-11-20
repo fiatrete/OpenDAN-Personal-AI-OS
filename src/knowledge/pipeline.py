@@ -1,6 +1,7 @@
 import datetime
 import sqlite3
 import os
+import logging
 from . import ObjectID, KnowledgeStore
 from enum import Enum
 
@@ -13,6 +14,9 @@ class KnowledgePipelineJournal:
     
     def is_finish(self) -> bool:
         return self.object_id is None
+    
+    def get_object_id(self) -> ObjectID:
+        return self.object_id
 
     def get_input(self) -> str:
         return self.input
@@ -66,12 +70,16 @@ class KnowledgePipelineEnvironment:
             os.makedirs(pipeline_path)
         self.pipeline_path = pipeline_path
         self.journal = KnowledgePipelineJournalClient(pipeline_path)
+        self.logger = logging.getLogger()
 
     def get_journal(self) -> KnowledgePipelineJournalClient:
         return self.journal
     
     def get_knowledge_store(self) -> KnowledgeStore:
         return self.knowledge_store
+    
+    def get_logger(self) -> logging.Logger:
+        return self.logger
 
 class KnowledgePipelineState(Enum):
     INIT = 0
