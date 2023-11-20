@@ -261,5 +261,4 @@ class MailStorage:
             (uid, mail.id, mail.date, mail.from_addr),
         )
 
-
     

@@ -31,4 +31,7 @@ class LocalEmail:
             else:
                 yield (mail_id, str(mail_id))
 
-    
+
+class LocalEmailWithFilter:
+    def __init__(self, env: KnowledgePipelineEnvironment, config:dict):
+        pass

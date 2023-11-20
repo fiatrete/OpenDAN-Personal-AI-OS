@@ -200,7 +200,7 @@ class OpenAI_ComputeNode(ComputeNode):
                     max_token_size = 4000
 
                 result_token = max_token_size
-                client = AsyncOpenAI()
+                client = AsyncOpenAI(api_key=self.openai_api_key)
                 try:
                     if llm_inner_functions is None:
                         logger.info(f"call openai {mode_name} prompts: {prompts}")
@@ -215,7 +215,7 @@ class OpenAI_ComputeNode(ComputeNode):
                                                             messages=prompts,
                                                             response_format = response_format,
                                                             functions=llm_inner_functions,
-                                                            #max_tokens=result_token,
+                                                            max_tokens=result_token,
                                                             ) # TODO: add temperature to task params?
                 except Exception as e:
                     logger.error(f"openai run LLM_COMPLETION task error: {e}")
@@ -267,8 +267,8 @@ class OpenAI_ComputeNode(ComputeNode):
                 logger.info(f"openai_node get task: {task.display()}")
                 result = await self._run_task(task)
                 if result is not None:
-                    task.state = ComputeTaskState.DONE
                     task.result = result
+                    task.state = ComputeTaskState.DONE
 
         asyncio.create_task(_run_task_loop())
 

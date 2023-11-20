@@ -127,7 +127,7 @@ class ComputeKernel:
         self.run(task_req)
         return task_req
     
-    async def _wait_task(self,task_req:ComputeTask)->ComputeTaskResult:        
+    async def _wait_task(self,task_req:ComputeTask, timeout=60)->ComputeTaskResult:        
         async def check_timer():
             check_times = 0
             while True:
@@ -136,8 +136,8 @@ class ComputeKernel:
 
                 if task_req.state == ComputeTaskState.ERROR:
                     break
-
-                if check_times >= 120:
+                
+                if timeout is not None and check_times >= timeout*2:
                     task_req.state = ComputeTaskState.ERROR
                     break
 
@@ -155,9 +155,9 @@ class ComputeKernel:
             return time_out_result
 
 
-    async def do_llm_completion(self, prompt: AgentPrompt,resp_mode:str="text", mode_name: Optional[str] = None, max_token: int = 0, inner_functions = None) -> str:
+    async def do_llm_completion(self, prompt: AgentPrompt,resp_mode:str="text", mode_name: Optional[str]=None, max_token:int=0, inner_functions=None, timeout=60) -> str:
         task_req = self.llm_completion(prompt, resp_mode,mode_name, max_token,inner_functions)
-        return await self._wait_task(task_req)
+        return await self._wait_task(task_req, timeout)
 
 
     def text_embedding(self,input:str,model_name:Optional[str] = None):

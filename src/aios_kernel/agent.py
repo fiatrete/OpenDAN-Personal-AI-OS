@@ -14,6 +14,7 @@ import sys
 
 from .agent_base import AgentMsg, AgentMsgStatus, AgentMsgType, FunctionItem, LLMResult, AgentPrompt, AgentReport, \
     AgentTodo, AgentTodoResult, AgentWorkLog, BaseAIAgent
+
 from .chatsession import AIChatSession
 from .compute_task import ComputeTaskResult,ComputeTaskResultCode
 from .ai_function import AIFunction
@@ -287,6 +288,7 @@ class AIAgent(BaseAIAgent):
 
         return None
 
+
     def _get_inner_functions(self) -> dict:
         if self.owner_env is None:
             return None,0
@@ -356,6 +358,7 @@ class AIAgent(BaseAIAgent):
             return await self._execute_func(inner_func_call_node,prompt,org_msg,stack_limit-1)
         else:
             return task_result
+
 
     def get_agent_prompt(self) -> AgentPrompt:
         return self.agent_prompt
@@ -520,7 +523,7 @@ class AIAgent(BaseAIAgent):
         if todo_count > 0:
             have_known_info = True
             known_info_str += f"## todo\n{todos_str}\n"
-        inner_functions,function_token_len = self._get_inner_functions()
+        inner_functions,function_token_len = BaseAIAgent.get_inner_functions(self.owner_env)
         system_prompt_len = prompt.get_prompt_token_len()
         input_len = len(msg.body)
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
@@ -540,7 +543,7 @@ class AIAgent(BaseAIAgent):
 
         logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
         #task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,self.llm_model_name,self.max_token_size,inner_functions)
-        task_result = await self._do_llm_complection(prompt,inner_functions,msg)
+        task_result = await self._do_llm_complection(prompt,msg,inner_functions=inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:
             error_resp = msg.create_error_resp(task_result.error_str)
             return error_resp
@@ -778,9 +781,9 @@ class AIAgent(BaseAIAgent):
 
         todo_tree = workspace.get_todo_tree("/")
         prompt.append(AgentPrompt(todo_tree))
-        inner_functions,function_token_len = self._get_inner_functions()
+        inner_functions,_ = BaseAIAgent.get_inner_functions(self.owner_env)
 
-        task_result:ComputeTaskResult = await self._do_llm_complection(prompt,inner_functions)
+        task_result:ComputeTaskResult = await self._do_llm_complection(prompt,inner_functions=inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"_llm_review_todos compute error:{task_result.error_str}")
             return
@@ -897,7 +900,8 @@ class AIAgent(BaseAIAgent):
         prompt.append(todo.detail)
         prompt.append(todo.result)
 
-        task_result:ComputeTaskResult = await self._do_llm_complection(prompt,workspace.get_inner_functions(),None,True)
+        inner_functions,_ = BaseAIAgent.get_inner_functions(workspace)
+        task_result:ComputeTaskResult = await self._do_llm_complection(prompt,inner_functions=inner_functions,is_json_resp=True)
 
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"_llm_check_todo compute error:{task_result.error_str}")
@@ -1058,7 +1062,7 @@ class AIAgent(BaseAIAgent):
             prompt.append(content_prompt)
             env_functions = None
             #env_functions,function_len = workspace.get_knowledge_base_ai_functions()
-            task_result:ComputeTaskResult = await self._do_llm_complection(prompt,env_functions,None,True)
+            task_result:ComputeTaskResult = await self._do_llm_complection(prompt,is_json_resp=True)
             if task_result.result_code != ComputeTaskResultCode.OK:
                 result_obj = {}
                 result_obj["error_str"] = task_result.error_str
@@ -1091,9 +1095,8 @@ class AIAgent(BaseAIAgent):
                 prompt.append(known_info_prompt)
                 content_prompt = AgentPrompt(part_content)
                 prompt.append(content_prompt)
-                env_functions = None
                 #env_functions,function_len = workspace.get_knowledge_base_ai_functions()
-                task_result:ComputeTaskResult = await self._do_llm_complection(prompt,env_functions,None,True)
+                task_result:ComputeTaskResult = await self._do_llm_complection(prompt,is_json_resp=True)
                 if task_result.result_code != ComputeTaskResultCode.OK:
                     result_obj = {}
                     result_obj["error_str"] = task_result.error_str
@@ -1221,6 +1224,7 @@ class AIAgent(BaseAIAgent):
             task_result = await self._execute_func(inner_func_call_node,call_prompt,inner_functions,org_msg)
 
         return task_result
+
 
     def need_work(self) -> bool:
         if self.do_prompt is not None:

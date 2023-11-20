@@ -600,7 +600,7 @@ class BaseAIAgent:
         pass
     
     @classmethod
-    def _get_inner_functions(cls, env:Environment) -> (dict,int):
+    def get_inner_functions(cls, env:Environment) -> (dict,int):
         if env is None:
             return None,0
 
@@ -624,18 +624,24 @@ class BaseAIAgent:
     @classmethod
     async def do_llm_complection(
         cls,
-        env:Environment,
         prompt:AgentPrompt,
-        org_msg:AgentMsg, 
         llm_model_name:str, 
-        max_token_size:int
+        max_token_size:int,
+        org_msg:AgentMsg=None, 
+        env:Environment=None,
+        inner_functions=None,
+        is_json_resp=False,
     ) -> ComputeTaskResult:
         from .compute_kernel import ComputeKernel
         #logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
-        inner_functions,inner_functions_len = cls._get_inner_functions(env)
-        task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,llm_model_name,max_token_size,inner_functions)
+        if inner_functions is None and env is not None:
+            inner_functions,_ = cls.get_inner_functions(env)
+        if is_json_resp:
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,"json",llm_model_name,max_token_size,inner_functions,timeout=None)
+        else:
+            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,"text",llm_model_name,max_token_size,inner_functions,timeout=None)
         if task_result.result_code != ComputeTaskResultCode.OK:
-            logger.error(f"llm compute error:{task_result.error_str}")
+            logger.error(f"_do_llm_complection llm compute error:{task_result.error_str}")
             #error_resp = msg.create_error_resp(task_result.error_str)
             return task_result
 
@@ -649,7 +655,7 @@ class BaseAIAgent:
             task_result = await cls._execute_func(env,inner_func_call_node,call_prompt,inner_functions,org_msg,llm_model_name,max_token_size)
             
         return task_result
-    
+     
     @classmethod
     async def _execute_func(
         cls, 

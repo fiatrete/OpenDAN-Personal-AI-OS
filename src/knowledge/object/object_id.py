@@ -22,7 +22,7 @@ class ObjectType(IntEnum):
         return (self.value - 200) if self.is_user_def() else None
     
     @classmethod
-    def from_user_def_type_code(value):
+    def from_user_def_type_code(cls, value):
         return value + 200
 
 
