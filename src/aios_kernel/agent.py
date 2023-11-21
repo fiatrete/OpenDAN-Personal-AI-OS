@@ -498,7 +498,7 @@ class AIAgent(BaseAIAgent):
 
 
         logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
-        task_result = await self.do_llm_complection(prompt,msg,inner_functions=inner_functions)
+        task_result = await self.do_llm_complection(prompt,msg, env=self.owner_env,inner_functions=inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:
             error_resp = msg.create_error_resp(task_result.error_str)
             return error_resp
