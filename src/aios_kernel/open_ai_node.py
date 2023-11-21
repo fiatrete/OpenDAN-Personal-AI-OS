@@ -74,7 +74,7 @@ class OpenAI_ComputeNode(ComputeNode):
         #     function_call["arguments"] = message.function_call.arguments
         #     function_call["name"] = message.function_call.name
         #     result_msg["function_call"] = function_call
-        
+
         # if message.tool_calls:
         #     tool_calls = []
         #     for tool_call in message.tool_calls:
@@ -88,10 +88,10 @@ class OpenAI_ComputeNode(ComputeNode):
 
         #         tool_calls.append(tool_call_dict)
         #     result_msg["tool_calls"] = message.tool_calls
-    
+
         # result["message"] = result_msg
         return result
-    
+
     def _image_2_text(self, task: ComputeTask):
         logger.info('openai image_2_text')
         # 本地图片处理
@@ -138,7 +138,7 @@ class OpenAI_ComputeNode(ComputeNode):
 
     async def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
-        
+
         result = ComputeTaskResult()
         result.result_code = ComputeTaskResultCode.ERROR
         result.set_from_task(task)
@@ -157,7 +157,7 @@ class OpenAI_ComputeNode(ComputeNode):
                     task.error_str = str(e)
                     result.error_str = str(e)
                     return result
-                
+
                 # resp = {
                 # "object": "list",
                 # "data": [
@@ -215,7 +215,7 @@ class OpenAI_ComputeNode(ComputeNode):
                                                             messages=prompts,
                                                             response_format = response_format,
                                                             functions=llm_inner_functions,
-                                                            max_tokens=result_token,
+                                                            # max_tokens=result_token,
                                                             ) # TODO: add temperature to task params?
                 except Exception as e:
                     logger.error(f"openai run LLM_COMPLETION task error: {e}")
@@ -289,7 +289,7 @@ class OpenAI_ComputeNode(ComputeNode):
             model_name : str = task.params["model_name"]
             if model_name.startswith("gpt-"):
                 return True
-        
+
         if task.task_type == ComputeTaskType.IMAGE_2_TEXT:
             model_name : str = task.params["model_name"]
             if model_name.startswith("gpt-4"):
