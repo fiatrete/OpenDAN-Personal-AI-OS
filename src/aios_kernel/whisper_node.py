@@ -101,9 +101,12 @@ class WhisperComputeNode(ComputeNode):
             text = ""
             results = []
             latest_resp = None
-            step = 30 * 1000
-            for i in range(0, 60 * 1000, step):
-                chunk = audio[i:i + step]
+            step = 10 * 60 * 1000
+            for i in range(0, len(audio), step):
+                if i + step < len(audio):
+                    chunk = audio[i:i + step]
+                else:
+                    chunk = audio[i:]
                 seg_file = io.BytesIO()
                 chunk.export(seg_file, format="mp3")
                 seg_file.seek(0)
