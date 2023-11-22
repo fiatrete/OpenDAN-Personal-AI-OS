@@ -8,7 +8,7 @@ import threading
 import logging
 from typing import Optional
 
-from .text_to_speech_function import TextToSpeechFunction
+from .script_to_speech_function import ScriptToSpeechFunction
 from .image_2_text_function import Image2TextFunction
 from .compute_kernel import ComputeKernel, ComputeTaskResultCode
 from .environment import Environment,EnvironmentEvent
@@ -80,7 +80,7 @@ class CalenderEnvironment(Environment):
                                         "update event in calender",
                                         self._update_event,update_param))
 
-        
+
         #maybe this function should be in other env?
         paint_param = {
             "prompt": "A description of the content of the painting",
@@ -89,18 +89,18 @@ class CalenderEnvironment(Environment):
         self.add_ai_function(SimpleAIFunction("paint",
                                         "Draw a picture according to the description",
                                         self._paint,paint_param))
-        
+
         self.add_ai_function(SimpleAIFunction("get_contact",
                                         "get contact info",
                                         self._get_contact,{"name":"name of contact"}))
-        
+
         self.add_ai_function(SimpleAIFunction("set_contact",
                                         "set contact info",
                                         self._set_contact,{"name":"name of contact","contact_info":"A json to descrpit contact"}))
-                                        
-        
-        
-        
+
+
+
+
         #self.add_ai_function(SimpleAIFunction("user_confirm",
         #                                      "user confirm",
         #                                      self._user_confirm))
@@ -169,10 +169,10 @@ class CalenderEnvironment(Environment):
                 _event["location"] = row[5]
                 _event["details"] = row[6]
                 result[row[0]] = _event
-            
+
             if not have_result:
                 return "No event."
-            
+
             return json.dumps(result, indent=4, sort_keys=True)
 
     async def _update_event(self,event_id, new_title=None, new_participants=None, new_location=None, new_details=None ,start_time=None, end_time=None):
@@ -230,7 +230,7 @@ class CalenderEnvironment(Environment):
 
     def _do_get_value(self,key:str) -> Optional[str]:
         return None
-    
+
     async def _get_contact(self,name:str) -> str:
         cm = ContactManager.get_instance()
         contact : Contact = cm.find_contact_by_name(name)
@@ -302,7 +302,7 @@ class CalenderEnvironment(Environment):
         formatted_time = now.strftime('%Y-%m-%d %H:%M:%S')
         return formatted_time
 
-    
+
     async def _paint(self, prompt, model_name = None) -> str:
         result = await ComputeKernel.get_instance().do_text_2_image(prompt, model_name)
         if result.result_code == ComputeTaskResultCode.ERROR:
@@ -344,7 +344,7 @@ class WorkflowEnvironment(Environment):
         self.db_file = db_file
         self.local = threading.local()
         self.table_name = "WorkflowEnv_" + env_id
-        self.add_ai_function(TextToSpeechFunction())
+        self.add_ai_function(ScriptToSpeechFunction())
         self.add_ai_function(Image2TextFunction())
 
 

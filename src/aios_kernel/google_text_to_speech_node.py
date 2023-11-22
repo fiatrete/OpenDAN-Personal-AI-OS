@@ -117,9 +117,18 @@ class GoogleTextToSpeechNode(ComputeNode):
     def _run_task(self, task: ComputeTask):
         task.state = ComputeTaskState.RUNNING
         language_code = task.params["language_code"]
+        if language_code is None:
+            language_code = "en"
+
         text = task.params["text"]
         voice_name = task.params["voice_name"]
+        if voice_name is None:
+            voice_name = "default"
+
         gender = task.params["gender"]
+        if gender is None:
+            gender = "female"
+
         age = task.params["age"]
 
         if language_code == "zh":

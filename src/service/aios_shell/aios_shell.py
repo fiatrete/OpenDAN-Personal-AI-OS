@@ -20,6 +20,8 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
+from aios_kernel.openai_tts_node import OpenAITTSComputeNode
+
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
@@ -74,8 +76,8 @@ class AIOS_Shell:
         user_config.add_user_config("shell.current","last opened target and topic",True,"default@Jarvis")
         proxy.declare_user_config()
 
-        google_text_to_speech = GoogleTextToSpeechNode.get_instance()
-        google_text_to_speech.declare_user_config()
+        # google_text_to_speech = GoogleTextToSpeechNode.get_instance()
+        # google_text_to_speech.declare_user_config()
 
         Local_Stability_ComputeNode.declare_user_config()
 
@@ -93,8 +95,8 @@ class AIOS_Shell:
         if a_workflow is not None:
             bus.register_message_handler(target_id,a_workflow._process_msg)
             return True
-        
-        a_contact = await ContactManager.get_instance().get_contact(target_id)
+
+        a_contact = ContactManager.get_instance().find_contact_by_name(target_id)
         if a_contact is not None:
             bus.register_message_handler(target_id,a_contact._process_msg)
             return True
@@ -143,6 +145,12 @@ class AIOS_Shell:
             return False
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
 
+        whisper_node = WhisperComputeNode.get_instance()
+        ComputeKernel.get_instance().add_compute_node(whisper_node);
+
+        openai_tts_node = OpenAITTSComputeNode.get_instance()
+        ComputeKernel.get_instance().add_compute_node(openai_tts_node)
+
         llama_nodes = ComputeNodeConfig.get_instance().initial()
         for llama_node in llama_nodes:
             llama_node.start()
@@ -158,41 +166,41 @@ class AIOS_Shell:
                 await AIStorage.get_instance().set_feature_init_result("llama",False)
 
 
-        if await AIStorage.get_instance().is_feature_enable("aigc"):
-            try:
-                google_text_to_speech_node = GoogleTextToSpeechNode.get_instance()
-                google_text_to_speech_node.init()
-                ComputeKernel.get_instance().add_compute_node(google_text_to_speech_node)
-            except Exception as e:
-                logger.error(f"google text to speech node initial failed! {e}")
-                await AIStorage.get_instance.set_feature_init_result("aigc",False)
+        # if await AIStorage.get_instance().is_feature_enable("aigc"):
+            # try:
+            #     google_text_to_speech_node = GoogleTextToSpeechNode.get_instance()
+            #     google_text_to_speech_node.init()
+            #     ComputeKernel.get_instance().add_compute_node(google_text_to_speech_node)
+            # except Exception as e:
+            #     logger.error(f"google text to speech node initial failed! {e}")
+            #     await AIStorage.get_instance.set_feature_init_result("aigc",False)
 
             # stability_api_node = Stability_ComputeNode()
             # if await stability_api_node.initial() is not True:
             #     logger.error("stability api node initial failed!")
             # ComputeKernel.get_instance().add_compute_node(stability_api_node)
 
-        
-        
+
+
         local_st_text_compute_node = LocalSentenceTransformer_Text_ComputeNode()
         if local_st_text_compute_node.initial() is not True:
             logger.error("local sentence transformer text embedding node initial failed!")
         else:
             ComputeKernel.get_instance().add_compute_node(local_st_text_compute_node)
-            
+
         local_st_image_compute_node = LocalSentenceTransformer_Image_ComputeNode()
         if local_st_image_compute_node.initial() is not True:
             logger.error("local sentence transformer image embedding node initial failed!")
         else:
             ComputeKernel.get_instance().add_compute_node(local_st_image_compute_node)
-       
+
 
         await ComputeKernel.get_instance().start()
 
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
         #AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
-        
-        
+
+
         pipelines = KnowledgePipelineManager.initial(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge/pipelines"))
         pipelines.load_dir(os.path.join(AIStorage().get_instance().get_system_app_dir(), "knowledge_pipelines"))
         pipelines.load_dir(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge_pipelines"))
@@ -220,7 +228,7 @@ class AIOS_Shell:
     async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None) -> str:
         if sender == self.username:
             AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
-        
+
         agent_msg = AgentMsg()
         agent_msg.set(sender,target_id,msg)
         agent_msg.topic = topic
@@ -235,7 +243,7 @@ class AIOS_Shell:
 
     async def _user_process_msg(self,msg:AgentMsg) -> AgentMsg:
         pass
-    
+
 
     async def get_tunnel_config_from_input(self,tunnel_target,tunnel_type):
         tunnel_config = {}
@@ -274,7 +282,7 @@ class AIOS_Shell:
     async def append_tunnel_config(self,tunnel_config):
         user_data_dir = AIStorage.get_instance().get_myai_dir()
         tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
-        all_tunnels = None 
+        all_tunnels = None
         try:
             all_tunnels = toml.load(tunnels_config_path)
         except Exception as e:
@@ -327,12 +335,12 @@ class AIOS_Shell:
         if contact_telegram is None:
             return None
         contact.telegram = contact_telegram
-        
+
         contact_email = await try_get_input(f"Input {contact_name}'s email:")
         if contact_email is None:
             return None
         contact.email = contact_email
-        
+
         contact_phone = await try_get_input(f"Input {contact_name}'s phone (optional):")
         if contact_phone is not None:
             contact.phone = contact_phone
@@ -340,13 +348,13 @@ class AIOS_Shell:
         contact_note = await try_get_input(f"Input {contact_name}'s note (optional):")
         if contact_note is not None:
             contact.note = contact_note
-        
+
         contact.added_by = self.username
         if is_update:
             cm.set_contact(contact_name,contact)
         else:
             cm.add_contact(contact_name,contact)
-    
+
     async def handle_knowledge_commands(self, args):
         show_text = FormattedText([("class:title", "sub command not support!\n"
                               "/knowledge pipelines\n" 
@@ -393,7 +401,7 @@ class AIOS_Shell:
             if args[1] == "llama":
                 if len(args) < 4:
                     return show_text
-                
+
                 model_name = args[2]
                 url = args[3]
                 ComputeNodeConfig.get_instance().add_node("llama", url, model_name)
@@ -409,7 +417,7 @@ class AIOS_Shell:
             if args[1] == "llama":
                 if len(args) < 4:
                     return show_text
-                
+
                 model_name = args[2]
                 url = args[3]
                 ComputeNodeConfig.get_instance().remove_node("llama", url, model_name)
@@ -495,7 +503,7 @@ class AIOS_Shell:
                 else:
                     show_text = FormattedText([("class:error", "/open Need Target Agent/Workflow ID! like /open Jarvis default")])
                     return show_text
-                
+
                 if len(args) >= 2:
                     topic = args[1]
                 else:
@@ -506,7 +514,7 @@ class AIOS_Shell:
                     target_exist = True
                 if await WorkflowManager.get_instance().is_exist(target_id):
                     target_exist = True
-                
+
                 if target_exist is False:
                     show_text = FormattedText([("class:error", f"Target {target_id} not exist!")])
                     return show_text
@@ -537,11 +545,11 @@ class AIOS_Shell:
                 else:
                     show_text = FormattedText([("class:error", "/disable Need Feature Name! like /disable llama")])
                     return show_text
-                
+
                 if not await AIStorage.get_instance().is_feature_enable(feature):
                     show_text = FormattedText([("class:title", f"Feature {feature} already disabled!")])
                     return show_text
-                
+
                 await AIStorage.get_instance().disable_feature(feature)
                 show_text = FormattedText([("class:title", f"Feature {feature} disabled!")])
                 return show_text
@@ -717,8 +725,8 @@ async def main():
 
         logging.basicConfig(handlers=[handler],
                             level=logging.INFO,
-                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')    
-    
+                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
     is_daemon = False
     logger.info(f"Check Host OS :{os.name}")
     if os.name != 'nt':
@@ -739,7 +747,7 @@ async def main():
     shell.username = AIStorage.get_instance().get_user_config().get_value("username")
     init_result = await shell.initial()
     proxy.apply_storage()
-    
+
     if init_result is False:
         if is_daemon:
             logger.error("aios shell initial failed!")
@@ -759,7 +767,7 @@ async def main():
                                '/connect $target',
                                '/contact $name',
                                '/knowledge pipelines',
-                               '/knowledge journal $pipeline [$topn]', 
+                               '/knowledge journal $pipeline [$topn]',
                                '/knowledge query $object_id',
                                '/set_config $key',
                                '/enable $feature',
