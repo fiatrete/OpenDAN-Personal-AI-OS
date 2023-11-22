@@ -6,6 +6,7 @@ from .compute_kernel import ComputeKernel,ComputeTask,ComputeTaskResult,ComputeT
 from .compute_node import ComputeNode,LocalComputeNode
 from .open_ai_node import OpenAI_ComputeNode
 from .role import AIRole,AIRoleGroup
+from .storage import ResourceLocation,AIStorage,UserConfig,UserConfigItem
 from .workflow import Workflow
 from .bus import AIBus
 from .workflow_env import WorkflowEnvironment,CalenderEnvironment,CalenderEvent,PaintEnvironment
@@ -15,8 +16,7 @@ from .google_text_to_speech_node import GoogleTextToSpeechNode
 from .tunnel import AgentTunnel
 from .tg_tunnel import TelegramTunnel
 from .email_tunnel import EmailTunnel
-from .storage import ResourceLocation,AIStorage,UserConfig,UserConfigItem
-from .contact_manager import ContactManager,Contact,FamilyMember  
+from .contact_manager import ContactManager,Contact,FamilyMember
 from .text_to_speech_function import TextToSpeechFunction
 from .image_2_text_function import Image2TextFunction
 from .workspace_env import ShellEnvironment

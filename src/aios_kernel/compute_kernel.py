@@ -77,7 +77,7 @@ class ComputeKernel:
         if len(support_nodes) < 1:
             logger.warning(f"task {task.display()} is not support by any compute node")
             return None
-        
+
         # hit a random node with weight
         hit_pos = random.randint(0, total_weights - 1)
         for i in range(min(len(support_nodes) - 1, hit_pos), -1, -1):
@@ -126,8 +126,8 @@ class ComputeKernel:
         task_req.set_llm_params(prompt,resp_mode,mode_name, max_token,inner_functions)
         self.run(task_req)
         return task_req
-    
-    async def _wait_task(self,task_req:ComputeTask, timeout=60)->ComputeTaskResult:        
+
+    async def _wait_task(self,task_req:ComputeTask, timeout=60)->ComputeTaskResult:
         async def check_timer():
             check_times = 0
             while True:
@@ -136,7 +136,7 @@ class ComputeKernel:
 
                 if task_req.state == ComputeTaskState.ERROR:
                     break
-                
+
                 if timeout is not None and check_times >= timeout*2:
                     task_req.state = ComputeTaskState.ERROR
                     break
@@ -181,7 +181,7 @@ class ComputeKernel:
         task_req.set_image_embedding_params(input,model_name)
         self.run(task_req)
         return task_req
-    
+
     async def do_image_embedding(self,input:ObjectID,model_name:Optional[str] = None) -> [float]:
         task_req = self.image_embedding(input,model_name)
         task_result = await self._wait_task(task_req)
@@ -197,7 +197,8 @@ class ComputeKernel:
                        gender: Optional[str] = None,
                        age: Optional[str] = None,
                        voice_name: Optional[str] = None,
-                       tone: Optional[str] = None):
+                       tone: Optional[str] = None,
+                       model_name: Optional[str] = None):
         task_req = ComputeTask()
         task_req.params["text"] = input
         task_req.params["language_code"] = language_code
@@ -205,6 +206,7 @@ class ComputeKernel:
         task_req.params["age"] = age
         task_req.params["voice_name"] = voice_name
         task_req.params["tone"] = tone
+        task_req.params["model_name"] = model_name
         task_req.task_type = ComputeTaskType.TEXT_2_VOICE
         self.run(task_req)
 
@@ -213,6 +215,24 @@ class ComputeKernel:
         if task_req.state == ComputeTaskState.DONE:
             return task_result.result
 
+    async def do_speech_to_text(self,
+                                audio: str,
+                                model: str,
+                                prompt: Optional[str],
+                                response_format: Optional[str]):
+        task_req = ComputeTask()
+        task_req.params["file"] = audio
+        task_req.params["model_name"] = model
+        task_req.params["prompt"] = prompt
+        task_req.params["response_format"] = response_format
+        task_req.task_type = ComputeTaskType.VOICE_2_TEXT
+
+        self.run(task_req)
+
+        task_result = await self._wait_task(task_req)
+
+        if task_req.state == ComputeTaskState.DONE:
+            return task_result
 
     def text_2_image(self, prompt:str, model_name:Optional[str] = None, negative_prompt = None):
         task = ComputeTask()

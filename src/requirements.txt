@@ -140,3 +140,5 @@ sentence-transformers==2.2.2
 tiktoken
 markdown
 PyPDF2
+srt==3.5.3
+webvtt-py==0.4.6
