@@ -592,7 +592,7 @@ class BaseAIAgent(abc.ABC):
     async def do_llm_complection(
         self,
         prompt:AgentPrompt,
-        org_msg:AgentMsg=None, 
+        org_msg:AgentMsg=None,
         env:Environment=None,
         inner_functions=None,
         is_json_resp=False,
@@ -617,43 +617,47 @@ class BaseAIAgent(abc.ABC):
 
         if inner_func_call_node:
             call_prompt : AgentPrompt = copy.deepcopy(prompt)
+            func_msg = copy.deepcopy(result_message)
+            del func_msg["tool_calls"]
+            call_prompt.messages.append(func_msg)
             task_result = await self._execute_func(env,inner_func_call_node,call_prompt,inner_functions,org_msg)
-            
+
         return task_result
-     
+
     async def _execute_func(
-        self, 
-        env: Environment, 
+        self,
+        env: Environment,
         inner_func_call_node: dict,
-        prompt: AgentPrompt, 
-        inner_functions: dict, 
+        prompt: AgentPrompt,
+        inner_functions: dict,
         org_msg:AgentMsg,
         stack_limit = 5
     ) -> ComputeTaskResult:
         from .compute_kernel import ComputeKernel
-        func_name = inner_func_call_node.get("name")
-        arguments = json.loads(inner_func_call_node.get("arguments"))
-        logger.info(f"llm execute inner func:{func_name} ({json.dumps(arguments)})")
+        arguments = None
+        try:
+            func_name = inner_func_call_node.get("name")
+            arguments = json.loads(inner_func_call_node.get("arguments"))
+            logger.info(f"llm execute inner func:{func_name} ({json.dumps(arguments)})")
 
-        func_node : AIFunction = env.get_ai_function(func_name)
-        if func_node is None:
-            result_str = f"execute {func_name} error,function not found"
-        else:
-            try:
+            func_node : AIFunction = env.get_ai_function(func_name)
+            if func_node is None:
+                result_str = f"execute {func_name} error,function not found"
+            else:
                 result_str:str = await func_node.execute(**arguments)
-            except Exception as e:
-                result_str = f"execute {func_name} error:{str(e)}"
-                logger.error(f"llm execute inner func:{func_name} error:{e}")
+        except Exception as e:
+            result_str = f"execute {func_name} error:{str(e)}"
+            logger.error(f"llm execute inner func:{func_name} error:{e}")
 
 
         logger.info("llm execute inner func result:" + result_str)
-        
+
         prompt.messages.append({"role":"function","content":result_str,"name":func_name})
         task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,mode_name=self.get_llm_model_name(),max_token=self.get_max_token_size(),inner_functions=inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"llm compute error:{task_result.error_str}")
             return task_result
-       
+
         if org_msg:
             internal_call_record = AgentMsg.create_internal_call_msg(func_name,arguments,org_msg.get_msg_id(),org_msg.target)
             internal_call_record.result_str = task_result.result_str
@@ -665,6 +669,10 @@ class BaseAIAgent(abc.ABC):
             result_message : dict = task_result.result.get("message")
             if result_message:
                 inner_func_call_node = result_message.get("function_call")
+                if inner_func_call_node:
+                    func_msg = copy.deepcopy(result_message)
+                    del func_msg["tool_calls"]
+                    prompt.messages.append(func_msg)
 
         if inner_func_call_node:
             return await self._execute_func(env,inner_func_call_node,prompt,inner_functions,org_msg,stack_limit-1)

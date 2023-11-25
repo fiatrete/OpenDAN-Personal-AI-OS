@@ -142,3 +142,5 @@ markdown
 PyPDF2
 srt==3.5.3
 webvtt-py==0.4.6
+docker
+generic_escape
