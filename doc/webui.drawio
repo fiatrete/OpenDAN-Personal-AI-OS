@@ -1,9 +1,15 @@
-<mxfile host="Electron" modified="2023-10-10T07:47:12.198Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.2 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="ooen5M4lIGDak3P-0D5_" version="22.0.2" type="device" pages="5">
+<mxfile host="Electron" modified="2023-11-22T04:04:28.746Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.0.2 Chrome/114.0.5735.289 Electron/25.8.4 Safari/537.36" etag="sDA3Z7V6Md16IKaqwf9n" version="22.0.2" type="device" pages="8">
   <diagram name="Init" id="eZ0Fsh2vPRb0vo3J8o-a">
-    <mxGraphModel dx="2286" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1421" dy="816" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+        <mxCell id="IzO59fDZ9m1edTcSyALi-20" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.rect;fillColor2=none;strokeWidth=1;size=20;indent=5;" parent="1" vertex="1">
+          <mxGeometry x="195" y="90" width="565" height="420" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-11" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="120" width="330" height="380" as="geometry" />
+        </mxCell>
         <mxCell id="IzO59fDZ9m1edTcSyALi-11" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="40" y="90" width="155" height="60" as="geometry" />
         </mxCell>
@@ -16,23 +22,17 @@
         <mxCell id="IzO59fDZ9m1edTcSyALi-13" value="AIGC" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="40" y="210" width="155" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="IzO59fDZ9m1edTcSyALi-20" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.rect;fillColor2=none;strokeWidth=1;size=20;indent=5;" parent="1" vertex="1">
-          <mxGeometry x="195" y="90" width="565" height="420" as="geometry" />
-        </mxCell>
         <mxCell id="IzO59fDZ9m1edTcSyALi-21" value="My Devices" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="40" y="180" width="155" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="IzO59fDZ9m1edTcSyALi-22" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
-          <mxGeometry x="312.5" y="130" width="340" height="340" as="geometry" />
-        </mxCell>
-        <mxCell id="IzO59fDZ9m1edTcSyALi-23" value="Config LLM Kernel:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+        <mxCell id="IzO59fDZ9m1edTcSyALi-23" value="Select LLM Kernel:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="320" y="145" width="110" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="IzO59fDZ9m1edTcSyALi-24" value="Config Owner Info:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-          <mxGeometry x="320" y="220" width="110" height="30" as="geometry" />
+        <mxCell id="IzO59fDZ9m1edTcSyALi-24" value="Let your agent know you better:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1" parent="1" vertex="1">
+          <mxGeometry x="320" y="250" width="200" height="30" as="geometry" />
         </mxCell>
         <mxCell id="IzO59fDZ9m1edTcSyALi-25" value="Done" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.buttons.button;strokeColor=#666666;fontColor=#ffffff;mainText=;buttonStyle=round;fontSize=17;fontStyle=1;fillColor=#008cff;whiteSpace=wrap;" parent="1" vertex="1">
-          <mxGeometry x="420" y="410" width="150" height="50" as="geometry" />
+          <mxGeometry x="390" y="460" width="150" height="30" as="geometry" />
         </mxCell>
         <mxCell id="IzO59fDZ9m1edTcSyALi-26" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="40" y="240" width="155" height="270" as="geometry" />
@@ -49,90 +49,125 @@
         <mxCell id="IzO59fDZ9m1edTcSyALi-32" value="" style="shape=mxgraph.signs.travel.information_2;html=1;pointerEvents=1;fillColor=#000000;strokeColor=none;verticalLabelPosition=bottom;verticalAlign=top;align=center;sketch=0;" parent="1" vertex="1">
           <mxGeometry x="49.900000000000006" y="216" width="10.84" height="18" as="geometry" />
         </mxCell>
-        <mxCell id="l8k4_rfZMrNWla8Lv80Y-1" value="AI Store" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="l8k4_rfZMrNWla8Lv80Y-1" value="AI Store" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="40" y="240" width="155" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-1" value="OpenAI" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.forms.comboBox;strokeColor=#999999;fillColor=#ddeeff;align=left;fillColor2=#aaddff;mainText=;fontColor=#666666;fontSize=17;spacingLeft=3;" vertex="1" parent="1">
+          <mxGeometry x="440" y="144.5" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-2" value="OpenAI API Token：" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="320" y="180" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-3" value="&amp;lt;&amp;lt;input your openai API token&amp;gt;&amp;gt;" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.text.textBox;fontColor=#666666;align=left;fontSize=17;spacingLeft=4;spacingTop=-3;whiteSpace=wrap;strokeColor=#666666;mainText=" vertex="1" parent="1">
+          <mxGeometry x="320" y="214" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-4" value="My Name:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="320" y="270" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-5" value="" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.text.textBox;fontColor=#666666;align=left;fontSize=17;spacingLeft=4;spacingTop=-3;whiteSpace=wrap;strokeColor=#666666;mainText=" vertex="1" parent="1">
+          <mxGeometry x="320" y="300" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-7" value="My Email:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="320" y="320" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-8" value="" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.text.textBox;fontColor=#666666;align=left;fontSize=17;spacingLeft=4;spacingTop=-3;whiteSpace=wrap;strokeColor=#666666;mainText=" vertex="1" parent="1">
+          <mxGeometry x="320" y="350" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-9" value="My Telegram Username:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="320" y="370" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="KPRGaicIhTDQW55mVU-i-10" value="（Optional）" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.text.textBox;fontColor=#666666;align=left;fontSize=17;spacingLeft=4;spacingTop=-3;whiteSpace=wrap;strokeColor=#666666;mainText=" vertex="1" parent="1">
+          <mxGeometry x="320" y="400" width="280" height="20" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram id="EX4l-TP_pYMqB1o-9Pjg" name="MainPage">
-    <mxGraphModel dx="1577" dy="806" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+  <diagram id="BYP5jSDgWWDytgGHs8je" name="Page-7">
+    <mxGraphModel dx="2060" dy="1183" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-1" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.rect;fillColor2=none;strokeWidth=1;size=20;indent=5;" vertex="1" parent="1">
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="EX4l-TP_pYMqB1o-9Pjg" name="MainPage">
+    <mxGraphModel dx="2060" dy="1183" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-1" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.rect;fillColor2=none;strokeWidth=1;size=20;indent=5;" parent="1" vertex="1">
           <mxGeometry x="97.5" y="66" width="565" height="580" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-3" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-3" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="127.5" y="231" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-2" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-2" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="142.5" y="201" width="50" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-4" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-4" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="227.5" y="231" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-5" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-5" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="242.5" y="201" width="50" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-6" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-6" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="327.5" y="231" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-7" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-7" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="342.5" y="201" width="50" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-8" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-8" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="422.5" y="231" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-9" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-9" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="437.5" y="201" width="50" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-10" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-10" value="" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="517.5" y="231" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-11" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-11" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="532.5" y="201" width="50" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-12" value="My Agents:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-12" value="My Agents:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="117.5" y="171" width="70" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-17" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shadow=0;dashed=0;strokeWidth=1;shape=mxgraph.android.quickscroll3;dy=0.5;fillColor=#33b5e5;strokeColor=#66D5F5;rotation=90;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-17" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shadow=0;dashed=0;strokeWidth=1;shape=mxgraph.android.quickscroll3;dy=0.5;fillColor=#33b5e5;strokeColor=#66D5F5;rotation=90;" parent="1" vertex="1">
           <mxGeometry x="380.5" y="66" width="6" height="520" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-19" value="" style="shape=cross;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-19" value="" style="shape=cross;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="610.5" y="175" width="20" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="A7pxehO7BnMPWpYIlLSW-20" value="System Stauts" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="A7pxehO7BnMPWpYIlLSW-20" value="System Stauts" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="120" y="80" width="520" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="38aqMLvnZxr78S6UhFXi-2" value="" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="38aqMLvnZxr78S6UhFXi-2" value="" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="127.5" y="740" width="497" height="240" as="geometry" />
         </mxCell>
-        <mxCell id="38aqMLvnZxr78S6UhFXi-3" value="Agent Detials:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+        <mxCell id="38aqMLvnZxr78S6UhFXi-3" value="Agent Detials:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="298.5" y="750" width="139" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="38aqMLvnZxr78S6UhFXi-4" value="My Knowledge Base:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+        <mxCell id="38aqMLvnZxr78S6UhFXi-4" value="My Knowledge Base:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="117.5" y="330" width="132.5" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="38aqMLvnZxr78S6UhFXi-6" value="Logs/Command Line" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+        <mxCell id="38aqMLvnZxr78S6UhFXi-6" value="Logs/Command Line" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="117.5" y="570" width="122.5" height="30" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="x4dUm2vkSZsrNgmtw8U3" name="Devices">
-    <mxGraphModel dx="2286" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2060" dy="1183" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="nG_j26PwBAeOLUIgazIM-1" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.rect;fillColor2=none;strokeWidth=1;size=20;indent=5;" vertex="1" parent="1">
+        <mxCell id="nG_j26PwBAeOLUIgazIM-1" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.rect;fillColor2=none;strokeWidth=1;size=20;indent=5;" parent="1" vertex="1">
           <mxGeometry x="130" y="80" width="565" height="580" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="5KzlG5ec7zi2r4DX32yK" name="AIGC">
-    <mxGraphModel dx="2286" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2060" dy="1183" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -140,10 +175,149 @@
     </mxGraphModel>
   </diagram>
   <diagram id="qqyI6l9TxLyHAeHWymlS" name="AI Store">
-    <mxGraphModel dx="2286" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2060" dy="1183" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="Ciim1NHN4Naa5ApvUPtR" name="Installer">
+    <mxGraphModel dx="2060" dy="1183" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="FmPABlgk4qzodYUfAUSF-2" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="140" y="30" width="600" height="430" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-3" value="myai folder:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="150" y="230" width="90" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-4" value="Line 1" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.text.textBox;fontColor=#666666;align=left;fontSize=17;spacingLeft=4;spacingTop=-3;whiteSpace=wrap;strokeColor=#666666;mainText=" vertex="1" parent="1">
+          <mxGeometry x="240" y="230" width="390" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-5" value="Choose" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.buttons.button;strokeColor=#666666;fontColor=#ffffff;mainText=;buttonStyle=round;fontSize=17;fontStyle=1;fillColor=#008cff;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="640" y="225" width="70" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-7" value="Install OpenDAN Desktop" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.buttons.button;strokeColor=#666666;fontColor=#ffffff;mainText=;buttonStyle=round;fontSize=17;fontStyle=1;fillColor=#008cff;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="310" y="320" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-8" value="Welcome to OpenDAN,Your personal AIOS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="315" y="80" width="230" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-9" value="Agree OpenDAN Desktop User Agreements" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.forms.rrect;rSize=0;fillColor=#eeeeee;strokeColor=#999999;gradientColor=#cccccc;align=left;spacingLeft=4;fontSize=17;fontColor=#666666;labelPosition=right;" vertex="1" parent="1">
+          <mxGeometry x="240" y="280" width="15" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-12" value="OpenDAN Desktop version -.5.2, build 2023-11-21&lt;br&gt;copyright, opendan.ai" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="292.5" y="400" width="285" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-13" value="OpenDAN Repo" style="shape=rectangle;strokeColor=none;fillColor=none;linkText=;fontSize=17;fontColor=#0000ff;fontStyle=4;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="230" y="195" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-14" value="OpenDAN DAO Page" style="shape=rectangle;strokeColor=none;fillColor=none;linkText=;fontSize=17;fontColor=#0000ff;fontStyle=4;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="390" y="195" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-15" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="135" y="490" width="600" height="430" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-16" value="It was detected that you have installed OpenDan desktop, &lt;br&gt;You Want:" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="170" y="520" width="540" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-18" value="Upgrade to lastest version (0.5.3)" style="shape=ellipse;fillColor=#eeeeee;strokeColor=#999999;gradientColor=#cccccc;html=1;align=left;spacingLeft=4;fontSize=17;fontColor=#666666;labelPosition=right;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="200" y="630" width="15" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-19" value="Installed: 0.5.2,build 2023-11-20" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="220" y="651" width="225" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-20" value="Uninstall OpenDAN Desktop" style="shape=ellipse;fillColor=#eeeeee;strokeColor=#999999;gradientColor=#cccccc;html=1;align=left;spacingLeft=4;fontSize=17;fontColor=#666666;labelPosition=right;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="200" y="697.5" width="15" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-21" value="Next &amp;gt;" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.buttons.button;strokeColor=#666666;fontColor=#ffffff;mainText=;buttonStyle=round;fontSize=17;fontStyle=1;fillColor=#008cff;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="560" y="830" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-22" value="End" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.buttons.button;strokeColor=#666666;fontColor=#ffffff;mainText=;buttonStyle=round;fontSize=17;fontStyle=1;fillColor=#008cff;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="395" y="830" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="FmPABlgk4qzodYUfAUSF-23" value="Open OpenDAN Dashboard" style="shape=ellipse;fillColor=#eeeeee;strokeColor=#999999;gradientColor=#cccccc;html=1;align=left;spacingLeft=4;fontSize=17;fontColor=#666666;labelPosition=right;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="200" y="770" width="15" height="15" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="9AFQ6fG7RFuY1HQPowbr" name="Page-8">
+    <mxGraphModel dx="2060" dy="1183" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="qMw550HFtHv31uHCh_Ot-1" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="125" y="50" width="600" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-3" value="Cancel" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.buttons.button;strokeColor=#666666;fontColor=#ffffff;mainText=;buttonStyle=round;fontSize=17;fontStyle=1;fillColor=#008cff;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="360" y="525" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-5" value="" style="verticalLabelPosition=bottom;shadow=0;dashed=0;align=center;html=1;verticalAlign=top;strokeWidth=1;shape=mxgraph.mockup.misc.loading_circle_2;pointerEvents=1" vertex="1" parent="1">
+          <mxGeometry x="370" y="130" width="90" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-6" value="OpenDan is under installation:" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="325" y="80" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-7" value="Downloading Docker Desktop..." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="325" y="240" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-8" value="&lt;div&gt;pull paios/aios:latest&lt;/div&gt;&lt;div&gt;latest: Pulling from paios/aios&lt;/div&gt;&lt;div&gt;167b8a53ca45: Pull complete&lt;/div&gt;&lt;div&gt;b47a222d28fa: Pull complete&lt;/div&gt;&lt;div&gt;debce5f9f3a9: Pull complete&lt;/div&gt;&lt;div&gt;1d7ca7cd2e06: Pull complete&lt;/div&gt;&lt;div&gt;ff3119008f58: Pull complete&lt;/div&gt;&lt;div&gt;e8095daf0d45: Pull complete&lt;/div&gt;&lt;div&gt;b4b0db24b9ac: Pull complete&lt;/div&gt;&lt;div&gt;523ae3638d56: Pull complete&lt;/div&gt;&lt;div&gt;f2ca933e415e: Pull complete&lt;/div&gt;&lt;div&gt;de960695cab1: Pull complete&lt;/div&gt;&lt;div&gt;38ecf7d7393e: Pull complete&lt;/div&gt;&lt;div&gt;8e5a02f4b43c: Pull complete&lt;/div&gt;&lt;div&gt;d7342576c4f6: Pull complete&lt;/div&gt;&lt;div&gt;a8d55de6e218: Pull complete&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="text;spacingTop=-5;whiteSpace=wrap;html=1;align=left;fontSize=12;fontFamily=Helvetica;fillColor=none;strokeColor=none;shadow=0;glass=0;portConstraintRotation=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="280" width="510" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-9" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="125" y="630" width="600" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-10" value="Open Dashboard(5)" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.buttons.button;strokeColor=#666666;fontColor=#ffffff;mainText=;buttonStyle=round;fontSize=17;fontStyle=1;fillColor=#008cff;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="335" y="870" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-13" value="Successful installation!" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="330" y="650" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-15" value="" style="verticalLabelPosition=bottom;verticalAlign=top;html=1;shape=mxgraph.basic.tick;fillColor=#66FF66;" vertex="1" parent="1">
+          <mxGeometry x="376" y="690" width="98" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-16" value="OpenDAN&amp;nbsp; is running on your Computer" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="283" y="830" width="264" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-22" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="125" y="990" width="600" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-23" value="Close" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.buttons.button;strokeColor=#666666;fontColor=#ffffff;mainText=;buttonStyle=round;fontSize=17;fontStyle=1;fillColor=#008cff;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="355" y="1480" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-25" value="Installation failed" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#ff0a0a;" vertex="1" parent="1">
+          <mxGeometry x="325" y="1020" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-26" value="Download Docker Desktop failed!" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="330" y="1180" width="180" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-27" value="&lt;div&gt;pull paios/aios:latest&lt;/div&gt;&lt;div&gt;latest: Pulling from paios/aios&lt;/div&gt;&lt;div&gt;167b8a53ca45: Pull complete&lt;/div&gt;&lt;div&gt;b47a222d28fa: Pull complete&lt;/div&gt;&lt;div&gt;debce5f9f3a9: Pull complete&lt;/div&gt;&lt;div&gt;1d7ca7cd2e06: Pull complete&lt;/div&gt;&lt;div&gt;ff3119008f58: Pull complete&lt;/div&gt;&lt;div&gt;e8095daf0d45: Pull complete&lt;/div&gt;&lt;div&gt;b4b0db24b9ac: Pull complete&lt;/div&gt;&lt;div&gt;523ae3638d56: Pull complete&lt;/div&gt;&lt;div&gt;f2ca933e415e: Pull complete&lt;/div&gt;&lt;div&gt;de960695cab1: Pull complete&lt;/div&gt;&lt;div&gt;38ecf7d7393e: Pull complete&lt;/div&gt;&lt;div&gt;8e5a02f4b43c: Pull complete&lt;/div&gt;&lt;div&gt;d7342576c4f6: Pull complete&lt;/div&gt;&lt;div&gt;a8d55de6e218: Pull complete&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="text;spacingTop=-5;whiteSpace=wrap;html=1;align=left;fontSize=12;fontFamily=Helvetica;fillColor=none;strokeColor=none;shadow=0;glass=0;portConstraintRotation=0;container=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="1220" width="510" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-29" value="" style="shadow=0;dashed=0;html=1;strokeColor=none;fillColor=#EF8F21;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.veeam.failed;" vertex="1" parent="1">
+          <mxGeometry x="365" y="1060" width="100" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-30" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="125" y="1570" width="600" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-31" value="Uninstall" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.buttons.button;strokeColor=#666666;fontColor=#ffffff;mainText=;buttonStyle=round;fontSize=17;fontStyle=1;fillColor=#008cff;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="325" y="1815" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-32" value="Are you sure you want to uninstall the OpenDan desktop?" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="250" y="1590" width="380" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-35" value="" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;strokeWidth=2;shape=mxgraph.lean_mapping.inventory_box;" vertex="1" parent="1">
+          <mxGeometry x="376" y="1640" width="100" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-37" value="Keep my personal data" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.forms.rrect;rSize=0;fillColor=#eeeeee;strokeColor=#999999;gradientColor=#cccccc;align=left;spacingLeft=4;fontSize=17;fontColor=#666666;labelPosition=right;" vertex="1" parent="1">
+          <mxGeometry x="325" y="1780" width="15" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="qMw550HFtHv31uHCh_Ot-40" value="Note: The docker service will not be unloaded" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="236.5" y="1865" width="367" height="30" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
