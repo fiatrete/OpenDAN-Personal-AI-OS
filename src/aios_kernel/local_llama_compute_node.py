@@ -113,11 +113,26 @@ class LocalLlama_ComputeNode(Queue_ComputeNode):
         llm_inner_functions = task.params.get("inner_functions")
         if max_token_size is None:
             max_token_size = max_token_size
-            
+
         body = {
             "messages": [],
+            "functions": llm_inner_functions,
+            "tools": [],
+            "tool_choices": [],
             "max_tokens": 4000
         }
+
+        for fun in llm_inner_functions:
+            body["tools"].append({
+                "type": "function",
+                "function": fun,
+            })
+            body["tool_choices"].append({
+                "type": "function",
+                "function": {
+                    "name": fun["name"]
+                }
+            })
 
         for prompt in prompts:
             body["messages"].append({
@@ -126,6 +141,8 @@ class LocalLlama_ComputeNode(Queue_ComputeNode):
             })
         
         try:
+            logger.info(f"will post http request to {self.url}/v1/chat/completions, body: {body}")
+
             response = requests.post(self.url + "/v1/chat/completions", json = body, verify=False, headers={"Content-Type": "application/json"})
             response.close()
 
@@ -138,8 +155,12 @@ class LocalLlama_ComputeNode(Queue_ComputeNode):
                 token_usage = resp["usage"]
 
                 match status_code:
-                    case "function_call":
+                    case "tool_calls":
                         task.state = ComputeTaskState.DONE
+                        # rebuild the function name
+                        fun_name = resp["choices"][0]["message"]["function_call"]["name"]
+                        if len(llm_inner_functions) == 1 and (fun_name is None or fun_name == ""):
+                            resp["choices"][0]["message"]["function_call"]["name"] = llm_inner_functions[0]["name"]
                     case "stop":
                         task.state = ComputeTaskState.DONE
                     case _:
