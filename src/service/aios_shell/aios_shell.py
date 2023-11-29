@@ -20,7 +20,7 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
-from aios_kernel.openai_tts_node import OpenAITTSComputeNode
+
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
@@ -32,6 +32,7 @@ sys.path.append(directory + '/../../')
 import proxy
 from aios_kernel import *
 from knowledge import *
+
 
 
 sys.path.append(directory + '/../../component/')

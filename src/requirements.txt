@@ -150,3 +150,4 @@ mysqlclient
 psycopg2-binary
 pyodbc
 oracledb
+html2text

@@ -4,8 +4,6 @@ import logging
 import os
 from asyncio import Queue
 
-from openai import AsyncOpenAI
-
 from aios_kernel import ComputeNode, ComputeTask, ComputeTaskState, ComputeTaskResult, ComputeTaskType, AIStorage
 
 logger = logging.getLogger(__name__)
