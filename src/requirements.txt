@@ -145,3 +145,8 @@ webvtt-py==0.4.6
 docker
 generic_escape
 duckduckgo-search
+SQLAlchemy
+mysqlclient
+psycopg2-binary
+pyodbc
+oracledb
