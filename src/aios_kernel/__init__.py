@@ -27,6 +27,7 @@ from .compute_node_config import ComputeNodeConfig
 from .ai_function import SimpleAIFunction
 from .workspace_env import WorkspaceEnvironment
 from .openai_tts_node import OpenAITTSComputeNode   
+from .dall_e_compute_node import DallE_ComputeNode
 
 AIOS_Version = "0.5.2, build 2023-11-29"
 
