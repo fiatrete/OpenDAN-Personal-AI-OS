@@ -81,15 +81,6 @@ class CalenderEnvironment(Environment):
                                         self._update_event,update_param))
 
 
-        #maybe this function should be in other env?
-        paint_param = {
-            "prompt": "A description of the content of the painting",
-            "model_name": "Which model to use to draw the picture, can be None"
-        }
-        self.add_ai_function(SimpleAIFunction("paint",
-                                        "Draw a picture according to the description",
-                                        self._paint,paint_param))
-
         self.add_ai_function(SimpleAIFunction("get_contact",
                                         "get contact info",
                                         self._get_contact,{"name":"name of contact"}))
@@ -317,12 +308,10 @@ class PaintEnvironment(Environment):
         self.is_run = False
 
         paint_param = {
-            "prompt": "Keywords of the content of the painting",
-            "model_name": "Which model to use to draw the picture, can be None",
-            "negative_prompt": "Keywords that describe what is not to be drawn, can be None"
+            "prompt": "Description of the content of the painting",
         }
         self.add_ai_function(SimpleAIFunction("paint",
-                                        "Draw a picture according to the keywords",
+                                        "Draw a picture according to the description",
                                         self._paint,paint_param))
 
     def _do_get_value(self,key:str) -> Optional[str]:
