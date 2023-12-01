@@ -22,7 +22,7 @@ class LocalEmail:
                 if latest_journal.is_finish():
                     yield None
                     continue
-                parsed = str(latest_journal.get_object_id())
+                parsed = latest_journal.get_input()
             
             mail_id = self.mail_storage.next_mail_id(parsed)
             if mail_id is None:

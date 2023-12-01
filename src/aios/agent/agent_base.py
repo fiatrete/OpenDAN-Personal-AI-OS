@@ -56,16 +56,6 @@ class AgentPrompt:
 
         self.messages.extend(prompt.messages)
 
-    def get_prompt_token_len(self):
-        result = 0
-
-        if self.system_message:
-            result += len(self.system_message.get("content"))
-        for msg in self.messages:
-            result += len(msg.get("content"))
-
-        return result
-
     def load_from_config(self,config:list) -> bool:
         if isinstance(config,list) is not True:
             logger.error("prompt is not list!")
@@ -245,8 +235,9 @@ class AgentTodo:
     TODO_STATE_EXEC_FAILED = "exec_failed"
     TDDO_STATE_CHECKFAILED = "check_failed"
 
-    TODO_STATE_CASNCEL = "cancel"
+    TODO_STATE_CANCEL = "cancel"
     TODO_STATE_DONE = "done"
+    TODO_STATE_REVIEWED = "reviewed"
     TODO_STATE_EXPIRED = "expired"
 
     def __init__(self):
@@ -341,6 +332,23 @@ class AgentTodo:
         result["retry_count"] = self.retry_count
 
         return result
+    
+    def to_prompt(self) -> AgentPrompt:
+        json_str = json.dumps(self.raw_obj)
+        return AgentPrompt(json_str)
+        
+    def can_review(self) -> bool:
+        if self.state != AgentTodo.TODO_STATE_DONE:
+            return False
+
+        now = datetime.now().timestamp()
+        if self.last_review_time:
+            time_diff = now - self.last_review_time
+            if time_diff < 60*15:
+                logger.info(f"todo {self.title} is already reviewed, ignore")
+                return False
+
+        return True
 
     def can_check(self)->bool:
         if self.state != AgentTodo.TODO_STATE_WAITING_CHECK:
@@ -410,9 +418,18 @@ class BaseAIAgent(abc.ABC):
     def get_max_token_size(self) -> int:
         pass
 
-    @abstractmethod
-    async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
-        pass
+    def token_len(self, text:str=None, prompt:AgentPrompt=None) -> int:
+        from .compute_kernel import ComputeKernel 
+        if text:
+            return ComputeKernel.llm_num_tokens_from_text(text,self.get_llm_model_name())
+        elif prompt:
+            result = 0
+            if prompt.system_message:
+                result += ComputeKernel.llm_num_tokens_from_text(prompt.system_message.get("content"),self.get_llm_model_name())
+            for msg in prompt.messages:
+                result += ComputeKernel.llm_num_tokens_from_text(msg.get("content"),self.get_llm_model_name())
+        else:
+            return 0
 
     @classmethod
     def get_inner_functions(cls, env:Environment) -> (dict,int):

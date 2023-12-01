@@ -1,9 +1,13 @@
 import os
 import logging
 import json
+import string
 import imaplib
 import mailparser
-from aios import *
+
+from knowledge import *
+from aios_kernel.storage import AIStorage
+from .mail import Mail, MailStorage
 
 
 class EmailSpider:
@@ -16,14 +20,22 @@ class EmailSpider:
             port=self.config.get('imap_port')
         )
         self.client.login(self.config.get('address'), self.config.get('password'))
-        self.mail_local_root = os.path.join(self.env.pipeline_path, self.config.get("address"))
-        os.makedirs(self.mail_local_root)
+        self.client.select("INBOX")
+        local_path = string.Template(config["path"]).substitute(myai_dir=AIStorage.get_instance().get_myai_dir())
+        local_path = os.path.join(local_path, self.config.get('address'))
+        self.mail_storage = MailStorage(local_path)
+       
 
     async def next(self):
         while True:
-            _, data = self.client.uid('search', None, "ALL")
+            try:
+                _, data = self.client.uid('search', None, "ALL")
+            except Exception as e:
+                self.env.get_logger().error(f"email spider error: {e}")
+                yield (None, None)
+                continue
             uid_list = data[0].split()
-            if uid_list.len() == 0:
+            if len(uid_list) == 0:
                 yield (None, None)
                 continue
             
@@ -43,9 +55,16 @@ class EmailSpider:
                 _uid = int.from_bytes(uid)
                 if _uid > from_uid:
                     message_parts = "(BODY.PEEK[])"
-                    _, email_data = self.client.uid('fetch', uid, message_parts)
-                    mail = mailparser.parse_from_bytes(email_data[0][1])
-                    self.save_email(_uid, mail)
+                    try:
+                        _, email_data = self.client.uid('fetch', uid, message_parts)
+                        mail = mailparser.parse_from_bytes(email_data[0][1])
+                        id = self.mail_storage.download(_uid, mail)
+                    except Exception as e:
+                        self.env.get_logger().error(f"email spider error: {e}")
+                        yield (None, None)
+                        break
+                    yield (ObjectID.from_base58(id), str(_uid))
+                   
 
             yield (None, None)
 

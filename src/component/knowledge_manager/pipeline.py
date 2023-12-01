@@ -44,14 +44,19 @@ class KnowledgePipelineManager:
             input_init = self.input_modules.get(input_module)
         input_params = config["input"].get("params")
 
-        parser_module = config["parser"]["module"]
-        _, ext = os.path.splitext(parser_module)
-        if ext == ".py":
-            parser_module = os.path.join(path, parser_module)
-            parser_init = runpy.run_path(parser_module)["init"]
+        parser_config = config.get("parser")
+        if parser_config is None:
+            parser_init = None
+            parser_params = None
         else:
-            parser_init = self.parser_modules.get(parser_module)
-        parser_params = config["parser"].get("params")
+            parser_module = parser_config["module"]
+            _, ext = os.path.splitext(parser_module)
+            if ext == ".py":
+                parser_module = os.path.join(path, parser_module)
+                parser_init = runpy.run_path(parser_module)["init"]
+            else:
+                parser_init = self.parser_modules.get(parser_module)
+            parser_params = parser_config.get("params")
 
 
         data_path = os.path.join(self.root_dir, name)

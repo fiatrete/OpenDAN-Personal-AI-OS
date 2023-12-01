@@ -96,7 +96,7 @@ class EmbeddingParser:
     async def parse(self, object: ObjectID) -> str:
         obj = self.env.get_knowledge_store().load_object(object)
         await self.__do_embedding(obj)
-        return "insert into vector store"
+        return str(object)
 
 def init(env: KnowledgePipelineEnvironment, params: dict) -> EmbeddingParser:
     return EmbeddingParser(env, params)

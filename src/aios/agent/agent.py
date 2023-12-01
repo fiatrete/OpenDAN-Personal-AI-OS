@@ -18,6 +18,7 @@ from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode
 from .agent_base import *
 from .chatsession import *
 from .ai_function import *
+from ..environment.workspace_env import WorkspaceEnvironment, TodoListType
 
 from ..frame.contact_manager import ContactManager,Contact,FamilyMember
 from ..frame.compute_kernel import ComputeKernel
@@ -145,17 +146,22 @@ class AIAgent(BaseAIAgent):
         self.contact_prompt_str = None
         self.history_len = 10
 
-        self.review_todo_prompt = None
-
         self.read_report_prompt = None
 
-        self.do_prompt = None
-        self.check_prompt = None
-
-        self.goal_to_todo_prompt = None
+        todo_prompts = {}
+        todo_prompts[TodoListType.TO_WORK] = {
+            "do": DEFAULT_AGENT_DO_PROMPT,
+            "check": DEFAULT_AGENT_SELF_CHECK_PROMPT,
+            "review": None,
+        }
+        todo_prompts[TodoListType.TO_LEARN] = {
+            "do": DEFAULT_AGENT_LEARN_PROMPT,
+            "check": None,
+            "review": None,
+        }
+        self.todo_prompts = todo_prompts
 
         self.learn_token_limit = 4000
-        self.learn_prompt = AgentPrompt(DEFAULT_AGENT_LEARN_PROMPT)
 
         self.chat_db = None
         self.unread_msg = Queue() # msg from other agent
@@ -163,19 +169,18 @@ class AIAgent(BaseAIAgent):
         self.owenr_bus = None
         self.enable_function_list = None
 
-
-    @classmethod
-    def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
-        # Agent just inherit from templete on craete,if template changed,agent will not change
-        result_agent = AIAgent()
-        result_agent.llm_model_name = templete.llm_model_name
-        result_agent.max_token_size = templete.max_token_size
-        result_agent.template_id = templete.template_id
-        result_agent.agent_id = "agent#" + uuid.uuid4().hex
-        result_agent.fullname = fullname
-        result_agent.powerby = templete.author
-        result_agent.agent_prompt = templete.prompt
-        return result_agent
+    # @classmethod
+    # def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
+    #     # Agent just inherit from templete on craete,if template changed,agent will not change
+    #     result_agent = AIAgent()
+    #     result_agent.llm_model_name = templete.llm_model_name
+    #     result_agent.max_token_size = templete.max_token_size
+    #     result_agent.template_id = templete.template_id
+    #     result_agent.agent_id = "agent#" + uuid.uuid4().hex
+    #     result_agent.fullname = fullname
+    #     result_agent.powerby = templete.author
+    #     result_agent.agent_prompt = templete.prompt
+    #     return result_agent
 
     def load_from_config(self,config:dict) -> bool:
         if config.get("instance_id") is None:
@@ -200,11 +205,25 @@ class AIAgent(BaseAIAgent):
             self.agent_think_prompt = AgentPrompt()
             self.agent_think_prompt.load_from_config(config["think_prompt"])
 
-        if config.get("do_prompt") is not None:
-            self.do_prompt = AgentPrompt()
-            self.do_prompt.load_from_config(config["do_prompt"])
-            self.wake_up()
-
+        def load_todo_config(todo_type:str) -> bool:
+            todo_config = config.get(todo_type)
+            if todo_config is not None:
+                if todo_config.get("do") is not None:
+                    prompt = AgentPrompt()
+                    prompt.load_from_config(todo_config["do"])
+                    self.todo_prompts[todo_type]["do"] = prompt
+                if todo_config.get("check") is not None:
+                    prompt = AgentPrompt()
+                    prompt.load_from_config(todo_config["check"])
+                    self.todo_prompts[todo_type]["check"] = prompt
+                if todo_config.get("review_prompt") is not None:
+                    prompt = AgentPrompt()
+                    prompt.load_from_config(todo_config["review_prompt"])
+                    self.todo_prompts[todo_type]["review"] = prompt
+        
+        load_todo_config(TodoListType.TO_WORK)
+        load_todo_config(TodoListType.TO_LEARN)
+        
         if config.get("guest_prompt") is not None:
             self.guest_prompt_str = config["guest_prompt"]
 
@@ -234,6 +253,9 @@ class AIAgent(BaseAIAgent):
             self.enable_timestamp = bool(config["enable_timestamp"])
         if config.get("history_len"):
             self.history_len = int(config.get("history_len"))
+
+        self.wake_up()
+
         return True
 
     def get_id(self) -> str:
@@ -372,7 +394,7 @@ class AIAgent(BaseAIAgent):
     #         self._format_msg_by_env_value(prompt)
     #         inner_functions,function_token_len = self._get_inner_functions()
 
-    #         system_prompt_len = prompt.get_prompt_token_len()
+    #         system_prompt_len = self.token_len(prompt=prompt)
     #         input_len = len(msg.body)
 
     #         history_prmpt,history_token_len = await self._get_prompt_from_session_for_groupchat(chatsession,system_prompt_len + function_token_len,input_len)
@@ -411,10 +433,10 @@ class AIAgent(BaseAIAgent):
     #             resp_msg = msg.create_group_resp_msg(self.agent_id,final_result)
     #             chatsession.append(msg)
     #             chatsession.append(resp_msg)
-
     #             return resp_msg
-
     #         return None
+
+
     def get_workspace_by_msg(self,msg:AgentMsg) -> WorkspaceEnvironment:
         return self.agent_workspace
 
@@ -528,7 +550,7 @@ class AIAgent(BaseAIAgent):
             have_known_info = True
             known_info_str += f"## todo\n{todos_str}\n"
         inner_functions,function_token_len = BaseAIAgent.get_inner_functions(self.owner_env)
-        system_prompt_len = prompt.get_prompt_token_len()
+        system_prompt_len = self.token_len(prompt=prompt)
         input_len = len(msg.body)
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
             history_str,history_token_len = await self._get_prompt_from_session_for_groupchat(chatsession,system_prompt_len + function_token_len,input_len)
@@ -600,9 +622,7 @@ class AIAgent(BaseAIAgent):
         return None
 
 
-
     async def _get_history_prompt_for_think(self,chatsession:AIChatSession,summary:str,system_token_len:int,pos:int)->(AgentPrompt,int):
-
         history_len = (self.max_token_size * 0.7) - system_token_len
 
         messages = chatsession.read_history(self.history_len,pos,"natural") # read
@@ -716,9 +736,7 @@ class AIAgent(BaseAIAgent):
 
         worksapce.set_work_summary(self.agent_id,task_result.result_str)
 
-
-    # 尝试完成自己的TOOD （不依赖任何其他Agnet）
-    async def do_my_work(self) -> None:
+    async def _llm_run_todo_list(self, todo_list_type: TodoListType):
         workspace : WorkspaceEnvironment = self.get_workspace_by_msg(None)
         logger.info(f"agent {self.agent_id} do my work start!")
 
@@ -726,134 +744,154 @@ class AIAgent(BaseAIAgent):
         #if await self.need_review_todolist():
         #    await self._llm_review_todolist(workspace)
 
-        todo_list = await workspace.get_todo_list(self.agent_id)
+        todo_list = workspace.todo_list[todo_list_type]
+        need_todo = todo_list.get_todo_list(self.agent_id)
+        
         check_count = 0
         do_count = 0
+        review_count = 0
 
-        for todo in todo_list:
+        for todo in need_todo:
             if self.agent_energy <= 0:
                 break
+            
+            do_prompts = self._can_do_todo(todo_list_type, todo)
+            if do_prompts:
+                prompt : AgentPrompt = AgentPrompt()
+                prompt.append(self.agent_prompt)
+                prompt.append(workspace.get_role_prompt(self.agent_id))
+                prompt.append(do_prompts)
+                prompt.append(todo.to_prompt())
+                
+                do_result : AgentTodoResult = await self._llm_do_todo(todo, prompt, workspace)
+                todo.last_do_time = datetime.datetime.now().timestamp()
+                todo.retry_count += 1
+               
+                match do_result.result_code:
+                    case AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR:
+                        continue
+                    case AgentTodoResult.TODO_RESULT_CODE_OK:
+                        await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_WAITING_CHECK)
+                    case AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR:
+                        await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_EXEC_FAILED)
 
-            if await self.need_review_todo(todo,workspace):
-                review_result = await self._llm_review_todo(todo,workspace)
-                todo.last_review_time = datetime.datetime.now().timestamp()
+                await todo_list.append_worklog(todo,do_result)
+                self.agent_energy -= 2
+                do_count += 1
+                
+                # review_result = await self._llm_review_todo(todo,workspace)
+                # todo.last_review_time = datetime.datetime.now().timestamp()
+                continue
 
-            elif await self.can_check(todo,workspace):
-                check_result : AgentTodoResult = await self._llm_check_todo(todo,workspace)
+            check_prompts = self._can_check_todo(todo_list_type, todo)
+            if check_prompts:
+                prompt : AgentPrompt = AgentPrompt()
+                prompt.append(self.agent_prompt)
+                prompt.append(workspace.get_role_prompt(self.agent_id))
+                prompt.append(check_prompts)
+
+                if todo.last_check_result:
+                    prompt.append(AgentPrompt(todo.last_check_result))
+
+                prompt.append(todo.detail)
+                prompt.append(todo.result)
+
+                check_result: AgentTodoResult = await self._llm_check_todo(todo, prompt, workspace)
                 todo.last_check_time = datetime.datetime.now().timestamp()
 
                 match check_result.result_code:
                     case AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR:
                         continue
                     case AgentTodoResult.TODO_RESULT_CODE_OK:
-                        await workspace.update_todo(todo.todo_id,AgentTodo.TODO_STATE_DONE)
+                        await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_DONE)
                     case AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR:
-                        await workspace.update_todo(todo.todo_id,AgentTodo.TDDO_STATE_CHECKFAILED)
+                        await todo_list.update_todo(todo.todo_id,AgentTodo.TDDO_STATE_CHECKFAILED)
 
-                await workspace.append_worklog(todo,check_result)
+                await todo_list.append_worklog(todo, check_result)
                 self.agent_energy -= 1
                 check_count += 1
-            elif await self.can_do(todo,workspace):
-                do_result : AgentTodoResult = await self._llm_do(todo,workspace)
-                todo.last_do_time = datetime.datetime.now().timestamp()
-                todo.retry_count += 1
+                continue
+            
+            review_prompts = self._can_review_todo(todo_list_type, todo)
+            if review_prompts:
+                prompt.append(workspace.get_prompt())
+                prompt.append(workspace.get_role_prompt(self.agent_id))
+                prompt.append(review_prompts)
+
+                todo_tree = todo_list.get_todo_tree("/")
+                prompt.append(AgentPrompt(todo_tree))
+
+                do_result : AgentTodoResult = await self._llm_review_todo(todo, prompt, workspace)
+                todo.last_review_time = datetime.datetime.now().timestamp()
 
                 match do_result.result_code:
                     case AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR:
                         continue
-                    case AgentTodoResult.TODO_RESULT_CODE_OK:
-                        await workspace.update_todo(todo.todo_id,AgentTodo.TODO_STATE_WAITING_CHECK)
                     case AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR:
-                        await workspace.update_todo(todo.todo_id,AgentTodo.TODO_STATE_EXEC_FAILED)
+                        continue
+                    case AgentTodoResult.TODO_RESULT_CODE_OK:
+                        await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_REVIEWED)
 
-                await workspace.append_worklog(todo,do_result)
-                self.agent_energy -= 2
-                do_count += 1
+                await todo_list.append_worklog(todo,do_result)
+                self.agent_energy -= 1
+                review_count += 1
+                continue
 
         logger.info(f"agent {self.agent_id} ,check:{check_count} todo,do:{do_count} todo.")
+    
+   
+    def _can_review_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> AgentPrompt:
+        do_prompts = self.todo_prompts[todo_list_type].get("review")
+        if not do_prompts:
+            return None
 
-    def get_review_todo_prompt(self,todo:AgentTodo) -> AgentPrompt:
-        return self.review_todo_prompt
+        if todo.can_review() is False:
+            return None
 
-    async def _llm_review_todo(self,todo:AgentTodo,workspace:WorkspaceEnvironment):
-        prompt = AgentPrompt()
+        return do_prompts
+        
 
-        prompt.append(workspace.get_prompt())
-        prompt.append(workspace.get_role_prompt(self.agent_id))
-        prompt.append(self.get_review_todo_prompt(todo))
-
-        todo_tree = workspace.get_todo_tree("/")
-        prompt.append(AgentPrompt(todo_tree))
-        inner_functions,_ = BaseAIAgent.get_inner_functions(self.owner_env)
-
-        task_result:ComputeTaskResult = await self.do_llm_complection(prompt,inner_functions=inner_functions)
-        if task_result.result_code != ComputeTaskResultCode.OK:
-            logger.error(f"_llm_review_todos compute error:{task_result.error_str}")
-            return
-
-        return
-
-    def get_do_prompt(self,todo:AgentTodo) -> AgentPrompt:
-        return self.do_prompt
-
-    def get_prompt_from_todo(self,todo:AgentTodo) -> AgentPrompt:
-        json_str = json.dumps(todo.raw_obj)
-        return AgentPrompt(json_str)
-
-    async def need_review_todo(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> bool:
-        return False
-
-    async def can_check(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> bool:
-        if self.get_check_prompt(todo) is None:
-            return False
+    def _can_check_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> AgentPrompt:
+        do_prompts = self.todo_prompts[todo_list_type].get("check")
+        if not do_prompts:
+            return None
 
         if todo.can_check() is False:
-            return False
+            return None
 
         if todo.checker is not None:
             if todo.checker != self.agent_id:
-                return False
+                return None
         else:
             if self.can_do_unassigned_task is False:
-                return False
+                return None
             else:
                 todo.checker = self.agent_id
 
-        return True
+        return do_prompts
 
-    async def can_do(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> bool:
+    async def _can_do_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> AgentPrompt:
+        do_prompts = self.todo_prompts[todo_list_type].get("do")
+        if not do_prompts:
+            return None
+        
         if todo.can_do() is False:
-            return False
+            return None
 
         if todo.worker is not None:
             if todo.worker != self.agent_id:
-                return False
+                return None
         else:
             if self.can_do_unassigned_task is False:
-                return False
+                return None
             else:
                 todo.worker = self.agent_id
 
-        return True
+        return do_prompts
 
-    async def _llm_do(self,todo:AgentTodo,workspace:WorkspaceEnvironment) -> AgentTodoResult:
+    async def _llm_do_todo(self, todo: AgentTodo, prompt: AgentPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
         result = AgentTodoResult()
-        prompt : AgentPrompt = AgentPrompt()
-        #prompt.append(self.agent_prompt)
-        prompt.append(workspace.get_role_prompt(self.agent_id))
-
-        do_prompt = workspace.get_do_prompt(todo)
-        if do_prompt is None:
-            do_prompt = self.get_do_prompt(todo)
-
-        prompt.append(do_prompt)
-
-        # There are general methods for executing todos, as well as customized ones that are more efficient for specific types of TODOS.
-        # Based on experience, an Agent can autonomously master/organize execution methods for a greater variety of TODO types.
-
-        #prompt.append(work_log_prompt)
-        prompt.append(self.get_prompt_from_todo(todo))
-
+        
         task_result:ComputeTaskResult = await self.do_llm_complection(prompt)
         if task_result.error_str is not None:
             logger.error(f"_llm_do compute error:{task_result.error_str}")
@@ -875,7 +913,7 @@ class AIAgent(BaseAIAgent):
                 resp = await AIBus.get_default_bus().post_message(msg)
                 logging.info(f"agent {self.agent_id} send msg to {msg.target} result:{resp}")
 
-        op_errors,have_error = await workspace.exec_op_list(llm_result.op_list,self.agent_id)
+        op_errors, have_error = await workspace.exec_op_list(llm_result.op_list, self.agent_id)
         if have_error:
             result.result_code = AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR
             #result.error_str = error_str
@@ -883,37 +921,30 @@ class AIAgent(BaseAIAgent):
 
         return result
 
-    async def append_toddo_result(self,todo,worksapce,llm_result,result_str):
-        pass
-
-    def get_check_prompt(self,todo:AgentTodo) -> AgentPrompt:
-        return self.check_prompt
-
-    async def _llm_check_todo(self, todo:AgentTodo,workspace:WorkspaceEnvironment) :
-        if self.get_check_prompt(todo) is None:
-            return None
-
-        prompt : AgentPrompt = AgentPrompt()
-        prompt.append(self.agent_prompt)
-        prompt.append(workspace.get_role_prompt(self.agent_id))
-        prompt.append(self.get_check_prompt(todo))
-        if todo.last_check_result:
-            prompt.append(AgentPrompt(todo.last_check_result))
-
-        prompt.append(todo.detail)
-        prompt.append(todo.result)
-
+    async def _llm_check_todo(self, todo: AgentTodo, prompt: AgentPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
+        result = AgentTodoResult()
+        
         inner_functions,_ = BaseAIAgent.get_inner_functions(workspace)
         task_result:ComputeTaskResult = await self.do_llm_complection(prompt,inner_functions=inner_functions,is_json_resp=True)
 
-        if task_result.result_code != ComputeTaskResultCode.OK:
-            logger.error(f"_llm_check_todo compute error:{task_result.error_str}")
-            return False
-
-        if task_result.result_str == "OK":
-            return True
+        if task_result.error_str is not None:
+            logger.error(f"_llm_do compute error:{task_result.error_str}")
+            result.result_code = AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR
+            result.error_str = task_result.error_str
+            return result
+        result.result_str = task_result.result_str
         todo.last_check_result = task_result.result_str
-        return False
+        return result
+    
+    async def _llm_review_todo(self, todo:AgentTodo, prompt: AgentPrompt, workspace: WorkspaceEnvironment):
+        inner_functions,_ = BaseAIAgent.get_inner_functions(self.owner_env)
+
+        task_result:ComputeTaskResult = await self.do_llm_complection(prompt,inner_functions=inner_functions)
+        if task_result.result_code != ComputeTaskResultCode.OK:
+            logger.error(f"_llm_review_todos compute error:{task_result.error_str}")
+            return
+
+        return
 
     # 尝试自我学习，会主动获取、读取资料并进行整理
     # LLM的本质能力是处理海量知识，应该让LLM能基于知识把自己的工作处理的更好
@@ -1121,15 +1152,14 @@ class AIAgent(BaseAIAgent):
             used_energy = await self.think_chatsession(session_id)
             self.agent_energy -= used_energy
 
-        todo_logs = await self.get_todo_logs()
-        for todo_log in todo_logs:
-            if self.agent_energy <= 0:
-                break
-            used_energy = await self.think_todo_log(todo_log)
-            self.agent_energy -= used_energy
+        # todo_logs = await self.get_todo_logs()
+        # for todo_log in todo_logs:
+        #     if self.agent_energy <= 0:
+        #         break
+        #     used_energy = await self.think_todo_log(todo_log)
+        #     self.agent_energy -= used_energy
 
         return
-
 
     async def think_todo_log(self,todo_log:AgentWorkLog):
         pass
@@ -1146,7 +1176,7 @@ class AIAgent(BaseAIAgent):
             prompt:AgentPrompt = AgentPrompt()
             #prompt.append(self._get_agent_prompt())
             prompt.append(await self._get_agent_think_prompt())
-            system_prompt_len = prompt.get_prompt_token_len()
+            system_prompt_len = self.token_len(prompt=prompt)
             #think env?
             history_prompt,next_pos = await self._get_history_prompt_for_think(chatsession,summary,system_prompt_len,cur_pos)
             prompt.append(history_prompt)
@@ -1220,11 +1250,7 @@ class AIAgent(BaseAIAgent):
     def need_self_think(self) -> bool:
         return False
 
-    def need_self_learn(self) -> bool:
-        if self.learn_prompt is not None:
-            return True
-        return False
-
+ 
     def wake_up(self) -> None:
         if self.agent_task is None:
             self.agent_task = asyncio.create_task(self._on_timer())
@@ -1248,25 +1274,19 @@ class AIAgent(BaseAIAgent):
                     continue
 
                 # complete & check todo
-                if self.need_work():
-                    await self.do_my_work()
+                await self._llm_run_todo_list(TodoListType.TO_WORK)
 
-                # review other's todo
-                # self.review_other_works()
-
+                await self._llm_run_todo_list(TodoListType.TO_LEARN)
+               
                 if self.need_self_think():
                     await self.do_self_think()
-
-                if self.need_self_learn():
-                    await self.do_self_learn()
-
+                
+                # review other's todo
+                # self.review_other_works()
             except Exception as e:
                 tb_str = traceback.format_exc()
                 logger.error(f"agent {self.agent_id} on timer error:{e},{tb_str}")
                 continue
-
-    def token_len(self,text:str) -> int:
-        return ComputeKernel.llm_num_tokens_from_text(text,self.get_llm_model_name())
 
 
 
