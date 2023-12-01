@@ -1,6 +1,6 @@
 import sys
 import os
-from knowledge import KnowledgePipelineEnvironment
+from aios import KnowledgePipelineEnvironment
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../../../src/component/')
 

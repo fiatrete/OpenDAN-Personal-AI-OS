@@ -6,9 +6,7 @@ import sys
 import runpy
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from aios_kernel import AIAgent,AIAgentTemplete,AIStorage,Environment
-from aios_kernel.agent_base import BaseAIAgent
-from package_manager import PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
+from aios import AIAgent,AIAgentTemplete,AIStorage,Environment,BaseAIAgent,PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
 
 logger = logging.getLogger(__name__)
 

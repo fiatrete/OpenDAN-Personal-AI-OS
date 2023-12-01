@@ -1,8 +1,7 @@
 # define a knowledge base class
 import json
 import string
-from aios_kernel import AIStorage, Environment, SimpleAIFunction, CustomAIAgent, AgentPrompt, AgentMsg
-from knowledge import *
+from aios import *
 from .mail import MailStorage, Mail
 
 class IssueState(Enum):

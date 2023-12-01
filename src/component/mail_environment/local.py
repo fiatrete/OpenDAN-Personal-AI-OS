@@ -2,8 +2,7 @@ import os
 import logging
 import json
 import string
-from knowledge import *
-from aios_kernel.storage import AIStorage
+from aios import *
 from .mail import Mail, MailStorage
 
 

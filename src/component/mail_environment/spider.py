@@ -3,8 +3,7 @@ import logging
 import json
 import imaplib
 import mailparser
-from knowledge import *
-from aios_kernel.storage import AIStorage
+from aios import *
 
 
 class EmailSpider:

@@ -11,7 +11,6 @@ from logging.handlers import RotatingFileHandler
 from typing import Any, Optional, TypeVar, Tuple, Sequence
 import argparse
 
-
 from prompt_toolkit import HTML, PromptSession, prompt,print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.selection import SelectionState
@@ -19,8 +18,6 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
-
-
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
@@ -30,15 +27,23 @@ sys.path.append(directory + '/../../')
 # os.environ['HTTPS_PROXY'] = '127.0.0.1:10809'
 
 import proxy
-from aios_kernel import *
-from knowledge import *
-
-
+from aios import *
 
 sys.path.append(directory + '/../../component/')
+
+from google_node import * 
+from llama_node import *
+from openai_node import *
+from sd_node import *
+from st_node import *
+
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
 from knowledge_manager import KnowledgePipelineManager
+from tg_tunnel import TelegramTunnel
+from email_tunnel import EmailTunnel
+
+from compute_node_config import *
 
 
 logger = logging.getLogger(__name__)

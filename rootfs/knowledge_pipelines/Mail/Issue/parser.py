@@ -1,6 +1,6 @@
 import sys
 import os
-from knowledge import *
+from aios import *
 directory = os.path.dirname(__file__)
 
 sys.path.append(directory + '/../../../../src/component/')

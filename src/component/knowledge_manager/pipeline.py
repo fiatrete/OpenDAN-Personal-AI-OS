@@ -2,7 +2,7 @@ import os
 import runpy
 import toml
 import asyncio
-from knowledge import KnowledgePipelineEnvironment, KnowledgePipeline
+from aios import KnowledgePipelineEnvironment, KnowledgePipeline
 
 
 class KnowledgePipelineManager:

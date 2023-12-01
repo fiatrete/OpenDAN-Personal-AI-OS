@@ -7,7 +7,7 @@ import datetime
 from bs4 import BeautifulSoup
 import sqlite3
 import html2text
-from knowledge import *
+from aios import *
 
 class Mail:
     def __init__(self, **kwargs) -> None:
