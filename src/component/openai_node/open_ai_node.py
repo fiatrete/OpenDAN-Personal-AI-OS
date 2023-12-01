@@ -11,6 +11,7 @@ import requests
 
 from aios import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType,ComputeTaskResultCode,ComputeNode,AIStorage,UserConfig
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,15 +93,19 @@ class OpenAI_ComputeNode(ComputeNode):
     def _image_2_text(self, task: ComputeTask):
         logger.info('openai image_2_text')
         # 本地图片处理
-        def encode_image(image_path):
-            with open(image_path, "rb") as image_file:
-                return base64.b64encode(image_file.read()).decode('utf-8')
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.openai_api_key }"
         }
         model_name = task.params["model_name"]
-        base64_image = encode_image(task.params["image_path"])
+        image_path = task.params["image_path"]
+
+        if image_utils.is_file(image_path):
+            url = image_utils.to_base64(image_path)
+        else:
+            url = image_path
+
         payload = {
             "model": model_name,
             "messages": [
@@ -114,7 +119,7 @@ class OpenAI_ComputeNode(ComputeNode):
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
+                                "url": url
                             }
                         }
                     ]

@@ -27,6 +27,7 @@ from ..environment.workspace_env import WorkspaceEnvironment
 from ..storage.storage import AIStorage
 
 from ..knowledge import *
+from . import video_utils, image_utils
 
 logger = logging.getLogger(__name__)
 
@@ -423,11 +424,39 @@ class AIAgent(BaseAIAgent):
     async def _create_openai_thread(self) -> str:
         return None
 
+    def check_and_to_base64(self, image_path: str) -> str:
+        if image_utils.is_file(image_path):
+            return image_utils.image_to_base64(image_path)
+        else:
+            return image_path
+
     async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
         msg_prompt = AgentPrompt()
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
             need_process = False
-            msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
+            if msg.is_image_msg():
+                image_prompt, images = msg.get_image_body()
+                if image_prompt is None:
+                    content = [[{"type": "text", "text": f"{msg.sender}'s message"}]]
+                    content.extend([{"type": "image_url", "url": self.check_and_to_base64(image)} for image in images])
+                    msg_prompt.messages = [{"role": "user", "content": content}]
+                else:
+                    content = [{"type": "text", "text": f"{msg.sender}:{image_prompt}"}]
+                    content.extend([{"type": "image_url", "url": self.check_and_to_base64(image)} for image in images])
+                    msg_prompt.messages = [{"role": "user", "content": content}]
+            elif msg.is_video_msg():
+                video_prompt, video = msg.get_video_body()
+                frames = video_utils.extract_frames(video)
+                if video_prompt is None:
+                    content = [{"type": "text", "text": f"{msg.sender}'s message"}]
+                    content.extend([{"type": "image_url", "url": frame} for frame in frames])
+                    msg_prompt.messages = [{"role": "user", "content": content}]
+                else:
+                    content = [{"type": "text", "text": f"{msg.sender}:{video_prompt}"}]
+                    content.extend([{"type": "image_url", "url": frame} for frame in frames])
+                    msg_prompt.messages = [{"role": "user", "content": content}]
+            else:
+                msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
             session_topic = msg.target + "#" + msg.topic
             chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
 
@@ -441,7 +470,25 @@ class AIAgent(BaseAIAgent):
                 resp_msg = msg.create_group_resp_msg(self.agent_id,"")
                 return resp_msg
         else:
-            msg_prompt.messages = [{"role":"user","content":msg.body}]
+            if msg.is_image_msg():
+                image_prompt, images = msg.get_image_body()
+                if image_prompt is None:
+                    msg_prompt.messages = [{"role": "user", "content": [{"type": "image_url", "url": image} for image in images]}]
+                else:
+                    content = [{"type": "text", "text": image_prompt}]
+                    content.extend([{"type": "image_url", "url": image} for image in images])
+                    msg_prompt.messages = [{"role": "user", "content": content}]
+            elif msg.is_video_msg():
+                video_prompt, video = msg.get_video_body()
+                frames = video_utils.extract_frames(video)
+                if video_prompt is None:
+                    msg_prompt.messages = [{"role": "user", "content": [{"type": "image_url", "url": frame} for frame in frames]}]
+                else:
+                    content = [{"type": "text", "text": video_prompt}]
+                    content.extend([{"type": "image_url", "url": frame} for frame in frames])
+                    msg_prompt.messages = [{"role": "user", "content": content}]
+            else:
+                msg_prompt.messages = [{"role":"user","content":msg.body}]
             session_topic = msg.get_sender() + "#" + msg.topic
             chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
             if self.enable_thread:

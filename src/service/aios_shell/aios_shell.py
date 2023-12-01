@@ -238,12 +238,12 @@ class AIOS_Shell:
     def get_version(self) -> str:
         return "0.5.1"
 
-    async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None) -> str:
+    async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None, msg_mime:str=None) -> str:
         if sender == self.username:
             AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
 
         agent_msg = AgentMsg()
-        agent_msg.set(sender,target_id,msg)
+        agent_msg.set(sender,target_id,msg,body_mime=msg_mime)
         agent_msg.topic = topic
         resp = await AIBus.get_default_bus().send_message(agent_msg)
         if resp is not None:
