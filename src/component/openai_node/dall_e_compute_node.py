@@ -9,9 +9,7 @@ import base64
 
 from PIL import Image
 
-from .compute_task import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType, ComputeTaskResultCode
-from .compute_node import ComputeNode
-from .storage import AIStorage, UserConfig
+from aios import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType, ComputeTaskResultCode,ComputeNode, AIStorage, UserConfig
 
 logger = logging.getLogger(__name__)
 
