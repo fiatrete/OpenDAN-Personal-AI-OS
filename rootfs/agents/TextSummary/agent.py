@@ -1,8 +1,9 @@
 import copy
 
-from aios_kernel import CustomAIAgent, AgentMsg, AgentMsgType, AgentPrompt
-from aios_kernel.compute_task import ComputeTaskResultCode
-from knowledge.data.writer import split_text
+from aios.agent.agent_base import CustomAIAgent, AgentPrompt
+from aios.knowledge.data.writer import split_text
+from aios.proto.agent_msg import AgentMsg, AgentMsgType
+from aios.proto.compute_task import ComputeTaskResultCode
 
 
 class TextSummaryAgent(CustomAIAgent):

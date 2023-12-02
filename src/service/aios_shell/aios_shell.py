@@ -31,7 +31,7 @@ from aios import *
 
 sys.path.append(directory + '/../../component/')
 
-from google_node import * 
+from google_node import *
 from llama_node import *
 from openai_node import *
 from sd_node import *
@@ -460,6 +460,54 @@ class AIOS_Shell:
                 show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
                                         ("class:content", resp)])
                 return show_text
+            case 'send_img':
+                sender = None
+                if len(args) == 4:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    image_path = args[2]
+                    topic = args[3]
+                    sender = self.username
+                elif len(args) == 5:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    image_path = args[2]
+                    topic = args[3]
+                    sender = args[4]
+
+                ext = os.path.splitext(image_path)[1][1:]
+                resp = await self.send_msg(AgentMsg.create_image_body([image_path], msg_content),
+                                           target_id,
+                                           topic,
+                                           sender,
+                                           f"image/{ext}")
+                show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
+                                           ("class:content", resp)])
+                return show_text
+            case 'send_video':
+                sender = None
+                if len(args) == 4:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    video_path = args[2]
+                    topic = args[3]
+                    sender = self.username
+                elif len(args) == 5:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    video_path = args[2]
+                    topic = args[3]
+                    sender = args[4]
+
+                ext = os.path.splitext(video_path)[1][1:]
+                resp = await self.send_msg(AgentMsg.create_video_body(video_path, msg_content),
+                                           target_id,
+                                           topic,
+                                           sender,
+                                           f"video/{ext}")
+                show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
+                                           ("class:content", resp)])
+                return show_text
             case 'set_config':
                 show_text = FormattedText([("class:error", f"set config args error,/set_config $config_item! ")])
                 if len(args) == 1:
@@ -775,6 +823,8 @@ async def main():
         return await main_daemon_loop(shell)
 
     completer = WordCompleter(['/send $target $msg $topic',
+                               '/send_img $target $msg $img_path $topic',
+                               '/send_video $target &msg &video_path $topic',
                                '/open $target $topic',
                                '/history $num $offset',
                                '/connect $target',

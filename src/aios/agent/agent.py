@@ -27,7 +27,7 @@ from ..environment.workspace_env import WorkspaceEnvironment
 from ..storage.storage import AIStorage
 
 from ..knowledge import *
-from . import video_utils, image_utils
+from ..utils import video_utils, image_utils
 
 logger = logging.getLogger(__name__)
 
@@ -426,7 +426,7 @@ class AIAgent(BaseAIAgent):
 
     def check_and_to_base64(self, image_path: str) -> str:
         if image_utils.is_file(image_path):
-            return image_utils.image_to_base64(image_path)
+            return image_utils.to_base64(image_path, (1024, 1024))
         else:
             return image_path
 
@@ -438,22 +438,22 @@ class AIAgent(BaseAIAgent):
                 image_prompt, images = msg.get_image_body()
                 if image_prompt is None:
                     content = [[{"type": "text", "text": f"{msg.sender}'s message"}]]
-                    content.extend([{"type": "image_url", "url": self.check_and_to_base64(image)} for image in images])
+                    content.extend([{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images])
                     msg_prompt.messages = [{"role": "user", "content": content}]
                 else:
                     content = [{"type": "text", "text": f"{msg.sender}:{image_prompt}"}]
-                    content.extend([{"type": "image_url", "url": self.check_and_to_base64(image)} for image in images])
+                    content.extend([{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images])
                     msg_prompt.messages = [{"role": "user", "content": content}]
             elif msg.is_video_msg():
                 video_prompt, video = msg.get_video_body()
-                frames = video_utils.extract_frames(video)
+                frames = video_utils.extract_frames(video, (1024, 1024))
                 if video_prompt is None:
                     content = [{"type": "text", "text": f"{msg.sender}'s message"}]
-                    content.extend([{"type": "image_url", "url": frame} for frame in frames])
+                    content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
                     msg_prompt.messages = [{"role": "user", "content": content}]
                 else:
                     content = [{"type": "text", "text": f"{msg.sender}:{video_prompt}"}]
-                    content.extend([{"type": "image_url", "url": frame} for frame in frames])
+                    content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
                     msg_prompt.messages = [{"role": "user", "content": content}]
             else:
                 msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
@@ -473,19 +473,19 @@ class AIAgent(BaseAIAgent):
             if msg.is_image_msg():
                 image_prompt, images = msg.get_image_body()
                 if image_prompt is None:
-                    msg_prompt.messages = [{"role": "user", "content": [{"type": "image_url", "url": image} for image in images]}]
+                    msg_prompt.messages = [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images]}]
                 else:
                     content = [{"type": "text", "text": image_prompt}]
-                    content.extend([{"type": "image_url", "url": image} for image in images])
+                    content.extend([{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images])
                     msg_prompt.messages = [{"role": "user", "content": content}]
             elif msg.is_video_msg():
                 video_prompt, video = msg.get_video_body()
-                frames = video_utils.extract_frames(video)
+                frames = video_utils.extract_frames(video, (1024, 1024))
                 if video_prompt is None:
-                    msg_prompt.messages = [{"role": "user", "content": [{"type": "image_url", "url": frame} for frame in frames]}]
+                    msg_prompt.messages = [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": frame}} for frame in frames]}]
                 else:
                     content = [{"type": "text", "text": video_prompt}]
-                    content.extend([{"type": "image_url", "url": frame} for frame in frames])
+                    content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
                     msg_prompt.messages = [{"role": "user", "content": content}]
             else:
                 msg_prompt.messages = [{"role":"user","content":msg.body}]

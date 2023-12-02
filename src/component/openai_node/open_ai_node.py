@@ -8,9 +8,10 @@ import json
 import aiohttp
 import base64
 import requests
+from openai._types import NOT_GIVEN
 
 from aios import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskType,ComputeTaskResultCode,ComputeNode,AIStorage,UserConfig
-
+from aios import image_utils
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class OpenAI_ComputeNode(ComputeNode):
         image_path = task.params["image_path"]
 
         if image_utils.is_file(image_path):
-            url = image_utils.to_base64(image_path)
+            url = image_utils.to_base64(image_path, (1024, 1024))
         else:
             url = image_path
 
@@ -201,7 +202,16 @@ class OpenAI_ComputeNode(ComputeNode):
                 if max_token_size is None:
                     max_token_size = 4000
 
-                result_token = max_token_size
+                if mode_name == "gpt-4-vision-preview":
+                    response_format = NOT_GIVEN
+                    llm_inner_functions = None
+                    if max_token_size > 4096:
+                        result_token = 4096
+                    else:
+                        result_token = max_token_size
+                else:
+                    result_token = NOT_GIVEN
+
                 client = AsyncOpenAI(api_key=self.openai_api_key)
                 try:
                     if llm_inner_functions is None:
@@ -209,7 +219,7 @@ class OpenAI_ComputeNode(ComputeNode):
                         resp = await client.chat.completions.create(model=mode_name,
                                                         messages=prompts,
                                                         response_format = response_format,
-                                                        #max_tokens=result_token,
+                                                        max_tokens=result_token,
                                                         )
                     else:
                         logger.info(f"call openai {mode_name} prompts: \n\t {prompts} \nfunctions: \n\t{json.dumps(llm_inner_functions)}")
@@ -217,7 +227,7 @@ class OpenAI_ComputeNode(ComputeNode):
                                                             messages=prompts,
                                                             response_format = response_format,
                                                             functions=llm_inner_functions,
-                                                            # max_tokens=result_token,
+                                                            max_tokens=result_token,
                                                             ) # TODO: add temperature to task params?
                 except Exception as e:
                     logger.error(f"openai run LLM_COMPLETION task error: {e}")
@@ -227,7 +237,12 @@ class OpenAI_ComputeNode(ComputeNode):
                     return result
 
                 logger.info(f"openai response: {resp}")
-                status_code = resp.choices[0].finish_reason
+                if mode_name == "gpt-4-vision-preview":
+                    status_code = resp.choices[0].finish_reason
+                    if status_code is None:
+                        status_code = resp.choices[0].finish_details['type']
+                else:
+                    status_code = resp.choices[0].finish_reason
                 token_usage = resp.usage
 
                 match status_code:

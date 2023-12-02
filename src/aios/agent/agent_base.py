@@ -452,7 +452,7 @@ class BaseAIAgent(abc.ABC):
 
         model_name = self.get_llm_model_name()
         if org_msg.is_video_msg() or org_msg.is_image_msg():
-            if model_name.startswith("gpt4"):
+            if model_name.startswith("gpt-4"):
                 model_name = "gpt-4-vision-preview"
         if is_json_resp:
             task_result: ComputeTaskResult = await (ComputeKernel.get_instance()
@@ -501,7 +501,6 @@ class BaseAIAgent(abc.ABC):
         stack_limit = 5
     ) -> ComputeTaskResult:
         from ..frame.compute_kernel import ComputeKernel
-        
         arguments = None
         try:
             func_name = inner_func_call_node.get("name")
