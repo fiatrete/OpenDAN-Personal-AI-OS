@@ -216,6 +216,13 @@ class AIStorage:
         ~/myai/
         """
         return Path.home() / "myai"
+    
+    def get_download_dir(self) -> str:
+        """
+        download dir is the dir for user to store the files downloaded with the system.
+        ~/myai/download
+        """
+        return f"{self.get_myai_dir()}/download"
         
     def get_db(self,app_name:str)->ResourceLocation:
         pass
@@ -242,5 +249,3 @@ class AIStorage:
 
         except Exception as e:
             logger.error(f"open or create file {path} failed! {str(e)}")
-
-
