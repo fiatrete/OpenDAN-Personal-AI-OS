@@ -24,8 +24,9 @@ class ParameterApplier:
         pass
 
 class BuildParameter:
-    def __init__(self, name: str, applier: ParameterApplier, desc: str or None = None, default_value: str or None = None):
+    def __init__(self, name: str, applier: ParameterApplier, prompt: str or None = None, desc: str or None = None, default_value: str or None = None):
         self.name = name
+        self.prompt = prompt
         self.desc = desc
         self.default_value = default_value
         self.applier = applier
