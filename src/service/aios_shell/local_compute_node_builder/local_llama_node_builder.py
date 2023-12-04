@@ -6,11 +6,11 @@ import requests
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.shortcuts import ProgressBar
 from prompt_toolkit.formatted_text import FormattedText
-from aios_kernel.compute_kernel import ComputeKernel
-from aios_kernel.compute_node_config import ComputeNodeConfig
-from aios_kernel.local_llama_compute_node import LocalLlama_ComputeNode
 
-from aios_kernel.storage import AIStorage
+from aios.storage.storage import AIStorage
+from aios import ComputeKernel
+from component.llama_node.local_llama_compute_node import LocalLlama_ComputeNode
+from service.aios_shell.compute_node_config import ComputeNodeConfig
 from .local_compute_node_builder import BuildParameter, BuilderState, LocalComputeNodeBuilder, ParameterApplier
 
 class BuildParameterModelPath:
