@@ -19,7 +19,7 @@ class IssueUpdateHistory:
             "source": self.source,
             "changes": self.changes,
         }
-    
+
     @classmethod
     def from_json_dict(cls, json_dict: dict) -> "IssueUpdateHistory":
         return IssueUpdateHistory(json_dict["source"], json_dict["changes"])
@@ -40,7 +40,7 @@ class Issue:
         json_dict = {
             "id": self.id,
             "summary": self.summary,
-            "state": self.state.name, 
+            "state": self.state.name,
             "create_time": self.create_time,
             "deadline": self.deadline,
             "source": self.source,
@@ -54,7 +54,7 @@ class Issue:
             json_dict["update_history"] = []
             for history in self.update_history:
                 json_dict["update_history"].append(history.to_json_dict())
-        
+
         return json_dict
 
     @classmethod
@@ -78,26 +78,26 @@ class Issue:
                 history = IssueUpdateHistory.from_json_dict(history_json_dict)
                 issue.update_history.append(history)
         return issue
-        
+
 
     @classmethod
     def object_type(cls) -> ObjectType:
         return ObjectType.from_user_def_type_code(0)
-    
+
     def __to_desc(self, desc_list:[], recursion=None):
         desc = {
             "id": self.id,
             "summary": self.summary,
-            "state": self.state.name, 
+            "state": self.state.name,
             "deadline": self.deadline,
         }
         desc_list.append(desc)
         if not recursion or not self.parent:
-            return 
+            return
         else:
             parent = recursion.get_issue_by_id(self.parent)
             parent.__to_desc(desc_list, recursion)
-        
+
     def to_prompt(self, recursion=None) -> str:
         desc_list = []
         self.__to_desc(desc_list, recursion)
@@ -107,8 +107,8 @@ class Issue:
             root["child"] = child
             root = child
         return json.dumps(root)
-            
-    
+
+
     @classmethod
     def prompt_desc(cls) -> str:
         return '''a issue contains following fileds: {
@@ -119,7 +119,7 @@ class Issue:
             children: child issues of this issue
         }
         '''
-    
+
     def calculate_id(self) -> str:
         desc = {
             "summary": self.summary,
@@ -183,7 +183,7 @@ class IssueStorage:
                 return self.root
             this_mail = mail_storage.get_mail_by_id(this_mail.reply_to)
 
-    
+
     def add_issue(self, source_id: str, parent_id: str, summary: str):
         parent_issue = self.get_issue_by_id(parent_id)
         issue = Issue()
@@ -204,11 +204,19 @@ class IssueStorage:
                 "new": value,
             }
             issue.__dict__[key] = value
-        issue.update_history.append(IssueUpdateHistory(source_id, changes))      
+        issue.update_history.append(IssueUpdateHistory(source_id, changes))
 
         self.__flush()
         return issue
-        
+
+
+class IssueAgent(CustomAIAgent):
+    async def _process_msg(self, msg: AgentMsg, workspace=None) -> AgentMsg:
+        pass
+
+    def __init__(self, agent_id: str, llm_model_name: str, max_token_size: int) -> None:
+        super().__init__(agent_id, llm_model_name, max_token_size)
+
 
 class IssueParserEnvironment(Environment):
     def __init__(self, env_id: str, storage: IssueStorage) -> None:
@@ -217,30 +225,30 @@ class IssueParserEnvironment(Environment):
 
         create_description = '''create a new issue'''
         create_param = {
-            "mail_id": "new issue with which email object id", 
+            "mail_id": "new issue with which email object id",
             "issue_id": '''new issue's parent issue id''',
             "summary": '''new issue's summary''',
         }
-        self.add_ai_function(SimpleAIFunction("create_issue", 
+        self.add_ai_function(SimpleAIFunction("create_issue",
                                             create_description,
-                                            self._create, 
+                                            self._create,
                                             create_param))
-        
+
         update_description = '''update an existing issue'''
         update_param = {
-            "mail_id": "update issue with which email object id", 
+            "mail_id": "update issue with which email object id",
             "issue_id": '''update issue's id''',
             "summary": '''issue's new summary''',
         }
-        self.add_ai_function(SimpleAIFunction("update_issue", 
+        self.add_ai_function(SimpleAIFunction("update_issue",
                                             update_description,
-                                            self._update, 
+                                            self._update,
                                             update_param))
-        
+
     async def _create(self, mail_id: str, issue_id: str, summary: str):
         issue = self.storage.add_issue(mail_id, issue_id, summary)
         return issue.id
-            
+
     async def _update(self, mail_id: str, issue_id: str, summary: str):
         update = {}
         update["summary"] = summary
@@ -253,7 +261,7 @@ class IssueParser:
         mail_path = string.Template(config["mail_path"]).substitute(myai_dir=AIStorage.get_instance().get_myai_dir())
         issue_path = string.Template(config["issue_path"]).substitute(myai_dir=AIStorage.get_instance().get_myai_dir())
         config["path"] = issue_path
-        
+
         self.env = env
         self.config = config
         self.mail_storage = MailStorage(mail_path)
@@ -268,7 +276,7 @@ class IssueParser:
         self.llm_env = IssueParserEnvironment("issue_parser", self.issue_storage)
 
     @classmethod
-    def __load_issue_config(cls, issue_config: dict) -> Issue: 
+    def __load_issue_config(cls, issue_config: dict) -> Issue:
         issue = Issue()
         issue.summary = issue_config["summary"]
         if "children" in issue_config:
@@ -276,15 +284,15 @@ class IssueParser:
                 child_issue = cls.__load_issue_config(child_config)
                 issue.children.append(child_issue)
         return issue
-    
+
     @classmethod
     def __calac_issue_id(cls, issue: Issue):
         issue_id = issue.calculate_id()
         for child in issue.children:
             child.parent = issue_id
             cls.__calac_issue_id(child)
-        
-    
+
+
     def get_path(self) -> str:
         return self.config["path"]
 
@@ -304,8 +312,8 @@ class IssueParser:
         and a issue in json format, {issue_desc}. Read mail's fileds and issue's fileds, and decide if you should update the issue or create a new issue with this mail.
         Then call the function create_issue or update_issue.
         if this mail is not associated with issue, you should ignore this mail.'''}
-        
-        prompt.append(AgentPrompt(f'''Mail is {mail_str}, issue is {issue_str}. Answer me the function's return value or None if igonred.               
+
+        prompt.append(IssueAgent(f'''Mail is {mail_str}, issue is {issue_str}. Answer me the function's return value or None if igonred.               
         '''))
 
         llm_result = await CustomAIAgent("issue parser", "gpt-4-1106-preview", 4000).do_llm_complection(prompt, env=self.llm_env)
