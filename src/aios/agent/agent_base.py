@@ -477,6 +477,8 @@ class BaseAIAgent(abc.ABC):
         org_msg:AgentMsg,
         stack_limit = 5
     ) -> ComputeTaskResult:
+        from ..frame.compute_kernel import ComputeKernel
+        
         arguments = None
         try:
             func_name = inner_func_call_node.get("name")

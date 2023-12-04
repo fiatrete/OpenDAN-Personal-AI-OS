@@ -8,7 +8,7 @@ import logging
 import pytest
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../src')
-from aios_kernel.dall_e_compute_node import DallE_ComputeNode
+from aios_kernel.dall_e_compute_node import DallEComputeNode
 from aios_kernel.compute_task import ComputeTaskType, ComputeTask, ComputeTaskState
 
 os.environ["TEXT2IMG_OUTPUT_DIR"] = "./"
@@ -16,7 +16,7 @@ os.environ["openai_api_key"] = ""
 
 @pytest.mark.asyncio
 async def test_dall_e_node(propmt, model):
-    node = DallE_ComputeNode.get_instance()
+    node = DallEComputeNode.get_instance()
     if await node.initial() is not True:
         print("node initial failed!")
         return
