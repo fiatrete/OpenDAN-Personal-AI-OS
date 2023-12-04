@@ -11,10 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class BaseEnvironment:
-    @abstractmethod
-    def get_id(self) -> str:
+    def __init__(self, workspace: str) -> None:
         pass
-     
+
     # @abstractmethod
     # #TODO: how to use env? different env has different prompt
     # def get_env_prompt(self) -> str:
@@ -50,14 +49,11 @@ class BaseEnvironment:
     #     cls._all_env[env.get_id()] = env
 
 class SimpleEnvironment(BaseEnvironment):
-    def __init__(self, env_id: str) -> None:
-        self.env_id = env_id
+    def __init__(self, workspace: str) -> None:
+        super().__init__(workspace)
         self.functions: Dict[str,AIFunction] = {}
         self.operations: Dict[str,AIOperation] = {}
-
-    def get_id(self) -> str:
-        return self.env_id
-    
+ 
     def add_ai_function(self,func:AIFunction) -> None:
         self.functions[func.get_name()] = func
 
@@ -89,17 +85,14 @@ class SimpleEnvironment(BaseEnvironment):
 
 
 class CompositeEnvironment(BaseEnvironment):
-    def __init__(self, env_id: str) -> None:
-        self.env_id = env_id
-        self.envs:Dict[str,BaseEnvironment] = {}
+    def __init__(self, workspace: str) -> None:
+        super().__init__(workspace)
+        self.envs:List[BaseEnvironment] = {}
         self.functions: Dict[str,AIFunction] = {}
         self.operations: Dict[str,AIOperation] = {}
-
-    def get_id(self) -> str:
-        return self.env_id
     
     def add_env(self, env: BaseEnvironment) -> None:
-        self.envs[env.get_id()] = env
+        self.envs.append[env]
         functions = env.get_all_ai_functions()
         for func in functions:
             self.functions[func.get_name()] = func

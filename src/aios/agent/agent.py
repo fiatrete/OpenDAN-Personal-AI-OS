@@ -145,7 +145,6 @@ class AIAgent(BaseAIAgent):
         self.owner_promp_str = None
         self.contact_prompt_str = None
         self.history_len = 10
-
         self.read_report_prompt = None
 
         todo_prompts = {}
@@ -161,11 +160,8 @@ class AIAgent(BaseAIAgent):
         }
         self.todo_prompts = todo_prompts
 
-        self.learn_token_limit = 4000
-
         self.chat_db = None
         self.unread_msg = Queue() # msg from other agent
-        self.owner_env : Environment = None
         self.owenr_bus = None
         self.enable_function_list = None
 
@@ -187,7 +183,7 @@ class AIAgent(BaseAIAgent):
             logger.error("agent instance_id is None!")
             return False
         self.agent_id = config["instance_id"]
-        self.agent_workspace = WorkspaceEnvironment(self.agent_id)
+        self.agent_workspace = config["workspace"]
 
         if config.get("fullname") is None:
             logger.error(f"agent {self.agent_id} fullname is None!")
@@ -233,9 +229,6 @@ class AIAgent(BaseAIAgent):
         if config.get("contact_prompt") is not None:
             self.contact_prompt_str = config["contact_prompt"]
 
-        if config.get("owner_env") is not None:
-            self.owner_env = config.get("owner_env")
-
 
         if config.get("powerby") is not None:
             self.powerby = config["powerby"]
@@ -276,15 +269,8 @@ class AIAgent(BaseAIAgent):
     def get_max_token_size(self) -> int:
         return self.max_token_size
 
-    def get_llm_learn_token_limit(self) -> int:
-        return self.learn_token_limit
-
-    def get_learn_prompt(self) -> AgentPrompt:
-        return self.learn_prompt
-
     def get_agent_role_prompt(self) -> AgentPrompt:
         return self.role_prompt
-
 
     def _get_remote_user_prompt(self,remote_user:str) -> AgentPrompt:
         cm = ContactManager.get_instance()
@@ -312,34 +298,6 @@ class AIAgent(BaseAIAgent):
 
         return None
 
-
-    def _get_inner_functions(self) -> dict:
-        if self.owner_env is None:
-            return None,0
-
-        all_inner_function = self.owner_env.get_all_ai_functions()
-        if all_inner_function is None:
-            return None,0
-
-        result_func = []
-        result_len = 0
-        for inner_func in all_inner_function:
-            func_name = inner_func.get_name()
-            if self.enable_function_list is not None:
-                if len(self.enable_function_list) > 0:
-                    if func_name not in self.enable_function_list:
-                        logger.debug(f"ageint {self.agent_id} ignore inner func:{func_name}")
-                        continue
-
-            this_func = {}
-            this_func["name"] = func_name
-            this_func["description"] = inner_func.get_description()
-            this_func["parameters"] = inner_func.get_parameters()
-            result_len += len(json.dumps(this_func)) / 4
-            result_func.append(this_func)
-
-        return result_func,result_len
-
     def get_agent_prompt(self) -> AgentPrompt:
         return self.agent_prompt
 
@@ -347,12 +305,9 @@ class AIAgent(BaseAIAgent):
         return self.agent_think_prompt
 
     def _format_msg_by_env_value(self,prompt:AgentPrompt):
-        if self.owner_env is None:
-            return
-
         for msg in prompt.messages:
             old_content = msg.get("content")
-            msg["content"] = old_content.format_map(self.owner_env)
+            msg["content"] = old_content.format_map(self.agent_workspace)
 
     async def _handle_event(self,event):
         if event.type == "AgentThink":
@@ -549,7 +504,7 @@ class AIAgent(BaseAIAgent):
         if todo_count > 0:
             have_known_info = True
             known_info_str += f"## todo\n{todos_str}\n"
-        inner_functions,function_token_len = BaseAIAgent.get_inner_functions(self.owner_env)
+        inner_functions,function_token_len = BaseAIAgent.get_inner_functions(self.agent_workspace)
         system_prompt_len = self.token_len(prompt=prompt)
         input_len = len(msg.body)
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
@@ -568,7 +523,7 @@ class AIAgent(BaseAIAgent):
 
 
         logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
-        task_result = await self.do_llm_complection(prompt,msg, env=self.owner_env,inner_functions=inner_functions)
+        task_result = await self.do_llm_complection(prompt,msg, env=self.agent_workspace,inner_functions=inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:
             error_resp = msg.create_error_resp(task_result.error_str)
             return error_resp
@@ -771,6 +726,7 @@ class AIAgent(BaseAIAgent):
                     case AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR:
                         continue
                     case AgentTodoResult.TODO_RESULT_CODE_OK:
+                        todo.result = do_result
                         await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_WAITING_CHECK)
                     case AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR:
                         await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_EXEC_FAILED)
@@ -913,12 +869,12 @@ class AIAgent(BaseAIAgent):
                 resp = await AIBus.get_default_bus().post_message(msg)
                 logging.info(f"agent {self.agent_id} send msg to {msg.target} result:{resp}")
 
-        op_errors, have_error = await workspace.exec_op_list(llm_result.op_list, self.agent_id)
+        result_str, have_error = await workspace.exec_op_list(llm_result.op_list, self.agent_id)
         if have_error:
             result.result_code = AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR
             #result.error_str = error_str
             return result
-
+        result.result_str = result_str
         return result
 
     async def _llm_check_todo(self, todo: AgentTodo, prompt: AgentPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
@@ -937,7 +893,7 @@ class AIAgent(BaseAIAgent):
         return result
     
     async def _llm_review_todo(self, todo:AgentTodo, prompt: AgentPrompt, workspace: WorkspaceEnvironment):
-        inner_functions,_ = BaseAIAgent.get_inner_functions(self.owner_env)
+        inner_functions,_ = BaseAIAgent.get_inner_functions(workspace)
 
         task_result:ComputeTaskResult = await self.do_llm_complection(prompt,inner_functions=inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:

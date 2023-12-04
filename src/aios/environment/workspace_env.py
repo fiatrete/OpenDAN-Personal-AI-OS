@@ -4,13 +4,14 @@ import json
 import logging
 import os
 import aiofiles
-from typing import Any,List
+import sqlite3
+import asyncio
+from typing import Any,List,Dict
 import chardet
 from ..agent.agent_base import AgentMsg,AgentTodo,AgentPrompt,AgentTodoResult
 from ..agent.ai_function import AIFunction,SimpleAIFunction, SimpleAIOperation
 from ..storage.storage import AIStorage,ResourceLocation
 from .environment import SimpleEnvironment, CompositeEnvironment
-
 
 
 logger = logging.getLogger(__name__)
@@ -20,12 +21,28 @@ class TodoListType:
     TO_LEARN = "learn"
 
 class TodoListEnvironment(SimpleEnvironment):
-    def __init__(self, root_path, list_type) -> None:
-        super.__init__(list_type)
-        self.root_path = os.path.join(root_path, list_type)
+    def __init__(self, workspace, list_type) -> None:
+        super().__init__(workspace)
+        self.root_path = os.path.join(workspace, list_type)
         if not os.path.exists(self.root_path):
             os.makedirs(self.root_path)
-        self.known_todo = {}
+
+        self.db_path = os.path.join(self.root_path, "todo.db")
+        self.conn = None
+        try:
+            self.conn = sqlite3.connect(self.db_path)
+        except Exception as e:
+            logger.error("Error occurred while connecting to database: %s", e)
+            return None
+
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS todo_list (
+                id TEXT, 
+                path TEXT
+            )
+        ''')
+        self.conn.commit()
 
         async def create_todo(params):  
             todoObj = AgentTodo.from_dict(params["todo"])
@@ -48,6 +65,23 @@ class TodoListEnvironment(SimpleEnvironment):
             func_handler=update_todo,
         ))
 
+    def _get_todo_path(self,todo_id:str) -> str:
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            SELECT path FROM todo_list WHERE id = ?
+        ''',(todo_id,))
+        row = cursor.fetchone()
+        if row:
+            return row[0]
+        else:
+            return None
+
+    def _save_todo_path(self,todo_id:str,path:str):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            INSERT INTO todo_list (id,path) VALUES (?,?)
+        ''',(todo_id,path))
+        self.conn.commit()
  
     # Task/todo system , create,update,delete,query
     async def get_todo_tree(self,path:str = None,deep:int = 4):
@@ -142,7 +176,6 @@ class TodoListEnvironment(SimpleEnvironment):
                     if not relative_path.startswith('/'):
                         relative_path = '/' + relative_path
                     result_todo.todo_path = relative_path
-                    self.known_todo[result_todo.todo_id] = result_todo
                 else:
                     logger.error("get_todo_by_path:%s,parse failed!",path)
                 
@@ -150,18 +183,12 @@ class TodoListEnvironment(SimpleEnvironment):
         except Exception as e:
             logger.error("get_todo_by_path:%s,failed:%s",path,e)
             return None
-        
-    async def get_todo(self,id:str) -> AgentTodo:
-        return self.known_todo.get(id)
+
 
     async def create_todo(self,parent_id:str,todo:AgentTodo) -> str:
         try:
             if parent_id:
-                if parent_id not in self.known_todo:
-                    logger.error("create_todo failed: parent_id not found!")
-                    return False
-                
-                parent_path = self.known_todo.get(parent_id).todo_path
+                parent_path = self._get_todo_path(parent_id)
                 todo_path = f"{parent_path}/{todo.title}"
             else:
                 todo_path = todo.title
@@ -172,10 +199,10 @@ class TodoListEnvironment(SimpleEnvironment):
             detail_path = f"{dir_path}/detail"
             if todo.todo_path is None:
                 todo.todo_path = todo_path
+            self._save_todo_path(todo.todo_id,todo_path)
             logger.info("create_todo %s",detail_path)
             async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
                 await f.write(json.dumps(todo.to_dict()))
-                self.known_todo[todo.todo_id] = todo
         except Exception as e:
             logger.error("create_todo failed:%s",e)
             return str(e)
@@ -184,7 +211,8 @@ class TodoListEnvironment(SimpleEnvironment):
 
     async def update_todo(self,todo_id:str,new_stat:str)->str:
         try:
-            todo : AgentTodo = self.known_todo.get(todo_id)
+            todo_path = self._get_todo_path(todo_id)
+            todo : AgentTodo = self.get_todo_by_fullpath(todo_path)
             if todo:
                 todo.state = new_stat
                 detail_path =  f"{self.root_path}/{todo.todo_path}/detail"
@@ -195,6 +223,20 @@ class TodoListEnvironment(SimpleEnvironment):
                 return "todo not found."
         except Exception as e:
             return str(e)
+    
+    async def wait_todo_done(self,todo_id:str) -> AgentTodo:
+        todo_path = self._get_todo_path(todo_id)
+        async def check_done():
+            while True:
+                todo : AgentTodo = self.get_todo_by_fullpath(todo_path)
+                if todo:
+                    if todo.state == AgentTodo.TODO_STATE_DONE:
+                        break
+                await asyncio.sleep(1)
+        
+        asyncio.create_task(check_done())
+        return self.get_todo_by_fullpath(todo_path)
+        
     
     async def append_worklog(self, todo:AgentTodo, result:AgentTodoResult):
         worklog = f"{self.root_path}/{todo.todo_path}/.worklog"
@@ -213,10 +255,9 @@ class TodoListEnvironment(SimpleEnvironment):
             await f.write(json.dumps(json_obj))
 
 class FilesystemEnvironment(SimpleEnvironment):
-    def __init__(self, root_path: str, env_id: str) -> None:
-        super().__init__(env_id)
-        self.root_path = root_path
-
+    def __init__(self, workspace: str) -> None:
+        super().__init__(workspace)
+        self.root_path = workspace
 
         # if op["op"] == "create":
         #     await self.create(op["path"],op["content"])
@@ -346,8 +387,8 @@ class FilesystemEnvironment(SimpleEnvironment):
         return None
 
 class ShellEnvironment(SimpleEnvironment):
-    def __init__(self, env_id: str) -> None:
-        super().__init__(env_id)
+    def __init__(self, workspace: str) -> None:
+        super().__init__(workspace)
 
         operator_param = {
             "command": "command will execute",
@@ -381,20 +422,22 @@ class ShellEnvironment(SimpleEnvironment):
 
 class WorkspaceEnvironment(CompositeEnvironment):
     def __init__(self, env_id: str) -> None:
-        super().__init__(env_id)
         myai_path = AIStorage.get_instance().get_myai_dir() 
-        self.root_path = f"{myai_path}/workspace/{env_id}"
+        root_path = f"{myai_path}/workspace/{env_id}"
+        super().__init__(root_path)
+
+        self.root_path = root_path
         if not os.path.exists(self.root_path):
             os.makedirs()
 
-        self.todo_list = {}
+        self.todo_list: Dict[str, TodoListEnvironment] = {}
         self.todo_list[TodoListType.TO_WORK] = TodoListEnvironment(self.root_path,TodoListType.TO_WORK)
         self.todo_list[TodoListType.TO_LEARN] = TodoListEnvironment(self.root_path,TodoListType.TO_LEARN)
 
         # default environments in workspace
         self.add_env(self.todo_list[TodoListType.TO_WORK])
-        self.add_env(ShellEnvironment("shell"))
-        self.add_env(FilesystemEnvironment(self.root_path, "fs"))
+        self.add_env(ShellEnvironment(self.root_path))
+        self.add_env(FilesystemEnvironment(self.root_path))
 
     def set_root_path(self,path:str):
         self.root_path = path

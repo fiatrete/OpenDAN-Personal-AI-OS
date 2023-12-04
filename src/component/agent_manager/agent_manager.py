@@ -6,7 +6,7 @@ import sys
 import runpy
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from aios import AIAgent,AIAgentTemplete,AIStorage,Environment,BaseAIAgent,PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
+from aios import AIAgent,AIAgentTemplete,AIStorage,BaseAIAgent,PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask,WorkspaceEnvironment
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ class AgentManager:
         self.agent_templete_env : PackageEnv = None
         self.agent_env : PackageEnv = None
         self.db_path : str = None
+        self.environments: dict = {}
         self.loaded_agent_instance : Dict[str,BaseAIAgent] = None
 
     async def initial(self) -> None:
@@ -49,6 +50,15 @@ class AgentManager:
     async def scan_all_agent(self)->None:
         pass
 
+    async def register_environment(self, env_id: str, init_env) -> None:
+        self.environments[env_id] = init_env
+
+    async def init_environment(self, env_id: str, workspace: str):
+        if env_id not in self.environments:
+            logger.error(f"env {env_id} not found!")
+            return
+
+        return self.environments[env_id]
 
     async def is_exist(self,agent_id:str) -> bool:
         the_aget = await self.get(agent_id)
@@ -108,17 +118,28 @@ class AgentManager:
             config_data = await config_file.read()
             config = toml.loads(config_data)
             result_agent = AIAgent()
-
+            
+            workspace = config.get("workspace", config.get("instance_id"))
+            workspace = WorkspaceEnvironment(workspace)
+            config["workspace"] = workspace
+            
             if "owner_env" in config:
                 owner_env = config["owner_env"]
-                _, ext = os.path.splitext(owner_env)
-                if ext == ".py":
-                    env_path = os.path.join(agent_media.full_path, owner_env)
-                    owner_env = runpy.run_path(env_path)["init"]()
-                    config["owner_env"] = owner_env
+
+                def init_env(env_config: str):
+                    _, ext = os.path.splitext(owner_env)
+                    if ext == ".py":
+                        env_path = os.path.join(agent_media.full_path, owner_env)
+                        env = runpy.run_path(env_path)["init"](None, workspace.root_path)
+                    else:
+                        env = self.init_environment(env_config, workspace.root_path)
+                    workspace.add_env(env)
+
+                if isinstance(owner_env, list):
+                    for env in owner_env:
+                        init_env(env)
                 else:
-                    owner_env = Environment.get_env_by_id(config["owner_env"])
-                config["owner_env"] = owner_env
+                    init_env(owner_env)
 
             if result_agent.load_from_config(config) is False:
                 logger.error(f"load agent from {agent_media} failed!")
