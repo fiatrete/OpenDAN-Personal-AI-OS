@@ -240,9 +240,9 @@ class ComputeKernel:
 
     async def do_text_2_image(self, prompt:str, model_name:Optional[str] = None, negative_prompt = None) -> ComputeTaskResult:
         task = self.text_2_image(prompt,model_name, negative_prompt)
-        task = await self._wait_task(task)
+        task_result = await self._wait_task(task)
 
-        return task.result
+        return task_result
         # if task_req.state == ComputeTaskState.DONE:
         #     return None, task_result
 

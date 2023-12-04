@@ -319,9 +319,9 @@ class PaintEnvironment(Environment):
 
 
     async def _paint(self, prompt, model_name = None, negative_prompt = None) -> str:
-        err, result = await ComputeKernel.get_instance().do_text_2_image(prompt, model_name, negative_prompt)
-        if err is not None:
-            return f"exec paint failed. err:{err}"
+        result = await ComputeKernel.get_instance().do_text_2_image(prompt, model_name, negative_prompt)
+        if result.result_code == ComputeTaskResultCode.ERROR:
+            return f"exec paint failed. err:{result.error_str}"
         else:
             return f'exec paint OK, saved as a local file, path is: {result.result["file"]}'
 

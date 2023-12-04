@@ -157,6 +157,13 @@ class AIOS_Shell:
         openai_tts_node = OpenAITTSComputeNode.get_instance()
         ComputeKernel.get_instance().add_compute_node(openai_tts_node)
 
+        dall_e_node = DallEComputeNode.get_instance()
+        if await dall_e_node.initial() is not True:
+            logger.error("dall-e node initial failed!")
+        else:
+            await dall_e_node.start()
+            ComputeKernel.get_instance().add_compute_node(dall_e_node)
+
         llama_nodes = ComputeNodeConfig.get_instance().initial()
         for llama_node in llama_nodes:
             llama_node.start()

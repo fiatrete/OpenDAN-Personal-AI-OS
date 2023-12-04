@@ -14,13 +14,13 @@ from aios import ComputeTask, ComputeTaskResult, ComputeTaskState, ComputeTaskTy
 logger = logging.getLogger(__name__)
 
 
-class DallE_ComputeNode(ComputeNode):
+class DallEComputeNode(ComputeNode):
     _instance = None
 
     @classmethod
     def get_instance(cls):
         if cls._instance is None:
-            cls._instance = DallE_ComputeNode()
+            cls._instance = DallEComputeNode()
         return cls._instance
 
     @classmethod
