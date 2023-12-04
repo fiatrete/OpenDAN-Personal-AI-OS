@@ -9,7 +9,7 @@ import time
 import re
 import shlex
 import json
-from typing import List
+from typing import List, Tuple
 
 from .ai_function import FunctionItem, AIFunction
 from ..proto.agent_msg import AgentMsg, AgentMsgType
@@ -410,6 +410,10 @@ class BaseAIAgent(abc.ABC):
     def get_max_token_size(self) -> int:
         pass
 
+    @abstractmethod
+    async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
+        pass
+
     @classmethod
     def get_inner_functions(cls, env:Environment) -> (dict,int):
         if env is None:
@@ -445,10 +449,29 @@ class BaseAIAgent(abc.ABC):
         #logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
         if inner_functions is None and env is not None:
             inner_functions,_ = BaseAIAgent.get_inner_functions(env)
+
+        model_name = self.get_llm_model_name()
+        if org_msg.is_video_msg() or org_msg.is_image_msg():
+            if model_name.startswith("gpt-4"):
+                model_name = "gpt-4-vision-preview"
         if is_json_resp:
-            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,resp_mode="json",mode_name=self.get_llm_model_name(),max_token=self.get_max_token_size(),inner_functions=inner_functions,timeout=None)
+            task_result: ComputeTaskResult = await (ComputeKernel.get_instance()
+            .do_llm_completion(
+                prompt,
+                resp_mode="json",
+                mode_name=model_name,
+                max_token=self.get_max_token_size(),
+                inner_functions=inner_functions,
+                timeout=None))
         else:
-            task_result:ComputeTaskResult = await ComputeKernel.get_instance().do_llm_completion(prompt,resp_mode="text",mode_name=self.get_llm_model_name(),max_token=self.get_max_token_size(),inner_functions=inner_functions,timeout=None)
+            task_result: ComputeTaskResult = await (ComputeKernel.get_instance()
+            .do_llm_completion(
+                prompt,
+                resp_mode="text",
+                mode_name=model_name,
+                max_token=self.get_max_token_size(),
+                inner_functions=inner_functions,
+                timeout=None))
         if task_result.result_code != ComputeTaskResultCode.OK:
             logger.error(f"_do_llm_complection llm compute error:{task_result.error_str}")
             #error_resp = msg.create_error_resp(task_result.error_str)
@@ -478,7 +501,6 @@ class BaseAIAgent(abc.ABC):
         stack_limit = 5
     ) -> ComputeTaskResult:
         from ..frame.compute_kernel import ComputeKernel
-        
         arguments = None
         try:
             func_name = inner_func_call_node.get("name")

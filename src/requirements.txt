@@ -151,3 +151,5 @@ psycopg2-binary
 pyodbc
 oracledb
 html2text
+docx2txt
+opencv-python

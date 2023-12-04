@@ -27,6 +27,7 @@ from .storage.storage import ResourceLocation,AIStorage,UserConfig,UserConfigIte
 from .net import *
 from .knowledge import *
 from .package_manager import *
+from .utils import *
 
 
 AIOS_Version = "0.5.2, build 2023-11-30"

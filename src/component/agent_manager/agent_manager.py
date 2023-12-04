@@ -130,14 +130,11 @@ class AgentManager:
                 logger.error(f"read agent.toml cfg from {agent_media} failed! unexpected error occurred: {str(e)}")
                 return None
 
-            agent_name = os.path.split(agent_media.full_path)[1]
-            spec = importlib.util.spec_from_file_location(agent_name, custom_agent)
-            the_api = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(the_api)
-            if not hasattr(the_api,"Agent"):
+            agent = runpy.run_path(custom_agent)
+            if "init" not in agent:
                 logger.error(f"read agent.toml cfg from {agent_media} failed! unexpected error occurred: {str(e)}")
                 return None
-            return the_api.Agent()
+            return agent["init"]()
 
 
 

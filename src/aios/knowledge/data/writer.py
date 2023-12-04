@@ -19,10 +19,10 @@ def _join_docs(docs: List[str], separator: str) -> Optional[str]:
         return text
 
 def _merge_splits(
-        splits: Iterable[str], 
-        separator: str, 
-        chunk_size: int, 
-        chunk_overlap: int,  
+        splits: Iterable[str],
+        separator: str,
+        chunk_size: int,
+        chunk_overlap: int,
         length_function: Callable[[str], int]
     ) -> List[str]:
     # We now want to combine these smaller pieces into medium size
@@ -86,11 +86,11 @@ def _split_text_with_regex(
     return [s for s in splits if s != ""]
 
 
-def _split_text(
-        text: str, 
-        separators: List[str], 
-        chunk_size: int, 
-        chunk_overlap: int, 
+def split_text(
+        text: str,
+        separators: List[str],
+        chunk_size: int,
+        chunk_overlap: int,
         length_function: Callable[[str], int]
     ) -> List[str]:
 
@@ -127,7 +127,7 @@ def _split_text(
             if not new_separators:
                 final_chunks.append(s)
             else:
-                other_info = _split_text(s, new_separators, chunk_size, chunk_overlap, length_function)
+                other_info = split_text(s, new_separators, chunk_size, chunk_overlap, length_function)
                 final_chunks.extend(other_info)
     if _good_splits:
         merged_text = _merge_splits(_good_splits, _separator, chunk_size, chunk_overlap, length_function)
@@ -153,7 +153,7 @@ class ChunkListWriter:
                 chunk = file.read(chunk_size)
                 if not chunk:
                     break
-                
+
                 chunk_len = len(chunk)
                 chunk_id = ChunkID.hash_data(chunk)
                 chunk_list.append(chunk_id)
@@ -176,14 +176,14 @@ class ChunkListWriter:
 
         file_hash = HashValue(hash_obj.digest())
         # print(f"calc file hash: {file_path}, {file_hash}")
-        
+
         return ChunkList(chunk_list, file_hash)
 
     def create_chunk_list_from_text(
-        self, 
-        text: str, 
-        chunk_size: int = 4000, 
-        chunk_overlap: int = 200, 
+        self,
+        text: str,
+        chunk_size: int = 4000,
+        chunk_overlap: int = 200,
         separators: str = ["\n\n", "\n", " ", ""]
     ) -> ChunkList:
         enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
@@ -196,8 +196,8 @@ class ChunkListWriter:
                     disallowed_special="all",
                 )
             )
-        
-        text_list = _split_text(text, separators, chunk_size, chunk_overlap, length_function)
+
+        text_list = split_text(text, separators, chunk_size, chunk_overlap, length_function)
         chunk_list = []
         hash_obj = hashlib.sha256()
 

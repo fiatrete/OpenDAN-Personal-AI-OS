@@ -1,7 +1,10 @@
+import json
 import logging
+import shlex
 import uuid
 from enum import Enum
 import time
+from typing import Tuple, List
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +37,6 @@ class AgentMsgStatus(Enum):
 
 # 逻辑上的同一个Message在同一个session中看到的msgid相同
 #       在不同的session中看到的msgid不同
-
-
 
 class AgentMsg:
     def __init__(self,msg_type=AgentMsgType.TYPE_MSG) -> None:
@@ -136,13 +137,78 @@ class AgentMsg:
 
         return resp_msg
 
-    def set(self,sender:str,target:str,body:str,topic:str=None) -> None:
+    def set(self,sender:str,target:str,body:str,topic:str=None,body_mime:str=None) -> None:
         self.sender = sender
         self.target = target
         self.body = body
+        self.body_mime = body_mime
         self.create_time = time.time()
         if topic:
             self.topic = topic
+
+    @staticmethod
+    def create_image_body(images: [str], prompt: str = None):
+        return json.dumps({"images": images, "prompt": prompt})
+
+    @staticmethod
+    def parse_image_body(image_body: str) -> Tuple[str, List[str]]:
+        body = json.loads(image_body)
+        return body.get("prompt"), body.get("images")
+
+    @staticmethod
+    def create_video_body(video: str, prompt: str = None):
+        return json.dumps({"video": video, "prompt": prompt})
+
+    @staticmethod
+    def parse_video_body(video_body: str) -> Tuple[str, str]:
+        body = json.loads(video_body)
+        return body.get("prompt"), body.get("video")
+
+    def set_image(self, sender: str, target: str, image_format: str, images: [str], prompt: str = None, topic: str = None):
+        self.sender = sender
+        self.target = target
+        self.create_time = time.time()
+        self.body_mime = f"image/{image_format}"
+        self.body = self.create_image_body(images, prompt)
+        if topic:
+            self.topic = topic
+
+    def is_image_msg(self) -> bool:
+        if self.body_mime is None:
+            return False
+        if self.body_mime.startswith("image/"):
+            return True
+        return False
+
+    def get_image_body(self) -> Tuple[str, List[str]]:
+        if self.body_mime is None:
+            return None
+        if self.body_mime.startswith("image/"):
+            return self.parse_image_body(self.body)
+        return None
+
+    def set_video(self, sender: str, target: str, video_format: str, video: str, prompt: str = None, topic: str = None):
+        self.sender = sender
+        self.target = target
+        self.create_time = time.time()
+        self.body_mime = f"video/{video_format}"
+        self.body = self.create_video_body(video, prompt)
+        if topic:
+            self.topic = topic
+
+    def get_video_body(self) -> Tuple[str, str]:
+        if self.body_mime is None:
+            return None
+        if self.body_mime.startswith("video/"):
+            return self.parse_video_body(self.body)
+        return None
+
+    def is_video_msg(self) -> bool:
+        if self.body_mime is None:
+            return False
+        if self.body_mime.startswith("video/"):
+            return True
+        return False
 
     def get_msg_id(self) -> str:
         return self.msg_id

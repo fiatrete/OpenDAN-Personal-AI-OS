@@ -3,9 +3,10 @@ from typing import Optional
 
 import toml
 
-from aios_kernel import Environment, SimpleAIFunction
 import os
 
+from aios.agent.ai_function import SimpleAIFunction
+from aios.environment.environment import Environment
 
 local_path = os.path.split(os.path.realpath(__file__))[0]
 

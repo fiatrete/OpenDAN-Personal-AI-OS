@@ -1,4 +1,6 @@
+import datetime
 import logging
+import os.path
 import threading
 import asyncio
 import uuid
@@ -51,6 +53,9 @@ class TelegramTunnel(AgentTunnel):
         self.allow_group = "contact"
         self.in_process_tg_msg = {}
         self.chatid_record = {}
+        self.telegram_cache = os.path.join(AIStorage.get_instance().get_myai_dir(), "telegram")
+        if not os.path.exists(self.telegram_cache):
+            os.makedirs(self.telegram_cache)
 
     async def _do_process_raw_message(self,bot: Bot, update_id: int) -> int:
         # Request updates after the last update_id
@@ -58,7 +63,7 @@ class TelegramTunnel(AgentTunnel):
         for update in updates:
             next_update_id = update.update_id + 1
 
-            if update.message and update.message.text:
+            if update.message and (update.message.text or (update.message.photo and len(update.message.photo) > 0) or update.message.video):
 
                 await self.on_message(bot,update)
             return next_update_id
@@ -96,9 +101,10 @@ class TelegramTunnel(AgentTunnel):
                     update_id += 1
                 except  Exception as e:
                     logger.error(f"tg_tunnel error:{e}")
+                    logger.exception(e)
                     await asyncio.sleep(1)
 
-                    
+
 
         asyncio.create_task(_run_app())
         logger.info(f"tunnel {self.tunnel_id} started.")
@@ -120,7 +126,7 @@ class TelegramTunnel(AgentTunnel):
     #     if chatid is None:
     #         logger.warning(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target} failed! chatid not found!")
     #         return None
-        
+
     #     if bot is None:
     #         logger.warning(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target} failed! bot not found!")
     #         return None
@@ -130,7 +136,7 @@ class TelegramTunnel(AgentTunnel):
     #             await bot.send_message(chat_id=chatid,text=msg.body)
     #             logging.info(f"tg_tunnel send message {msg.msg_id} from agent {msg.sender} to human {msg.target} @ chatid:{chatid}success!")
     #             return None
-        
+
     #     logger.warning(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target} failed! contact not found!")
     #     return None
 
@@ -143,13 +149,37 @@ class TelegramTunnel(AgentTunnel):
         else:
             logger.warning(f"tg_tunnel process message {msg.msg_id} from agent {msg.sender} to human {msg.target} failed! chatid not found!")
 
+    def get_cache_path(self) -> str:
+        today = datetime.datetime.today()
+        path = os.path.join(self.telegram_cache, str(today.year), str(today.month))
+        if not os.path.exists(path):
+            os.makedirs(path)
+        return path
 
     async def conver_tg_msg_to_agent_msg(self,message:Message) -> AgentMsg:
         agent_msg = AgentMsg()
         agent_msg.topic = "_telegram"
         agent_msg.msg_id = "tg_msg#" + str(message.message_id) + "#" + uuid.uuid4().hex
         agent_msg.target = self.target_id
-        agent_msg.body = message.text
+        if message.text is not None:
+            agent_msg.body = message.text
+        elif message.photo is not None and len(message.photo) > 0:
+            photo_files = []
+            photo_file = await message.photo[-1].get_file()
+            ext = photo_file.file_path.rsplit(".")[-1]
+            file_path = os.path.join(self.get_cache_path(), photo_file.file_id + f".{ext}")
+            await photo_file.download_to_drive(file_path)
+            photo_files.append(file_path)
+            agent_msg.body = agent_msg.create_image_body(photo_files, message.caption)
+            agent_msg.body_mime = f"image/{ext}"
+        elif message.video is not None:
+            video_file = await message.video.get_file()
+            ext = video_file.file_path.rsplit(".")[-1]
+            file_path = os.path.join(self.get_cache_path(), video_file.file_id + f".{ext}")
+            await video_file.download_to_drive(file_path)
+            agent_msg.body = agent_msg.create_video_body(file_path, message.caption)
+            agent_msg.body_mime = f"video/{ext}"
+
         agent_msg.create_time = time.time()
         messag_type = message.chat.type
         if messag_type == "supergroup" or messag_type == "group":
@@ -168,7 +198,7 @@ class TelegramTunnel(AgentTunnel):
                         agent_msg.mentions.append(self.target_id)
                     else:
                         agent_msg.mentions.append(mention)
-                    
+
         if message.caption_entities:
             for entity in message.caption_entities:
                 if entity.type == 'mention':
@@ -203,11 +233,11 @@ class TelegramTunnel(AgentTunnel):
         if update.effective_user.is_bot:
             logger.warning(f"ignore message from telegram bot {update.effective_user.id}")
             return None
-        
+
         if self.in_process_tg_msg.get(update.message.message_id) is not None:
             logger.warning(f"ignore message from telegram bot {update.effective_user.id}")
             return None
-        
+
         self.in_process_tg_msg[update.message.message_id] = True
 
         agent_msg = await self.conver_tg_msg_to_agent_msg(message)
@@ -226,7 +256,7 @@ class TelegramTunnel(AgentTunnel):
                 if self.allow_group != "contact" and self.allow_group !="guest":
                     await update.message.reply_text(f"You're not supposed to talk to me! Please contact my father~")
                     return
-            
+
         else:
             if self.allow_group != "guest":
                 await update.message.reply_text(f"The current Telegram account is not in the contact list. If you want to receive a reply, you can add the configuration in the contacts.toml file or switch tunnel to guest mode.")
@@ -246,7 +276,7 @@ class TelegramTunnel(AgentTunnel):
         if contact is not None:
             contact.set_active_tunnel(self.target_id,self)
             self.chatid_record[reomte_user_name] = update.effective_chat.id
-            self.ai_bus.register_message_handler(reomte_user_name,contact._process_msg) 
+            self.ai_bus.register_message_handler(reomte_user_name,contact._process_msg)
 
         agent_msg.sender = reomte_user_name
         logger.info(f"process message {agent_msg.msg_id} from {agent_msg.sender} to {agent_msg.target}")
@@ -266,11 +296,11 @@ class TelegramTunnel(AgentTunnel):
             if resp_msg.body_mime is None:
                 if resp_msg.body is None:
                     return
-                
+
                 if len(resp_msg.body) < 1:
                     await update.message.reply_text("")
                     return
-                
+
                 knowledge_object = KnowledgeStore().parse_object_in_message(resp_msg.body)
                 if knowledge_object is not None:
                     if knowledge_object.get_object_type() == ObjectType.Image:
