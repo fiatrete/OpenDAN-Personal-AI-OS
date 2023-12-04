@@ -29,6 +29,7 @@ sys.path.append(directory + '/../../')
 import proxy
 from aios import *
 import local_compute_node_builder
+from component.llama_node.local_llama_compute_node import LocalLlama_ComputeNode
 
 sys.path.append(directory + '/../../component/')
 
@@ -403,14 +404,26 @@ class AIOS_Shell:
 
     async def handle_node_commands(self, args):
         show_text = FormattedText([("class:title", "sub command not support!\n" 
-                              "/node add\n"
+                              "/node add $model_name $url\n"
+                              "/node create\n"
                               "/node rm $model_name $url\n"
                               "/node list\n")])
         if len(args) < 1:
             return show_text
         sub_cmd = args[0]
-        if sub_cmd == "add":
+        if sub_cmd == "create":
             await local_compute_node_builder.build(session, shell_style)
+        elif sub_cmd == "add":
+            if len(args) < 3:
+                return show_text
+            
+            model_name = args[1]
+            url = args[2]
+            ComputeNodeConfig.get_instance().add_node("llama", url, model_name)
+            ComputeNodeConfig.get_instance().save()
+            node = LocalLlama_ComputeNode(url, model_name)
+            node.start()
+            ComputeKernel.get_instance().add_compute_node(node)
         elif sub_cmd == "rm":
             if len(args) < 3:
                 return show_text
@@ -767,7 +780,8 @@ async def main():
                                '/set_config $key',
                                '/enable $feature',
                                '/disable $feature',
-                               '/node add',
+                               '/node add $model_name $url',
+                               '/node create',
                                '/node rm $model_name $url',
                                '/node list',
                                '/show',
