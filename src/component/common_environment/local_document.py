@@ -4,13 +4,18 @@ import chardet
 import string
 import sqlite3
 import json
+import re
 import threading
 import logging
-from datetime import datetime
+import hashlib
+from markdown import Markdown
+import PyPDF2
+import datetime
 from typing import Optional, List
-from aios import KnowledgePipelineEnvironment, AIStorage, SimpleEnvironment, TodoListEnvironment, TodoListType, AgentTodo, CustomAIAgent
+from aios import *
+from .local_file_system import FilesystemEnvironment
 
-
+logger = logging.getLogger(__name__)
 
 class MetaDatabase:
     def __init__(self,db_path:str):
@@ -79,7 +84,7 @@ class MetaDatabase:
     def add_doc(self, doc_path: str, length: int, last_modify: str, doc_hash: Optional[str] = None):
         conn = self._get_conn()
         cursor = conn.cursor()
-        create_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        create_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute('''
             INSERT INTO documents (doc_path, length, last_modify, doc_hash,create_time) 
             VALUES (?, ?, ?, ?,?)
@@ -125,9 +130,9 @@ class MetaDatabase:
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        create_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        create_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         summary = metadata.get("summary", "")
-        catalogs = metadata.get("catalogs","")
+        catalogs = json.dumps(metadata.get("catalogs", {}))
         title = metadata.get("title","")
         tags = ','.join(metadata.get("tags", []))
 
@@ -140,14 +145,14 @@ class MetaDatabase:
     #llm_result["summary"]
     #llm_result["tags"]
     #llm_result["catalog"]
-    def set_knowledge_llm_result(self, doc_hash: str, llm_result: dict):
+    def set_knowledge_llm_result(self, doc_hash: str, meta: dict):
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        title = llm_result.get("title", "")
-        summary = llm_result.get("summary", "")
-        catalogs = json.dumps(llm_result.get("catalogs", {}))
-        tags = ','.join(llm_result.get("tags", []))
+        title = meta.get("title", "")
+        summary = meta.get("summary", "")
+        catalogs = json.dumps(meta.get("catalogs", {}))
+        tags = ','.join(meta.get("tags", []))
 
         cursor.execute('''
             UPDATE knowledge
@@ -155,6 +160,7 @@ class MetaDatabase:
             WHERE doc_hash = ?
         ''', (title,summary, catalogs, tags, doc_hash))
         conn.commit()
+
 
     def get_hash_by_doc_path(self, doc_path: str) -> Optional[str]:
         conn = self._get_conn()
@@ -227,12 +233,60 @@ class MetaDatabase:
         ''', (tag))
         return [row[0] for row in cursor.fetchall()]
 
+# singleton
+class LearningCache:
+    _instance_lock = threading.Lock()
+    _instance = None
 
-class LocalKnowledgeBase(SimpleEnvironment):
+    def __instance_init__(self):
+        self.cache = {}
+        self.cache_lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            with LearningCache._instance_lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance.__instance_init__()
+        return cls._instance
+
+    def add(self, key, value):
+        with self.cache_lock:
+            self.cache[key] = value
+
+    def get(self, key):
+        with self.cache_lock:
+            return self.cache.get(key)
+
+    def remove(self, key):
+        with self.cache_lock:
+            return self.cache.pop(key, None)
+    
+
+class LocalKnowledgeBase(CompositeEnvironment):
     def __init__(self, workspace: str) -> None:
         super().__init__(workspace)
-        self.root_path = f"{self.root_path}/knowledge"
+        self.root_path = f"{workspace}/knowledge"
+        if os.path.exists(self.root_path) is False:
+            os.makedirs(self.root_path)
         self.meta_db = MetaDatabase(f"{self.root_path}/kb.db")
+        self.learning_cache = LearningCache()
+
+        async def learn(op:dict):
+            full_path = op.get("original_path")
+            if not full_path:
+                return 
+            meta = self.learning_cache.get(full_path)
+            meta.update(op)
+            
+        self.add_ai_operation(SimpleAIOperation(
+            op="learn",
+            description="update knowledge llm summary",
+            func_handler=learn,
+        ))
+
+        self.fs = FilesystemEnvironment(self.root_path)
+        self.add_env(self.fs)
     
     async def get_knowledege_catalog(self,path:str=None,only_dir =True,max_depth:int=5)->str:
         if path:
@@ -344,22 +398,32 @@ class ScanLocalDocument:
 
 
 class ParseLocalDocument:
-    def __init__(self, env: KnowledgePipelineEnvironment, config):
+    def __init__(self, env: KnowledgePipelineEnvironment, config: dict):
         self.env = env
         workspace = string.Template(config["workspace"]).substitute(myai_dir=AIStorage.get_instance().get_myai_dir())
         self.todo_list = TodoListEnvironment(workspace, TodoListType.TO_LEARN)
         self.knowledge_base = LocalKnowledgeBase(workspace)
-        self.token_limit = config["token_limit"]
+        self.token_limit = config.get("token_limit", 4000)
+        self.assign_to = config.get("assign_to")
 
 
     async def parse(self, full_path: str) -> str:
         file_stat = os.stat(full_path)
         if file_stat.st_size < 1:
             return full_path
-        hash, meta_data = self._parse_document(full_path)
-        await self._learn(meta_data, full_path)
+        hash, parse_meta = self._parse_document(full_path)
+        parse_meta["original_path"] = full_path
+        llm_meta = await self._learn_by_agent(parse_meta)
         self.knowledge_base.meta_db.add_doc(full_path,file_stat.st_size,file_stat.st_mtime,hash)
-        self.knowledge_base.meta_db.add_knowledge(hash,meta_data)
+        self.knowledge_base.meta_db.add_knowledge(hash,parse_meta)
+        self.knowledge_base.meta_db.set_knowledge_llm_result(hash,llm_meta)
+        path_list = llm_meta.get("path")
+        new_title = llm_meta.get("title")
+        if path_list:
+            for new_path in path_list:
+                new_path = f"{new_path}/{new_title}"
+                await self.knowledge_base.fs.symlink(full_path, new_path)
+                logger.info(f"create soft link {full_path} -> {new_path}")
         return full_path
         
     async def _get_meta_prompt(self,meta: dict,temp_meta = None,need_catalogs = False) -> str:
@@ -384,15 +448,15 @@ class ParseLocalDocument:
             for key in temp_meta.keys():
                 known_obj[key] = temp_meta[key]
 
-        org_path = meta.get("full_path")
-        known_obj["orginal_path"] = org_path
+        org_path = meta.get("original_path")
+        known_obj["original_path"] = org_path
         return f"# Known information:\n## Current directory structure:\n{kb_tree}\n## Knowlege Metadata:\n{json.dumps(known_obj)}\n"
 
-    async def _token_len(self, text: str) -> int:
+    def _token_len(self, text: str) -> int:
         return CustomAIAgent("", "gpt-4-1106-preview", self.token_limit).token_len(text=text)
 
 
-    async def _learn(self, meta:dict, full_path:str):
+    async def _learn_by_agent(self, meta:dict) -> dict:
         # Objectives:
         #   Obtain better titles, abstracts, table of contents (if necessary), tags
         #   Determine the appropriate place to put it (in line with the organization's goals)
@@ -405,24 +469,26 @@ class ParseLocalDocument:
         # Sorting long files (general tricks)
         #   Indicate that the input is part of the content, let LLM generate intermediate results for the task
         #   Enter the content in sequence, when the last content block is input, LLM gets the result
-
-        full_content = self.knowledge_base.load_knowledge_content(full_path)
+        full_content = await self.knowledge_base.load_knowledge_content(meta["original_path"])
         full_content_len = self._token_len(full_content)
+        full_path = meta["original_path"]
+        self.knowledge_base.learning_cache.add(full_path, meta)
+       
 
-        if full_content_len < self.token_limit():
+        if full_content_len < self.token_limit:
             # 短文章不用总结catalog
             todo = AgentTodo()
+            todo.worker = self.assign_to
             todo.title = meta["title"]
             meta_prompt = await self._get_meta_prompt(meta,None)
             todo.detail = meta_prompt + full_content
-            self.todo_list.create_todo(None, todo)
+            await self.todo_list.create_todo(None, todo)
             await self.todo_list.wait_todo_done(todo.todo_id)
         else:
             logger.warning(f"llm_read_article: article {full_path} use LLM loop learn!")
             pos = 0
-            read_len = int(self.token_limit() * 1.2)
+            read_len = int(self.token_limit * 1.2)
 
-            temp_meta = {}
             is_final = False
             while pos < full_content_len:
                 _content = full_content[pos:pos+read_len]
@@ -435,16 +501,17 @@ class ParseLocalDocument:
                     part_content = f"<<Part:start at {pos}>>\n{_content}"
 
                 pos = pos + read_len
+                temp_meta = self.knowledge_base.learning_cache.get(full_path)
                 todo = AgentTodo()
+                todo.worker = self.assign_to
                 todo.title = meta["title"]
                 meta_prompt = await self._get_meta_prompt(meta,temp_meta)
                 todo.detail = meta_prompt + part_content
                 self.todo_list.create_todo(None, todo)
                 todo = await self.todo_list.wait_todo_done(todo.todo_id)
-                result_obj = json.loads(todo.result.result_str)
-                temp_meta = result_obj
                 if is_final:
                     break
+        return self.knowledge_base.learning_cache.remove(full_path)
 
     def _parse_pdf_bookmarks(self,bookmarks, parent:list):
         for item in bookmarks:
@@ -543,109 +610,9 @@ class ParseLocalDocument:
             logger.error("parse document %s failed:%s",doc_path,e)
             # traceback.print_exc()
 
+        if not "title" in meta_data:
+            meta_data["title"] = title
         logger.info("parse document %s!",doc_path)
         return hash_result, meta_data
-    
-    def _parse_pdf_bookmarks(self,bookmarks, parent:list):
-        for item in bookmarks:
-            if isinstance(item,list):
-                self._parse_pdf_bookmarks(item,parent)
-            else:
-                if item.title:
-                    new_item = {}
-                    new_item["page"] = item.page.idnum
-                    new_item["title"] = item.title 
-                    my_childs = []
-                    if item.childs:
-                        if len(item.childs) > 0:
-                            self._parse_pdf_bookmarks(item.childs, my_childs)
-                            new_item["childs"] = my_childs
-                    parent.append(new_item)
-                else:
-                    logger.warning("parse pdf bookmarks failed: item.title is None!")
-
-        return
-
-    def _parse_pdf(self,doc_path:str):
-        metadata = {}
-        with open(doc_path, 'rb') as file:
-            reader = PyPDF2.PdfReader(file)
-            try:
-                doc_info = reader.metadata
-                if doc_info:
-                    if doc_info.title:
-                        metadata["title"] = doc_info.title
-                    if doc_info.author:
-                        metadata["authors"] = doc_info.author
-            except Exception as e:
-                logger.warn("parse pdf metadata failed:%s",e)
-
-            dir_path = os.path.dirname(doc_path)
-            base_name = os.path.basename(doc_path)
-            text_content_path = f"{dir_path}/.{base_name}.txt"
-            full_text = ""
-
-            for page in reader.pages:
-                text = page.extract_text()
-                full_text += text
-            with open(text_content_path, 'w', encoding='utf-8') as f:
-                f.write(full_text)
-
-            try:
-                bookmarks = reader.outline
-                if bookmarks:
-                    catalogs = []
-                    self._parse_pdf_bookmarks(bookmarks,catalogs)
-                    metadata["catalogs"] = json.dumps(catalogs)
-            except Exception as e:
-                logger.warn("parse pdf bookmarks failed:%s",e)
-
-        return metadata
-
-    def _parse_txt(self,doc_path:str):
-        return {}
-
-    def _parse_md(self,doc_path:str):
-        metadata = {} 
-        cur_encode = "utf-8"
-        with open(doc_path,'rb') as f:
-            cur_encode = chardet.detect(f.read(1024))['encoding']
-
-        with open(doc_path, mode='r', encoding=cur_encode) as f:
-            content = f.read()
-            match = re.search(r'^# (.*)', content, re.MULTILINE)
-            if match:
-                metadata['title'] = match.group(1).strip()
-            md = Markdown(extensions=['toc'])
-            html_str = md.convert(content)
-            toc = md.toc
-            if toc:
-                metadata['catalogs'] = toc
-            
-        return metadata
-
-    def _parse_document(self,doc_path:str):
-        hash_result = None
-        title = os.path.basename(doc_path)
-        meta_data = {}
-
-        with open(doc_path, "rb") as f:
-            hash_md5 = hashlib.md5()
-            for chunk in iter(lambda: f.read(1024*1024), b""):
-                hash_md5.update(chunk)
-            hash_result = hash_md5.hexdigest()
-        try:
-            if doc_path.endswith(".md"):
-                meta_data = self._parse_md(doc_path)
-            elif doc_path.endswith(".pdf"):
-                meta_data = self._parse_pdf(doc_path)
-        except Exception as e:
-            logger.error("parse document %s failed:%s",doc_path,e)
-            # traceback.print_exc()
-
-        if meta_data.get("title"):
-            title = meta_data["title"]
-        logger.info("parse document %s!",doc_path)
-        return hash_result,title,meta_data
         
     

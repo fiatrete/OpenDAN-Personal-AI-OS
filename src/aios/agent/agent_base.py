@@ -14,7 +14,7 @@ from typing import List, Tuple
 from .ai_function import FunctionItem, AIFunction
 from ..proto.agent_msg import AgentMsg, AgentMsgType
 from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode
-from ..environment.environment import Environment
+from ..environment.environment import BaseEnvironment
 
 
 logger = logging.getLogger(__name__)
@@ -129,6 +129,8 @@ class LLMResult:
 
         if llm_result_str[0] == "{":
             return LLMResult.from_json_str(llm_result_str)
+        # if llm_result_str.startswith("json"):
+        #     return LLMResult.from_json_str(llm_result_str[4:])
 
         lines = llm_result_str.splitlines()
         is_need_wait = False
@@ -368,7 +370,7 @@ class AgentTodo:
             case AgentTodo.TODO_STATE_DONE:
                 logger.info(f"todo {self.title} is done, ignore")
                 return False
-            case AgentTodo.TODO_STATE_CASNCEL:
+            case AgentTodo.TODO_STATE_CANCEL:
                 logger.info(f"todo {self.title} is cancel, ignore")
                 return False
             case AgentTodo.TODO_STATE_EXPIRED:
@@ -419,7 +421,7 @@ class BaseAIAgent(abc.ABC):
         pass
 
     def token_len(self, text:str=None, prompt:AgentPrompt=None) -> int:
-        from .compute_kernel import ComputeKernel 
+        from ..frame.compute_kernel import ComputeKernel 
         if text:
             return ComputeKernel.llm_num_tokens_from_text(text,self.get_llm_model_name())
         elif prompt:
@@ -428,11 +430,12 @@ class BaseAIAgent(abc.ABC):
                 result += ComputeKernel.llm_num_tokens_from_text(prompt.system_message.get("content"),self.get_llm_model_name())
             for msg in prompt.messages:
                 result += ComputeKernel.llm_num_tokens_from_text(msg.get("content"),self.get_llm_model_name())
+            return result
         else:
             return 0
 
     @classmethod
-    def get_inner_functions(cls, env:Environment) -> (dict,int):
+    def get_inner_functions(cls, env:BaseEnvironment) -> (dict,int):
         if env is None:
             return None,0
 
@@ -457,7 +460,7 @@ class BaseAIAgent(abc.ABC):
         self,
         prompt:AgentPrompt,
         org_msg:AgentMsg=None,
-        env:Environment=None,
+        env:BaseEnvironment=None,
         inner_functions=None,
         is_json_resp=False,
     ) -> ComputeTaskResult:
@@ -510,7 +513,7 @@ class BaseAIAgent(abc.ABC):
 
     async def _execute_func(
         self,
-        env: Environment,
+        env: BaseEnvironment,
         inner_func_call_node: dict,
         prompt: AgentPrompt,
         inner_functions: dict,

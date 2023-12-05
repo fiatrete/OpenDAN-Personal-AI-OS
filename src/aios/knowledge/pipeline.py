@@ -47,7 +47,7 @@ class KnowledgePipelineJournalClient:
         timestamp = datetime.datetime.now() if timestamp is None else timestamp
         conn = sqlite3.connect(self.journal_path)
         conn.execute(
-            "INSERT INTO journal (time, input, parser) VALUES (?, ?, ?, ?)",
+            "INSERT INTO journal (time, input, parser) VALUES (?, ?, ?)",
             (timestamp, input, parser),
         )
         conn.commit()

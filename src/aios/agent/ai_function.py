@@ -182,7 +182,7 @@ class SimpleAIOperation(AIOperation):
         if self.func_handler is None:
             return "error: function not implemented"
         
-        return await self.func_handler(**params)
+        return await self.func_handler(params)
     
 
 class AIFunctionOperation(AIOperation):

@@ -3,8 +3,7 @@ import aiofiles
 import chardet
 import logging
 import string
-from knowledge import ImageObjectBuilder, DocumentObjectBuilder, KnowledgePipelineEnvironment, KnowledgePipelineJournal
-from aios_kernel.storage import AIStorage
+from aios import AIStorage,ImageObjectBuilder, DocumentObjectBuilder, KnowledgePipelineEnvironment, KnowledgePipelineJournal
 
 class KnowledgeDirSource:
     def __init__(self, env: KnowledgePipelineEnvironment, config):

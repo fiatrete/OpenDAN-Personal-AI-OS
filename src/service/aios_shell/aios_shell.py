@@ -40,10 +40,11 @@ from sd_node import *
 from st_node import *
 
 from agent_manager import AgentManager
-from workflow_manager import WorkflowManager
+# from workflow_manager import WorkflowManager
 from knowledge_manager import KnowledgePipelineManager
 from tg_tunnel import TelegramTunnel
 from email_tunnel import EmailTunnel
+from common_environment import LocalKnowledgeBase, FilesystemEnvironment, ShellEnvironment, ScanLocalDocument, ParseLocalDocument
 
 from compute_node_config import *
 
@@ -130,22 +131,26 @@ class AIOS_Shell:
 
             cm.add_family_member(self.username,owenr)
 
-        cal_env = CalenderEnvironment("calender")
-        await cal_env.start()
-        Environment.set_env_by_id("calender",cal_env)
+        # cal_env = CalenderEnvironment("calender")
+        # await cal_env.start()
+        # Environment.set_env_by_id("calender",cal_env)
 
-        workspace_env = ShellEnvironment("bash")
-        Environment.set_env_by_id("bash",workspace_env)
+        # workspace_env = ShellEnvironment("bash")
+        # Environment.set_env_by_id("bash",workspace_env)
 
-        paint_env = PaintEnvironment("paint")
-        Environment.set_env_by_id("paint",paint_env)
+        # paint_env = PaintEnvironment("paint")
+        # Environment.set_env_by_id("paint",paint_env)
+
+        AgentManager.get_instance().register_environment("bash", ShellEnvironment)
+        AgentManager.get_instance().register_environment("fs", FilesystemEnvironment)
+        AgentManager.get_instance().register_environment("knowledge", LocalKnowledgeBase)
 
         if await AgentManager.get_instance().initial() is not True:
             logger.error("agent manager initial failed!")
             return False
-        if await WorkflowManager.get_instance().initial() is not True:
-            logger.error("workflow manager initial failed!")
-            return False
+        # if await WorkflowManager.get_instance().initial() is not True:
+        #     logger.error("workflow manager initial failed!")
+        #     return False
 
         open_ai_node = OpenAI_ComputeNode.get_instance()
         if await open_ai_node.initial() is not True:
@@ -217,6 +222,8 @@ class AIOS_Shell:
 
 
         pipelines = KnowledgePipelineManager.initial(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge/pipelines"))
+        pipelines.register_input("scan_local", ScanLocalDocument)
+        pipelines.register_parser("parse_local", ParseLocalDocument)
         pipelines.load_dir(os.path.join(AIStorage().get_instance().get_system_app_dir(), "knowledge_pipelines"))
         pipelines.load_dir(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge_pipelines"))
         asyncio.create_task(pipelines.run())
@@ -568,8 +575,8 @@ class AIOS_Shell:
                 target_exist = False
                 if await AgentManager.get_instance().is_exist(target_id):
                     target_exist = True
-                if await WorkflowManager.get_instance().is_exist(target_id):
-                    target_exist = True
+                # if await WorkflowManager.get_instance().is_exist(target_id):
+                #     target_exist = True
 
                 if target_exist is False:
                     show_text = FormattedText([("class:error", f"Target {target_id} not exist!")])
@@ -627,8 +634,8 @@ class AIOS_Shell:
                 db_path = ""
                 if await self.is_agent(self.current_target):
                     db_path = AgentManager.get_instance().db_path
-                else:
-                    db_path = WorkflowManager.get_instance().db_file
+                # else:
+                #     db_path = WorkflowManager.get_instance().db_file
                 chatsession:AIChatSession = AIChatSession.get_session(self.current_target,f"{self.username}#{self.current_topic}",db_path,False)
                 if chatsession is not None:
                     msgs = chatsession.read_history(num,offset)

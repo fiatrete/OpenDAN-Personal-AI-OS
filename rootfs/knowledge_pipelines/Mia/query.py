@@ -1,12 +1,11 @@
 import os
 import logging
 import json
-from aios_kernel import *
-from knowledge import *
+from aios import *
 
-class KnowledgeEnvironment(Environment):
-    def __init__(self, env_id: str) -> None:
-        super().__init__(env_id)
+class EmbeddingEnvironment(SimpleEnvironment):
+    def __init__(self, workspace: str) -> None:
+        super().__init__(workspace)
         self.path = os.path.join(AIStorage.get_instance().get_myai_dir(), "knowledge/indices/embedding")
         self._default_text_model = "all-MiniLM-L6-v2"
         self._default_image_model = "clip-ViT-B-32"
@@ -93,5 +92,5 @@ class KnowledgeEnvironment(Environment):
             content = "*** I have provided the following known information for your reference with json format:\n"
             return content + self.tokens_from_objects(object_ids[index:index+1])
 
-def init() -> KnowledgeEnvironment:
-    return KnowledgeEnvironment("embedding")
+def init(workspace: str) -> EmbeddingEnvironment:
+    return EmbeddingEnvironment(workspace)

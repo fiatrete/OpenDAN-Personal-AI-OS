@@ -1,5 +1,3 @@
-# this env is designed for workflow owner filesystem, support file/directory operations
-
 import json
 import logging
 import os
@@ -166,10 +164,8 @@ class TodoListEnvironment(SimpleEnvironment):
 
         detail_path = path + "/detail"
         try:
-            async with aiofiles.open(detail_path, mode='r', encoding="utf-8") as f:
-                content = await f.read(4096)
-                logger.debug("get_todo_by_fullpath:%s,content:%s",path,content)
-                todo_dict = json.loads(content)
+            with open(detail_path, mode='r', encoding="utf-8") as f:
+                todo_dict = json.load(f)
                 result_todo =  AgentTodo.from_dict(todo_dict)
                 if result_todo:
                     relative_path = os.path.relpath(path, self.root_path)
@@ -189,9 +185,9 @@ class TodoListEnvironment(SimpleEnvironment):
         try:
             if parent_id:
                 parent_path = self._get_todo_path(parent_id)
-                todo_path = f"{parent_path}/{todo.title}"
+                todo_path = f"{parent_path}/{todo.todo_id}-{todo.title}"
             else:
-                todo_path = todo.title
+                todo_path = f"{todo.todo_id}-{todo.title}"
 
             dir_path = f"{self.root_path}/{todo_path}"
     
@@ -212,10 +208,11 @@ class TodoListEnvironment(SimpleEnvironment):
     async def update_todo(self,todo_id:str,new_stat:str)->str:
         try:
             todo_path = self._get_todo_path(todo_id)
-            todo : AgentTodo = self.get_todo_by_fullpath(todo_path)
+            full_path = f"{self.root_path}/{todo_path}"
+            todo : AgentTodo = await self.get_todo_by_fullpath(full_path)
             if todo:
                 todo.state = new_stat
-                detail_path =  f"{self.root_path}/{todo.todo_path}/detail"
+                detail_path =  f"{full_path}/detail"
                 async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
                     await f.write(json.dumps(todo.to_dict()))
                     return None
@@ -224,18 +221,32 @@ class TodoListEnvironment(SimpleEnvironment):
         except Exception as e:
             return str(e)
     
-    async def wait_todo_done(self,todo_id:str) -> AgentTodo:
+    async def wait_todo_done(self,todo_id:str,state=AgentTodo.TODO_STATE_WAITING_CHECK) -> AgentTodo:
         todo_path = self._get_todo_path(todo_id)
+        full_path = f"{self.root_path}/{todo_path}"
         async def check_done():
             while True:
-                todo : AgentTodo = self.get_todo_by_fullpath(todo_path)
-                if todo:
-                    if todo.state == AgentTodo.TODO_STATE_DONE:
+                todo : AgentTodo = await self.get_todo_by_fullpath(full_path)
+                if todo is None:
+                    continue
+                if todo.state == AgentTodo.TODO_STATE_CANCEL:
+                    break
+                elif todo.state == AgentTodo.TODO_STATE_EXPIRED:
+                    break
+                elif todo.state == AgentTodo.TODO_STATE_WAITING_CHECK:
+                    if state == AgentTodo.TODO_STATE_WAITING_CHECK:
                         break
+                elif todo.state == AgentTodo.TODO_STATE_DONE:
+                    if state == AgentTodo.TODO_STATE_WAITING_CHECK:
+                        break
+                    elif todo.state == AgentTodo.TODO_STATE_DONE:
+                        break
+                elif todo.state == AgentTodo.TODO_STATE_REVIEWED:
+                    break
                 await asyncio.sleep(1)
         
-        asyncio.create_task(check_done())
-        return self.get_todo_by_fullpath(todo_path)
+        await check_done()
+        return await self.get_todo_by_fullpath(full_path)
         
     
     async def append_worklog(self, todo:AgentTodo, result:AgentTodoResult):
@@ -254,171 +265,6 @@ class TodoListEnvironment(SimpleEnvironment):
             json_obj["logs"] = logs
             await f.write(json.dumps(json_obj))
 
-class FilesystemEnvironment(SimpleEnvironment):
-    def __init__(self, workspace: str) -> None:
-        super().__init__(workspace)
-        self.root_path = workspace
-
-        # if op["op"] == "create":
-        #     await self.create(op["path"],op["content"])
-
-        async def write(op):  
-            is_append = op.get("is_append")
-            if is_append is None:
-                is_append = False
-            return await self.write(op["path"],op["content"],is_append)
-        self.add_ai_operation(SimpleAIOperation(
-            op="write",
-            description="write file",
-            func_handler=write,
-        ))
-
-        async def delete(op):  
-            return await self.delete(op["path"])
-        self.add_ai_operation(SimpleAIOperation(
-            op="delete",
-            description="delete path",
-            func_handler=delete,
-        ))
-
-        async def rename(op):  
-            return await self.move(op["path"],op["new_name"])
-        self.add_ai_operation(SimpleAIOperation(
-            op="rename",
-            description="rename path",
-            func_handler=rename,
-        ))
-    
-    # file system operation: list,read,write,delete,move,stat
-    # inner_function
-    async def list(self,path:str,only_dir:bool=False) -> str:
-        directory_path = self.root_path + path
-        items = []
-
-        with await aiofiles.os.scandir(directory_path) as entries:
-            async for entry in entries:
-                is_dir = entry.is_dir()
-                if only_dir and not is_dir:
-                    continue
-                item_type = "directory" if is_dir else "file"
-                items.append({"name": entry.name, "type": item_type})
-
-        return json.dumps(items)
-    
-    # inner_function
-    async def read(self,path:str) -> str:
-        file_path = self.root_path + path
-        cur_encode = "utf-8"
-        async with aiofiles.open(file_path,'rb') as f:
-            cur_encode = chardet.detect(await f.read())['encoding']
-
-        async with aiofiles.open(file_path, mode='r', encoding=cur_encode) as f:
-            content = await f.read(2048)
-        return content
-    
-
-    # operation or inner_function (MOST IMPORTANT FUNCTION)
-    async def write(self,path:str,content:str,is_append:bool=False) -> str:
-        file_path = self.root_path + path
-        try:
-            if is_append:
-                async with aiofiles.open(file_path, mode='a', encoding="utf-8") as f:
-                    await f.write(content)
-            else:
-                if content is None:
-                    # create dir
-                    dir_path = self.root_path + path
-                    os.makedirs(dir_path)
-                    return True
-                else:
-                    file_path = self.root_path + path
-                    os.makedirs(os.path.dirname(file_path),exist_ok=True)
-                    async with aiofiles.open(file_path, mode='w', encoding="utf-8") as f:
-                        await f.write(content)
-                    return True
-        
-        except Exception as e:
-            return str(e)
-        return None
-    
-        
-    # operation or inner_function
-    async def delete(self,path:str) -> str:
-        try:
-            file_path = self.root_path + path
-            os.remove(file_path)
-        except Exception as e:
-            return str(e)
-        
-        return None
-    
-    # operation or inner_function
-    async def move(self,path:str,new_path:str) -> str:
-        try:
-            file_path = self.root_path + path
-            new_path = self.root_path + new_path
-            os.rename(file_path,new_path)
-        except Exception as e:
-            return str(e)
-        
-        return None
-    
-    # inner_function
-    async def stat(self,path:str) -> str:
-        try:
-            file_path = self.root_path + path
-            stat = os.stat(file_path)
-            return json.dumps(stat)
-        except Exception as e:
-            return str(e)
-
-    # operation or inner_function   
-    async def symlink(self,path:str,target:str) -> str:
-        try:
-            #file_path = self.root_path + path
-            target_path = self.root_path + target
-            dir_path = os.path.dirname(target_path)
-            os.makedirs(dir_path,exist_ok=True)
-            os.symlink(path,target_path)
-        except Exception as e:
-            logger.error("symlink failed:%s",e)
-            return str(e)
-        
-        return None
-
-class ShellEnvironment(SimpleEnvironment):
-    def __init__(self, workspace: str) -> None:
-        super().__init__(workspace)
-
-        operator_param = {
-            "command": "command will execute",
-        }
-        self.add_ai_function(SimpleAIFunction("shell_exec",
-                                        "execute shell command in linux bash",
-                                        self.shell_exec,operator_param))
-        
-        #run_code_param = {
-        #    "pycode": "python code will execute",
-        #}
-        #self.add_ai_function(SimpleAIFunction("run_code",
-        #                                "execute python code",
-        #                                self.run_code,run_code_param))
-        
-
-    async def shell_exec(self,command:str) -> str:
-        import asyncio.subprocess
-        process = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
-        returncode = process.returncode
-        if returncode == 0:
-            return f"Execute success! stdout is:\n{stdout}\n"
-        else:
-            return f"Execute failed! stderr is:\n{stderr}\n"
-
 
 class WorkspaceEnvironment(CompositeEnvironment):
     def __init__(self, env_id: str) -> None:
@@ -436,8 +282,6 @@ class WorkspaceEnvironment(CompositeEnvironment):
 
         # default environments in workspace
         self.add_env(self.todo_list[TodoListType.TO_WORK])
-        self.add_env(ShellEnvironment(self.root_path))
-        self.add_env(FilesystemEnvironment(self.root_path))
 
     def set_root_path(self,path:str):
         self.root_path = path

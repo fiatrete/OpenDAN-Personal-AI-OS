@@ -1,8 +1,7 @@
 # define a knowledge base class
 import json
 import string
-from aios_kernel import ComputeKernel, AIStorage
-from knowledge import *
+from aios import *
 
 
 class EmbeddingParser:

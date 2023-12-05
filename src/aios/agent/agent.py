@@ -33,67 +33,35 @@ from ..utils import video_utils, image_utils
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_AGENT_READ_REPORT_PROMPT = """
-"""
+# DEFAULT_AGENT_READ_REPORT_PROMPT = """
+# """
 
-DEFAULT_AGENT_DO_PROMPT = """
-You are a helpful AI assistant.
-Solve tasks using your coding and language skills.
-In the following cases, suggest python code (in a python coding block) for the user to execute.
-    1. When you need to collect info, use the code to output the info you need, for example, browse or search the web, download/read a file, print the content of a webpage or a file, get the current date/time, check the operating system. After sufficient info is printed and the task is ready to be solved based on your language skill, you can solve the task by yourself.
-    2. When you need to perform some task with code, use the code to perform the task and output the result. Finish the task smartly.
-Solve the task step by step if you need to. If a plan is not provided, explain your plan first. Be clear which step uses code, and which step uses your language skill.
-When using code, you must indicate the script type in the code block. The user cannot provide any other feedback or perform any other action beyond executing the code you suggest. The user can't modify your code. So do not suggest incomplete code which requires users to modify. Don't use a code block if it's not intended to be executed by the user.
-If you want the user to save the code in a file before executing it, put # filename: <filename> inside the code block as the first line. Don't include multiple code blocks in one response. Do not ask users to copy and paste the result. Instead, use 'print' function for the output when relevant. Check the execution result returned by the user.
-If the result indicates there is an error, fix the error and output the code again. Suggest the full code instead of partial code or code changes. If the error can't be fixed or if the task is not solved even after the code is executed successfully, analyze the problem, revisit your assumption, collect additional info you need, and think of a different approach to try.
-When you find an answer, verify the answer carefully. Include verifiable evidence in your response if possible.
-Reply "TERMINATE" in the end when everything is done.
-"""
+# DEFAULT_AGENT_DO_PROMPT = """
+# You are a helpful AI assistant.
+# Solve tasks using your coding and language skills.
+# In the following cases, suggest python code (in a python coding block) for the user to execute.
+#     1. When you need to collect info, use the code to output the info you need, for example, browse or search the web, download/read a file, print the content of a webpage or a file, get the current date/time, check the operating system. After sufficient info is printed and the task is ready to be solved based on your language skill, you can solve the task by yourself.
+#     2. When you need to perform some task with code, use the code to perform the task and output the result. Finish the task smartly.
+# Solve the task step by step if you need to. If a plan is not provided, explain your plan first. Be clear which step uses code, and which step uses your language skill.
+# When using code, you must indicate the script type in the code block. The user cannot provide any other feedback or perform any other action beyond executing the code you suggest. The user can't modify your code. So do not suggest incomplete code which requires users to modify. Don't use a code block if it's not intended to be executed by the user.
+# If you want the user to save the code in a file before executing it, put # filename: <filename> inside the code block as the first line. Don't include multiple code blocks in one response. Do not ask users to copy and paste the result. Instead, use 'print' function for the output when relevant. Check the execution result returned by the user.
+# If the result indicates there is an error, fix the error and output the code again. Suggest the full code instead of partial code or code changes. If the error can't be fixed or if the task is not solved even after the code is executed successfully, analyze the problem, revisit your assumption, collect additional info you need, and think of a different approach to try.
+# When you find an answer, verify the answer carefully. Include verifiable evidence in your response if possible.
+# Reply "TERMINATE" in the end when everything is done.
+# """
 
-DEFAULT_AGENT_SELF_CHECK_PROMPT = """
+# DEFAULT_AGENT_SELF_CHECK_PROMPT = """
 
-"""
+# """
 
-DEFAULT_AGENT_GOAL_TO_TODO_PROMPT = """
-我会给你一个目标，你需要结合自己的角色思考如何将其拆解成多个TODO。请直接返回json来表达这些TODO
-"""
+# DEFAULT_AGENT_GOAL_TO_TODO_PROMPT = """
+# 我会给你一个目标，你需要结合自己的角色思考如何将其拆解成多个TODO。请直接返回json来表达这些TODO
+# """
 
-DEFAULT_AGENT_LEARN_PROMPT = """
-我是一名软件工程师，拥有非常优秀的资料学习能力。下面是我学习和整理资料的方法
-1. 由于LLM的Token限制，我学习的可能只是资料的部分内容，此时我应能产生合适的学习中间结果，中间结果保存在metadata中。我要么产生中间结果，要么产生最终结果。
-2. 当存在已知信息时，需参考已知信息的内容来思考结果。
-3. 当我收到最后一部分内容时，我能结合已知的中间结果产生最终结果。
-4. 现有资料库以文件系统的形式组织，我未来借助资料的摘要来浏览知识库
-5. 我将学习过的资料另存在资料库的合适位置（以/开始的完整路径）。保存位置的目录深度不超过5层，文件夹名称长度不超过16个字符。
-6. 总是以json格式返回思考结果，json格式如下
-{
-    think:"$think_result",
-    metadata:{...} , # temp result for long content
-    tags:["tag1","tag2"...],
-    path:["/graphic/opengl","/database/mysql"], # list of directories to save to.
-    title:"$article_title",
-    summary:"$summary",
-    catalogs: [{                     # optional,catalogs is a tree
-            title:"$catalog_name1",
-            pos:"$pos:$length"
-            children:[
-                {
-                    title:"$catalog_name 1.1",
-                    pos:"$pos:$length"  
-                } 
-            ]},
-            {
-            title:"$catalog_name2",
-            pos:"$pos:$length"
-            }
-            ]    
-}
-"""
-
-DEFAULT_AGENT_LEARN_LONG_CONENT_PROMPT = """
-我给你一段内容，尝试为期建立目录。目录的标题不能超过16个字，
-目录要指向正文的位置（用字符偏移即可），整个目录的文本长度不能超过256个字节。并用json表达这个目录
-"""
+# DEFAULT_AGENT_LEARN_LONG_CONENT_PROMPT = """
+# 我给你一段内容，尝试为期建立目录。目录的标题不能超过16个字，
+# 目录要指向正文的位置（用字符偏移即可），整个目录的文本长度不能超过256个字节。并用json表达这个目录
+# """
 class AIAgentTemplete:
     def __init__(self) -> None:
         self.llm_model_name:str = "gpt-4-0613"
@@ -149,12 +117,12 @@ class AIAgent(BaseAIAgent):
 
         todo_prompts = {}
         todo_prompts[TodoListType.TO_WORK] = {
-            "do": DEFAULT_AGENT_DO_PROMPT,
-            "check": DEFAULT_AGENT_SELF_CHECK_PROMPT,
+            "do": None,
+            "check": None,
             "review": None,
         }
         todo_prompts[TodoListType.TO_LEARN] = {
-            "do": DEFAULT_AGENT_LEARN_PROMPT,
+            "do": None,
             "check": None,
             "review": None,
         }
@@ -312,9 +280,6 @@ class AIAgent(BaseAIAgent):
     async def _handle_event(self,event):
         if event.type == "AgentThink":
             return await self.do_self_think()
-
-
-
 
     # async def _process_group_chat_msg(self,msg:AgentMsg) -> AgentMsg:
     #     session_topic = msg.target + "#" + msg.topic
@@ -500,7 +465,7 @@ class AIAgent(BaseAIAgent):
 
         known_info_str = "# Known information\n"
         have_known_info = False
-        todos_str,todo_count = await workspace.get_todo_tree()
+        todos_str,todo_count = await workspace.todo_list[TodoListType.TO_WORK].get_todo_tree()
         if todo_count > 0:
             have_known_info = True
             known_info_str += f"## todo\n{todos_str}\n"
@@ -523,7 +488,7 @@ class AIAgent(BaseAIAgent):
 
 
         logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
-        task_result = await self.do_llm_complection(prompt,msg, env=self.agent_workspace,inner_functions=inner_functions)
+        task_result = await self.do_llm_complection(prompt,msg, inner_functions=inner_functions)
         if task_result.result_code != ComputeTaskResultCode.OK:
             error_resp = msg.create_error_resp(task_result.error_str)
             return error_resp
@@ -700,7 +665,7 @@ class AIAgent(BaseAIAgent):
         #    await self._llm_review_todolist(workspace)
 
         todo_list = workspace.todo_list[todo_list_type]
-        need_todo = todo_list.get_todo_list(self.agent_id)
+        need_todo = await todo_list.get_todo_list(self.agent_id)
         
         check_count = 0
         do_count = 0
@@ -826,7 +791,7 @@ class AIAgent(BaseAIAgent):
 
         return do_prompts
 
-    async def _can_do_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> AgentPrompt:
+    def _can_do_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> AgentPrompt:
         do_prompts = self.todo_prompts[todo_list_type].get("do")
         if not do_prompts:
             return None
@@ -848,7 +813,7 @@ class AIAgent(BaseAIAgent):
     async def _llm_do_todo(self, todo: AgentTodo, prompt: AgentPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
         result = AgentTodoResult()
         
-        task_result:ComputeTaskResult = await self.do_llm_complection(prompt)
+        task_result:ComputeTaskResult = await self.do_llm_complection(prompt, is_json_resp=True)
         if task_result.error_str is not None:
             logger.error(f"_llm_do compute error:{task_result.error_str}")
             result.result_code = AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR
@@ -902,203 +867,26 @@ class AIAgent(BaseAIAgent):
 
         return
 
-    # 尝试自我学习，会主动获取、读取资料并进行整理
-    # LLM的本质能力是处理海量知识，应该让LLM能基于知识把自己的工作处理的更好
-    async def do_self_learn(self) -> None:
-        # 不同的workspace是否应该有不同的学习方法？
-        workspace = self.get_workspace_by_msg(None)
-        hash_list = workspace.kb_db.get_knowledge_without_llm_title()
-        for hash in hash_list:
-            if self.agent_energy <= 0:
-                break
-
-            knowledge = workspace.kb_db.get_knowledge(hash)
-            if knowledge is None:
-                continue
-
-            full_path = knowledge.get("full_path")
-            if full_path is None:
-                continue
-
-            if os.path.exists(full_path) is False:
-                logger.warning(f"do_self_learn: knowledge {full_path} is not exists!")
-                continue
-
-             #TODO 可以用v-db 对不同目录的名字进行选择后，先进行一次快速的插入。有时间再慢慢用LLM整理
-            result_obj = await self._llm_read_article(knowledge,full_path)
-
-            #根据结果更新knowledge
-            if result_obj is not None:
-                workspace.kb_db.set_knowledge_llm_result(hash,result_obj)
-                # 在知识库中创建软链接
-                path_list = result_obj.get("path")
-                new_title = result_obj.get("title")
-                if path_list:
-                    for new_path in path_list:
-                        full_new_path = f"/knowledge{new_path}/{new_title}"
-                        await workspace.symlink(full_path,full_new_path)
-                        logger.info(f"create soft link {full_path} -> {full_new_path}")
+    # async def do_blance_knowledge_base(selft):
+    #     # 整理自己的知识库(让分类更平衡，更由于自己以后的工作)，并尝试更新学习目标
+    #     current_path = "/"
+    #     current_list = kb.get_list(current_path)
+    #     self_assessment_with_goal = self.get_self_assessment_with_goal()
+    #     learn_goal = {}
 
 
-            self.agent_energy -= 1
+    #     llm_blance_knowledge_base(current_path,current_list,self_assessment_with_goal,learn_goal,learn_power)
 
-            # match item.type():
-            #     case "book":
-            #         self.llm_read_book(kb,item)
-            #         learn_power -= 1
-            #     case "article":
-            #
-            #         self.llm_read_article(kb,item)
-            #         learn_power -= 1
-            #     case "video":
-            #         self.llm_watch_video(kb,item)
-            #         learn_power -= 1
-            #     case "audio":
-            #         self.llm_listen_audio(kb,item)
-            #         learn_power -= 1
-            #     case "code_project":
-            #         self.llm_read_code_project(kb,item)
-            #         learn_power -= 1
-            #     case "image":
-            #         self.llm_view_image(kb,item)
-            #         learn_power -= 1
-            #     case "other":
-            #         self.llm_read_other(kb,item)
-            #         learn_power -= 1
-            #     case _:
-            #         self.llm_learn_any(kb,item)
-            #         pass
-
-
-    async def do_blance_knowledge_base(selft):
-        # 整理自己的知识库(让分类更平衡，更由于自己以后的工作)，并尝试更新学习目标
-        current_path = "/"
-        current_list = kb.get_list(current_path)
-        self_assessment_with_goal = self.get_self_assessment_with_goal()
-        learn_goal = {}
-
-
-        llm_blance_knowledge_base(current_path,current_list,self_assessment_with_goal,learn_goal,learn_power)
-
-        # 主动学习
-        # 方法目前只有使用搜索引擎一种？
-        for goal in learn_goal.items():
-            self.llm_learn_with_search_engine(kb,goal,learn_power)
-            if learn_power <= 0:
-                break
+    #     # 主动学习
+    #     # 方法目前只有使用搜索引擎一种？
+    #     for goal in learn_goal.items():
+    #         self.llm_learn_with_search_engine(kb,goal,learn_power)
+    #         if learn_power <= 0:
+    #             break
 
 
     def parser_learn_llm_result(self,llm_result:LLMResult):
         pass
-
-    async def gen_known_info_for_knowledge_prompt(self,knowledge_item:dict,temp_meta = None,need_catalogs = False) -> AgentPrompt:
-        workspace =self.get_workspace_by_msg(None)
-        kb_tree = await workspace.get_knowledege_catalog()
-
-
-        known_obj = {}
-        title  = knowledge_item.get("title")
-        if title:
-            known_obj["title"] = title
-        summary = knowledge_item.get("summary")
-        if summary:
-            known_obj["summary"] = summary
-        tags = knowledge_item.get("tags")
-        if tags:
-            known_obj["tags"] = tags
-        if need_catalogs:
-            catalogs = knowledge_item.get("catalogs")
-            if catalogs:
-                known_obj["catalogs"] = catalogs
-
-        if temp_meta:
-            for key in temp_meta.keys():
-                known_obj[key] = temp_meta[key]
-
-        org_path = knowledge_item.get("full_path")
-        known_obj["orginal_path"] = org_path
-        know_info_str = f"# Known information:\n## Current directory structure:\n{kb_tree}\n## Knowlege Metadata:\n{json.dumps(known_obj)}\n"
-        return AgentPrompt(know_info_str)
-
-    async def _llm_read_article(self,knowledge_item:dict,full_path:str) -> ComputeTaskResult:
-        # Objectives:
-        #   Obtain better titles, abstracts, table of contents (if necessary), tags
-        #   Determine the appropriate place to put it (in line with the organization's goals)
-        # Known information:
-        #   The reason why the target service's learn_prompt is being sorted
-        #   Summary of the organization's work (if any)
-        #   The current structure of the knowledge base (note the size control) gen_kb_tree_prompt (when empty, LLM should generate an appropriate initial directory structure)
-        #   Original path, current title, abstract, table of contents
-
-        # Sorting long files (general tricks)
-        #   Indicate that the input is part of the content, let LLM generate intermediate results for the task
-        #   Enter the content in sequence, when the last content block is input, LLM gets the result
-
-
-        #full_content = item.get_article_full_content()
-        workspace = self.get_workspace_by_msg(None)
-        full_content_len = self.token_len(full_content)
-
-        if full_content_len < self.get_llm_learn_token_limit():
-
-            # 短文章不用总结catelog
-            #path_list,summary = llm_get_summary(summary,full_content)
-            #prompt = self.get_agent_role_prompt()
-            prompt = AgentPrompt()
-            prompt.append(self.get_learn_prompt())
-            known_info_prompt = await self.gen_known_info_for_knowledge_prompt(knowledge_item)
-            prompt.append(known_info_prompt)
-            content_prompt = AgentPrompt(full_content)
-            prompt.append(content_prompt)
-            env_functions = None
-            #env_functions,function_len = workspace.get_knowledge_base_ai_functions()
-            task_result:ComputeTaskResult = await self.do_llm_complection(prompt,is_json_resp=True)
-            if task_result.result_code != ComputeTaskResultCode.OK:
-                result_obj = {}
-                result_obj["error_str"] = task_result.error_str
-                return result_obj
-
-            result_obj = json.loads(task_result.result_str)
-            return result_obj
-
-        else:
-            logger.warning(f"llm_read_article: article {full_path} use LLM loop learn!")
-            pos = 0
-            read_len = int(self.get_llm_learn_token_limit() * 1.2)
-
-            temp_meta_data = {}
-            is_final = False
-            while pos < str_len:
-                _content = full_content[pos:pos+read_len]
-                part_cotent_len = len(_content)
-                if part_cotent_len < read_len:
-                    # last chunk
-                    is_final = True
-                    part_content = f"<<Final Part:start at {pos}>>\n{_content}"
-                else:
-                    part_content = f"<<Part:start at {pos}>>\n{_content}"
-
-                pos = pos + read_len
-                prompt = AgentPrompt()
-                prompt.append(self.get_learn_prompt())
-                known_info_prompt = await self.gen_known_info_for_knowledge_prompt(knowledge_item,temp_meta_data)
-                prompt.append(known_info_prompt)
-                content_prompt = AgentPrompt(part_content)
-                prompt.append(content_prompt)
-                #env_functions,function_len = workspace.get_knowledge_base_ai_functions()
-                task_result:ComputeTaskResult = await self.do_llm_complection(prompt,is_json_resp=True)
-                if task_result.result_code != ComputeTaskResultCode.OK:
-                    result_obj = {}
-                    result_obj["error_str"] = task_result.error_str
-                    return result_obj
-
-                result_obj = json.loads(task_result.result_str)
-                temp_meta_data = result_obj
-                if is_final:
-                    return result_obj
-
-            return None
-
 
     async def do_self_think(self):
         session_id_list = AIChatSession.list_session(self.agent_id,self.chat_db)

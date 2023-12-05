@@ -214,7 +214,7 @@ class OpenAI_ComputeNode(ComputeNode):
 
                 client = AsyncOpenAI(api_key=self.openai_api_key)
                 try:
-                    if llm_inner_functions is None:
+                    if llm_inner_functions is None or len(llm_inner_functions) == 0:
                         logger.info(f"call openai {mode_name} prompts: {prompts}")
                         resp = await client.chat.completions.create(model=mode_name,
                                                         messages=prompts,

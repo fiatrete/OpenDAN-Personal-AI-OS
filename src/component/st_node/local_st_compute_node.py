@@ -116,7 +116,7 @@ class LocalSentenceTransformer_Image_ComputeNode(Queue_ComputeNode):
     def _load_image(self, source: Union[ObjectID, bytes]) -> Optional[Image]:
         image_data = None
         if isinstance(source, ObjectID):
-            from knowledge import KnowledgeStore, ImageObject
+            from aios import KnowledgeStore, ImageObject
 
             buf = KnowledgeStore().get_object_store().get_object(source)
             if buf is None:
