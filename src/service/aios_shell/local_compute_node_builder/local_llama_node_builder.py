@@ -118,7 +118,7 @@ class ParameterExternParamsApplier:
                 else:
                     result = subprocess.run(['git', 'clone', llama_cpp_python_repo_url, llama_cpp_python_path], stdout = subprocess.PIPE, stderr = subprocess.PIPE, text = True)
 
-                if result.stderr:
+                if result.returncode:
                     print_formatted_text(FormattedText([("class:warn", result.stderr)]), style = state.shell_style)
                     while True:
                         sel = await state.prompt_session.prompt_async(f"Update 'llama-cpp-python' failed, you can press 'r' to retry, or 'c' to continue with the current version.", style = state.shell_style)
@@ -140,7 +140,7 @@ class ParameterExternParamsApplier:
                 result = subprocess.run(['docker', 'rmi', docker_image], stdout = subprocess.PIPE, stderr = subprocess.PIPE, text = True)
                 result = subprocess.run(['docker', 'build', '-t', docker_image, f"{llama_cpp_python_path}/docker/cuda_simple/"], stdout = subprocess.PIPE, stderr = subprocess.PIPE, text = True)
 
-                if result.stderr:
+                if result.returncode:
                     print_formatted_text(FormattedText([("class:warn", result.stderr)]), style = state.shell_style)
                     while True:
                         sel = await state.prompt_session.prompt_async(f"Build the image failed, you can press 'r' to retry, or 'c' to continue with the current version.", style = state.shell_style)
@@ -179,7 +179,7 @@ class ParameterExternParamsApplier:
 
             result = subprocess.run(run_options, stdout = subprocess.PIPE, stderr = subprocess.PIPE, text = True)
 
-            if result.stderr:
+            if result.returncode:
                 print_formatted_text(FormattedText([("class:warn", result.stderr)]), style = state.shell_style)
                 while True:
                     sel = await state.prompt_session.prompt_async(f"Start the node service failed, you can press 'r' to retry, or 'a' to abort.", style = state.shell_style)
