@@ -63,7 +63,7 @@ class TelegramTunnel(AgentTunnel):
         for update in updates:
             next_update_id = update.update_id + 1
 
-            if update.message and (update.message.text or (update.message.photo and len(update.message.photo) > 0) or update.message.video):
+            if update.message and (update.message.text or (update.message.photo and len(update.message.photo) > 0) or update.message.video or update.message.voice or update.message.audio):
 
                 await self.on_message(bot,update)
             return next_update_id
@@ -88,6 +88,10 @@ class TelegramTunnel(AgentTunnel):
             try:
                 update_id = (await self.bot.get_updates())[0].update_id
             except IndexError:
+                update_id = None
+            except Exception as e:
+                logger.error(f"tg_tunnel error:{e}")
+                logger.exception(e)
                 update_id = None
 
             #logger.info("listening for new messages...")
@@ -179,6 +183,20 @@ class TelegramTunnel(AgentTunnel):
             await video_file.download_to_drive(file_path)
             agent_msg.body = agent_msg.create_video_body(file_path, message.caption)
             agent_msg.body_mime = f"video/{ext}"
+        elif message.audio is not None:
+            audio_file = await message.audio.get_file()
+            ext = audio_file.file_path.rsplit(".")[-1]
+            file_path = os.path.join(self.get_cache_path(), audio_file.file_id + f".{ext}")
+            await audio_file.download_to_drive(file_path)
+            agent_msg.body = file_path
+            agent_msg.body_mime = f"audio/{ext}"
+        elif message.voice is not None:
+            audio_file = await message.voice.get_file()
+            ext = audio_file.file_path.rsplit(".")[-1]
+            file_path = os.path.join(self.get_cache_path(), audio_file.file_id + f".{ext}")
+            await audio_file.download_to_drive(file_path)
+            agent_msg.body = file_path
+            agent_msg.body_mime = f"audio/{ext}"
 
         agent_msg.create_time = time.time()
         messag_type = message.chat.type

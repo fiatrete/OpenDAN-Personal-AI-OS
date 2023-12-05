@@ -13,7 +13,6 @@ import copy
 import sys
 
 from ..proto.agent_msg import AgentMsg
-from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode
 
 from .agent_base import *
 from .chatsession import *
@@ -28,6 +27,7 @@ from ..storage.storage import AIStorage
 
 from ..knowledge import *
 from ..utils import video_utils, image_utils
+from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode
 
 logger = logging.getLogger(__name__)
 
@@ -455,6 +455,15 @@ class AIAgent(BaseAIAgent):
                     content = [{"type": "text", "text": f"{msg.sender}:{video_prompt}"}]
                     content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
                     msg_prompt.messages = [{"role": "user", "content": content}]
+            elif msg.is_audio_msg():
+                audio_file = msg.body
+                resp = await ComputeKernel.get_instance().do_speech_to_text(audio_file, None, prompt=None, response_format="text")
+                if resp.result_code != ComputeTaskResultCode.OK:
+                    error_resp = msg.create_error_resp(resp.error_str)
+                    return error_resp
+                else:
+                    msg.body = resp.result_str
+                    msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{resp.result_str}"}]
             else:
                 msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
             session_topic = msg.target + "#" + msg.topic
@@ -487,6 +496,15 @@ class AIAgent(BaseAIAgent):
                     content = [{"type": "text", "text": video_prompt}]
                     content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
                     msg_prompt.messages = [{"role": "user", "content": content}]
+            elif msg.is_audio_msg():
+                audio_file = msg.body
+                resp = await (ComputeKernel.get_instance().do_speech_to_text(audio_file, None, prompt=None, response_format="text"))
+                if resp.result_code != ComputeTaskResultCode.OK:
+                    error_resp = msg.create_error_resp(resp.error_str)
+                    return error_resp
+                else:
+                    msg.body = resp.result_str
+                    msg_prompt.messages = [{"role":"user","content":resp.result_str}]
             else:
                 msg_prompt.messages = [{"role":"user","content":msg.body}]
             session_topic = msg.get_sender() + "#" + msg.topic
