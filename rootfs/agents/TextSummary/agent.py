@@ -20,7 +20,7 @@ class TextSummaryAgent(CustomAIAgent):
         chunks = split_text(msg.body, separators=["\n\n", "\n"], chunk_size=4000, chunk_overlap=200, length_function=len)
 
         prompt = AgentPrompt()
-        prompt.system_message = "Your job is to generate a summary based on the input."
+        prompt.system_message = {"role":"system","content":"Your job is to generate a summary based on the input."}
         if len(chunks) == 1:
             prompt.append(AgentPrompt(chunks[0]))
             resp = await self.do_llm_complection(prompt)

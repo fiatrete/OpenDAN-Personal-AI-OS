@@ -17,10 +17,10 @@ class ObjectType(IntEnum):
 
     def is_user_def(self) -> bool:
         return self.value >= 200
-    
+
     def get_user_def_type_code(self):
         return (self.value - 200) if self.is_user_def() else None
-    
+
     @classmethod
     def from_user_def_type_code(cls, value):
         return value + 200
@@ -34,7 +34,7 @@ class ObjectID:  # pylint: disable=too-few-public-methods
 
     def __str__(self):
         return self.to_base58()
-    
+
     def to_base58(self):
         return base58.b58encode(self.value).decode()
 
@@ -57,13 +57,16 @@ class ObjectID:  # pylint: disable=too-few-public-methods
     def new_chunk_id(chunk_hash: HashValue):
         assert len(chunk_hash.value) == 32, "ObjectID must be 32 bytes long"
         return ObjectID(bytes([ObjectType.Chunk]) + chunk_hash.value[1:])
-    
+
     def get_object_type(self) -> ObjectType:
         return ObjectType(self.value[0])
-    
+
     @staticmethod
     def hash_data(data: bytes):
         return ObjectID.new_chunk_id(HashValue.hash_data(data))
-    
+
     def __eq__(self, other) -> bool:
         return self.value == other.value
+
+    def __hash__(self):
+        return hash(self.value)

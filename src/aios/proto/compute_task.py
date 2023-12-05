@@ -75,7 +75,7 @@ class ComputeTask:
         else:
             self.params["model_name"] = "text-embedding-ada-002"
         self.params["input"] = input
-        
+
     def set_image_embedding_params(self, input = Union[ObjectID, bytes], model_name=None, callchain_id = None):
         self.task_type = ComputeTaskType.IMAGE_EMBEDDING
         self.create_time = time.time()
@@ -86,7 +86,7 @@ class ComputeTask:
         else:
             self.params["model_name"] = None
         self.params["input"] = input
-    
+
     def set_text_2_image_params(self, prompt: str, model_name, negative_prompt="", callchain_id=None):
         self.task_type = ComputeTaskType.TEXT_2_IMAGE
         self.create_time = time.time()
@@ -126,15 +126,15 @@ class ComputeTaskResult:
         self.task_id: str = None
         self.callchain_id: str = None
         self.worker_id: str = None
-        self.error_str : str = None 
-        self.result_code: int = 0
+        self.error_str : str = None
+        self.result_code: int = ComputeTaskResultCode.OK
         self.result_str: str = None # easy to use,can read from result
 
         self.result : dict = {}
 
         self.result_refers: dict = {}
         self.pading_data: bytearray = None
-        
+
 
     def set_from_task(self, task: ComputeTask):
         self.task_id = task.task_id
