@@ -133,19 +133,6 @@ class AIAgent(BaseAIAgent):
         self.owenr_bus = None
         self.enable_function_list = None
 
-    # @classmethod
-    # def create_from_templete(cls,templete:AIAgentTemplete, fullname:str):
-    #     # Agent just inherit from templete on craete,if template changed,agent will not change
-    #     result_agent = AIAgent()
-    #     result_agent.llm_model_name = templete.llm_model_name
-    #     result_agent.max_token_size = templete.max_token_size
-    #     result_agent.template_id = templete.template_id
-    #     result_agent.agent_id = "agent#" + uuid.uuid4().hex
-    #     result_agent.fullname = fullname
-    #     result_agent.powerby = templete.author
-    #     result_agent.agent_prompt = templete.prompt
-    #     return result_agent
-
     def load_from_config(self,config:dict) -> bool:
         if config.get("instance_id") is None:
             logger.error("agent instance_id is None!")
@@ -280,82 +267,6 @@ class AIAgent(BaseAIAgent):
     async def _handle_event(self,event):
         if event.type == "AgentThink":
             return await self.do_self_think()
-
-    # async def _process_group_chat_msg(self,msg:AgentMsg) -> AgentMsg:
-    #     session_topic = msg.target + "#" + msg.topic
-    #     chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
-    #     workspace = self.get_current_workspace()
-    #     need_process = False
-    #     if msg.mentions is not None:
-    #         if self.agent_id in msg.mentions:
-    #             need_process = True
-    #             logger.info(f"agent {self.agent_id} recv a group chat message from {msg.sender},but is not mentioned,ignore!")
-
-    #     if need_process is not True:
-    #         chatsession.append(msg)
-    #         resp_msg = msg.create_group_resp_msg(self.agent_id,"")
-    #         return resp_msg
-    #     else:
-    #         msg_prompt = AgentPrompt()
-    #         msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
-
-    #         prompt = AgentPrompt()
-    #         prompt.append(self.get_agent_prompt())
-
-    #         if workspace:
-    #             prompt.append(workspace.get_prompt())
-    #             prompt.append(workspace.get_role_prompt(self.agent_id))
-
-    #         if self.need_session_summmary(msg,chatsession):
-    #             # get relate session(todos) summary
-    #             summary = self.llm_select_session_summary(msg,chatsession)
-    #             prompt.append(AgentPrompt(summary))
-
-    #         self._format_msg_by_env_value(prompt)
-    #         inner_functions,function_token_len = self._get_inner_functions()
-
-    #         system_prompt_len = self.token_len(prompt=prompt)
-    #         input_len = len(msg.body)
-
-    #         history_prmpt,history_token_len = await self._get_prompt_from_session_for_groupchat(chatsession,system_prompt_len + function_token_len,input_len)
-    #         prompt.append(history_prmpt) # chat context
-    #         prompt.append(msg_prompt)
-
-    #         logger.debug(f"Agent {self.agent_id} do llm token static system:{system_prompt_len},function:{function_token_len},history:{history_token_len},input:{input_len}, totoal prompt:{system_prompt_len + function_token_len + history_token_len} ")
-    #         task_result = await self._do_llm_complection(prompt,inner_functions,msg)
-    #         if task_result.result_code != ComputeTaskResultCode.OK:
-    #             error_resp = msg.create_error_resp(task_result.error_str)
-    #             return error_resp
-
-    #         final_result = task_result.result_str
-    #         llm_result : LLMResult = LLMResult.from_str(final_result)
-    #         is_ignore = False
-    #         result_prompt_str = ""
-    #         match llm_result.state:
-    #             case "ignore":
-    #                 is_ignore = True
-    #             case "waiting":
-    #                 for sendmsg in llm_result.send_msgs:
-    #                     target = sendmsg.target
-    #                     sendmsg.sender = self.agent_id
-    #                     sendmsg.topic = msg.topic
-    #                     sendmsg.prev_msg_id = msg.get_msg_id()
-    #                     send_resp = await AIBus.get_default_bus().send_message(sendmsg)
-    #                     if send_resp is not None:
-    #                         result_prompt_str += f"\n{target} response is :{send_resp.body}"
-    #                         agent_sesion = AIChatSession.get_session(self.agent_id,f"{sendmsg.target}#{sendmsg.topic}",self.chat_db)
-    #                         agent_sesion.append(sendmsg)
-    #                         agent_sesion.append(send_resp)
-
-    #                 final_result = llm_result.resp + result_prompt_str
-
-    #         if is_ignore is not True:
-    #             resp_msg = msg.create_group_resp_msg(self.agent_id,final_result)
-    #             chatsession.append(msg)
-    #             chatsession.append(resp_msg)
-    #             return resp_msg
-    #         return None
-
 
     def get_workspace_by_msg(self,msg:AgentMsg) -> WorkspaceEnvironment:
         return self.agent_workspace
@@ -884,10 +795,6 @@ class AIAgent(BaseAIAgent):
     #         if learn_power <= 0:
     #             break
 
-
-    def parser_learn_llm_result(self,llm_result:LLMResult):
-        pass
-
     async def do_self_think(self):
         session_id_list = AIChatSession.list_session(self.agent_id,self.chat_db)
         for session_id in session_id_list:
@@ -979,17 +886,6 @@ class AIAgent(BaseAIAgent):
             return known_info,result_token_len
         return None,0
 
-
-    def need_work(self) -> bool:
-        if self.do_prompt is not None:
-            return True
-        if self.check_prompt is not None:
-            return True
-
-        if self.agent_energy > 2:
-            return True
-
-        return False
 
     def need_self_think(self) -> bool:
         return False
