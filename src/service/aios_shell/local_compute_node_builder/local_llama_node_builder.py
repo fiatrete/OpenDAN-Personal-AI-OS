@@ -69,7 +69,7 @@ class ParameterNodeNameApplier:
 
 class ParameterPortApplier:
     async def apply(self, state: BuilderState, name: str, value: str or None = None) -> str or None:
-        if value is None or value == "0":
+        if value is None or value == "0" or value == "":
             value = str(random.randint(10000, 60000))
             
         state.params["port"] = value
@@ -165,7 +165,7 @@ class ParameterExternParamsApplier:
             run_options.extend([
                 '-p', f"{state.params['port']}:8000",
                 '-v', f"{os.path.dirname(state.params['model_path'])}:/models", '-e', f"MODEL=/models/{os.path.basename(state.params['model_path'])}",
-                'llama-cpp-python-cuda',
+                docker_image,
                 'python3', '-m', 'llama_cpp.server',
                 '--n_gpu_layers', state.params["n_gpu_layers"],
                 '--n_ctx', state.params["n_ctx"],
