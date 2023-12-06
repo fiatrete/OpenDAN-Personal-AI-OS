@@ -100,7 +100,7 @@ class ParameterExternParamsApplier:
         gpu_options = []
         state.next_step += 1
 
-        if state.params["n_gpu_layers"] == "0":
+        if False and state.params["n_gpu_layers"] == "0":
             docker_image = "ghcr.io/abetlen/llama-cpp-python:latest"
         else:
             gpu_options = ["--gpus", "all"]
