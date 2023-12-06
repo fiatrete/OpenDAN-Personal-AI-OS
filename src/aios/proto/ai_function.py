@@ -73,7 +73,7 @@ class AIFunction:
     #def load_from_config(self,config:dict) -> bool:
     #    pass
 
-class FunctionItem:
+class ActionItem:
     def __init__(self,name,args) -> None:
         self.name = name
         self.args = args

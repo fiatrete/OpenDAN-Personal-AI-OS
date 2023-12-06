@@ -5,7 +5,6 @@ max_token_size = 128000
 enable_timestamp = "true"
 owner_prompt = "I am your master{name}"
 contact_prompt = "I am your master's friend{name}"
-owner_env = "calender"
 
 [[prompt]]
 role = "system"

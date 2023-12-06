@@ -2,7 +2,7 @@ import logging
 from typing import Dict
 
 from ..frame.compute_kernel import ComputeKernel
-from ..agent.ai_function import AIFunction
+from ..proto.ai_function import *
 
 logger = logging.getLogger(__name__)
 

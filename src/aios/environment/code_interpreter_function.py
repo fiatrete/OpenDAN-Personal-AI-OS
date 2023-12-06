@@ -1,6 +1,6 @@
 from typing import Dict
 
-from ..agent.ai_function import AIFunction
+from ..proto.ai_function import *
 from .code_interpreter import execute_code
 
 

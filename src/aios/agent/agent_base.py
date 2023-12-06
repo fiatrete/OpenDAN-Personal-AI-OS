@@ -11,400 +11,15 @@ import shlex
 import json
 from typing import List, Tuple
 
-from .ai_function import FunctionItem, AIFunction
-from ..proto.agent_msg import AgentMsg, AgentMsgType
-from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode
-from ..environment.environment import BaseEnvironment
+from ..proto.ai_function import *
+from ..proto.agent_msg import *
+from ..proto.compute_task import *
+from ..environment.environment import *
 
 
 logger = logging.getLogger(__name__)
 
 
-class AgentPrompt:
-    def __init__(self,prompt_str = None) -> None:
-        self.messages = []
-        if prompt_str:
-            self.messages.append({"role":"user","content":prompt_str})
-        self.system_message = None
-
-    def as_str(self)->str:
-        result_str = ""
-        if self.system_message:
-            result_str += self.system_message.get("role") + ":" + self.system_message.get("content") + "\n"
-        if self.messages:
-            for msg in self.messages:
-                result_str += msg.get("role") + ":" + msg.get("content") + "\n"
-
-        return result_str
-
-    def to_message_list(self):
-        result = []
-        if self.system_message:
-            result.append(self.system_message)
-        result.extend(self.messages)
-        return result
-
-    def append(self,prompt):
-        if prompt is None:
-            return
-
-        if prompt.system_message is not None:
-            if self.system_message is None:
-                self.system_message = copy.deepcopy(prompt.system_message)
-            else:
-                self.system_message["content"] += prompt.system_message.get("content")
-
-        self.messages.extend(prompt.messages)
-
-    def load_from_config(self,config:list) -> bool:
-        if isinstance(config,list) is not True:
-            logger.error("prompt is not list!")
-            return False
-        self.messages = []
-        for msg in config:
-            if msg.get("content"):
-                if msg.get("role") == "system":
-                    self.system_message = msg
-                else:
-                    self.messages.append(msg)
-            else:
-                logger.error("prompt message has no content!")
-        return True
-
-class LLMResult:
-    def __init__(self) -> None:
-        self.state : str = "ignore"
-        self.resp : str = ""
-        self.raw_resp = None
-        self.paragraphs : dict[str,FunctionItem] = []
-
-
-        self.post_msgs : List[AgentMsg] = []
-        self.send_msgs : List[AgentMsg] = []
-        self.calls : List[FunctionItem] = []
-        self.post_calls : List[FunctionItem] = []
-        self.op_list : List[FunctionItem] = [] # op_list is a optimize design for saving token
-    @classmethod
-    def from_json_str(self,llm_json_str:str) -> 'LLMResult':
-        r = LLMResult()
-        if llm_json_str is None:
-            r.state = "ignore"
-            return r
-        if llm_json_str == "ignore":
-            r.state = "ignore"
-            return r
-
-        llm_json = json.loads(llm_json_str)
-        r.state = llm_json.get("state")
-        r.resp = llm_json.get("resp")
-        r.raw_resp = llm_json
-
-        post_msgs = llm_json.get("post_msg")
-        r.post_msgs = []
-        if post_msgs:
-            for msg in post_msgs:
-                new_msg = AgentMsg()
-                target_id = msg.get("target")
-                msg_content = msg.get("content")
-                new_msg.set("",target_id,msg_content)
-                r.post_msgs.append(new_msg)
-                #new_msg.msg_type = AgentMsgType.TYPE_MSG
-
-        r.calls = llm_json.get("calls")
-        r.post_calls = llm_json.get("post_calls")
-        r.op_list = llm_json.get("op_list")
-
-        return r
-
-    @classmethod
-    def from_str(self,llm_result_str:str,valid_func:List[str]=None) -> 'LLMResult':
-        r = LLMResult()
-
-        if llm_result_str is None:
-            r.state = "ignore"
-            return r
-        if llm_result_str == "ignore":
-            r.state = "ignore"
-            return r
-
-        if llm_result_str[0] == "{":
-            return LLMResult.from_json_str(llm_result_str)
-        # if llm_result_str.startswith("json"):
-        #     return LLMResult.from_json_str(llm_result_str[4:])
-
-        lines = llm_result_str.splitlines()
-        is_need_wait = False
-
-        def check_args(func_item:FunctionItem):
-            match func_name:
-                case "send_msg":# /send_msg $target_id
-                    if len(func_args) != 1:
-                        return False
-
-                    new_msg = AgentMsg()
-                    target_id = func_item.args[0]
-                    msg_content = func_item.body
-                    new_msg.set("",target_id,msg_content)
-
-                    r.send_msgs.append(new_msg)
-                    is_need_wait = True
-                    return True
-
-                case "post_msg":# /post_msg $target_id
-                    if len(func_args) != 1:
-                        return False
-
-                    new_msg = AgentMsg()
-                    target_id = func_item.args[0]
-                    msg_content = func_item.body
-                    new_msg.set("",target_id,msg_content)
-                    r.post_msgs.append(new_msg)
-                    return True
-
-                case "call":# /call $func_name $args_str
-                    r.calls.append(func_item)
-                    is_need_wait = True
-                    return True
-                case "post_call": # /post_call $func_name,$args_str
-                    r.post_calls.append(func_item)
-                    return True
-                case _:
-                    if valid_func is not None:
-                        if func_name in valid_func:
-                            r.paragraphs[func_name] = func_item
-                            return True
-
-            return False
-
-
-        current_func : FunctionItem = None
-        for line in lines:
-            if line.startswith("##/"):
-                if current_func:
-                    if check_args(current_func) is False:
-                        r.resp += current_func.dumps()
-
-                func_name,func_args = AgentMsg.parse_function_call(line[3:])
-                current_func = FunctionItem(func_name,func_args)
-            else:
-                if current_func:
-                    current_func.append_body(line + "\n")
-                else:
-                    r.resp += line + "\n"
-
-        if current_func:
-            if check_args(current_func) is False:
-                r.resp += current_func.dumps()
-
-        if len(r.send_msgs) > 0 or len(r.calls) > 0:
-            r.state = "waiting"
-        else:
-            r.state = "reponsed"
-
-        return r
-
-class AgentReport:
-    def __init__(self):
-        pass
-
-class AgentTodoResult:
-    TODO_RESULT_CODE_OK = 0,
-    TODO_RESULT_CODE_LLM_ERROR = 1,
-    TODO_RESULT_CODE_EXEC_OP_ERROR = 2
-
-
-    def __init__(self) -> None:
-        self.result_code = AgentTodoResult.TODO_RESULT_CODE_OK
-        self.result_str = None
-        self.error_str = None
-        self.op_list = None
-
-    def to_dict(self) -> dict:
-        result = {}
-        result["result_code"] = self.result_code
-        result["result_str"] = self.result_str
-        result["error_str"] = self.error_str
-        result["op_list"] = self.op_list
-        return result
-
-
-class AgentTodo:
-    TODO_STATE_WAIT_ASSIGN = "wait_assign"
-    TODO_STATE_INIT = "init"
-
-    TODO_STATE_PENDING = "pending"
-    TODO_STATE_WAITING_CHECK = "wait_check"
-    TODO_STATE_EXEC_FAILED = "exec_failed"
-    TDDO_STATE_CHECKFAILED = "check_failed"
-
-    TODO_STATE_CANCEL = "cancel"
-    TODO_STATE_DONE = "done"
-    TODO_STATE_REVIEWED = "reviewed"
-    TODO_STATE_EXPIRED = "expired"
-
-    def __init__(self):
-        self.todo_id = "todo#" + uuid.uuid4().hex
-        self.title = None
-        self.detail = None
-        self.todo_path = None # get parent todo,sub todo by path
-        #self.parent = None
-        self.create_time = time.time()
-
-        self.state = "wait_assign"
-        self.worker = None
-        self.checker = None
-        self.createor = None
-
-        self.need_check = True
-        self.due_date = time.time() + 3600 * 24 * 2
-        self.last_do_time = None
-        self.last_check_time = None
-        self.last_review_time = None
-
-        self.depend_todo_ids = []
-        self.sub_todos = {}
-
-        self.result : AgentTodoResult = None
-        self.last_check_result = None
-        self.retry_count = 0
-        self.raw_obj = None
-
-    @classmethod
-    def from_dict(cls,json_obj:dict) -> 'AgentTodo':
-        todo = AgentTodo()
-        if json_obj.get("id") is not None:
-            todo.todo_id = json_obj.get("id")
-
-        todo.title = json_obj.get("title")
-        todo.state = json_obj.get("state")
-        create_time = json_obj.get("create_time")
-        if create_time:
-            todo.create_time = datetime.fromisoformat(create_time).timestamp()
-
-        todo.detail = json_obj.get("detail")
-        due_date = json_obj.get("due_date")
-        if due_date:
-            todo.due_date = datetime.fromisoformat(due_date).timestamp()
-
-        last_do_time = json_obj.get("last_do_time")
-        if last_do_time:
-            todo.last_do_time = datetime.fromisoformat(last_do_time).timestamp()
-        last_check_time = json_obj.get("last_check_time")
-        if last_check_time:
-            todo.last_check_time = datetime.fromisoformat(last_check_time).timestamp()
-        last_review_time = json_obj.get("last_review_time")
-        if last_review_time:
-            todo.last_review_time = datetime.fromisoformat(last_review_time).timestamp()
-
-        todo.depend_todo_ids = json_obj.get("depend_todo_ids")
-        todo.need_check = json_obj.get("need_check")
-        #todo.result = json_obj.get("result")
-        #todo.last_check_result = json_obj.get("last_check_result")
-        todo.worker = json_obj.get("worker")
-        todo.checker = json_obj.get("checker")
-        todo.createor = json_obj.get("createor")
-        if json_obj.get("retry_count"):
-            todo.retry_count = json_obj.get("retry_count")
-
-        todo.raw_obj = json_obj
-
-        return todo
-
-    def to_dict(self) -> dict:
-        if self.raw_obj:
-            result = self.raw_obj
-        else:
-            result = {}
-
-        result["id"] = self.todo_id
-        #result["parent_id"] = self.parent_id
-        result["title"] = self.title
-        result["state"] = self.state
-        result["create_time"] = datetime.fromtimestamp(self.create_time).isoformat()
-        result["detail"] = self.detail
-        result["due_date"] = datetime.fromtimestamp(self.due_date).isoformat()
-        result["last_do_time"] = datetime.fromtimestamp(self.last_do_time).isoformat() if self.last_do_time else None
-        result["last_check_time"] = datetime.fromtimestamp(self.last_check_time).isoformat() if self.last_check_time else None
-        result["last_review_time"] = datetime.fromtimestamp(self.last_review_time).isoformat() if self.last_review_time else None
-        result["depend_todo_ids"] = self.depend_todo_ids
-        result["need_check"] = self.need_check
-        result["worker"] = self.worker
-        result["checker"] = self.checker
-        result["createor"] = self.createor
-        result["retry_count"] = self.retry_count
-
-        return result
-    
-    def to_prompt(self) -> AgentPrompt:
-        json_str = json.dumps(self.raw_obj)
-        return AgentPrompt(json_str)
-        
-    def can_review(self) -> bool:
-        if self.state != AgentTodo.TODO_STATE_DONE:
-            return False
-
-        now = datetime.now().timestamp()
-        if self.last_review_time:
-            time_diff = now - self.last_review_time
-            if time_diff < 60*15:
-                logger.info(f"todo {self.title} is already reviewed, ignore")
-                return False
-
-        return True
-
-    def can_check(self)->bool:
-        if self.state != AgentTodo.TODO_STATE_WAITING_CHECK:
-            return False
-
-        now = datetime.now().timestamp()
-        if self.last_check_time:
-            time_diff = now - self.last_check_time
-            if time_diff < 60*15:
-                logger.info(f"todo {self.title} is already checked, ignore")
-                return False
-
-        return True
-
-    def can_do(self) -> bool:
-        match self.state:
-            case AgentTodo.TODO_STATE_DONE:
-                logger.info(f"todo {self.title} is done, ignore")
-                return False
-            case AgentTodo.TODO_STATE_CANCEL:
-                logger.info(f"todo {self.title} is cancel, ignore")
-                return False
-            case AgentTodo.TODO_STATE_EXPIRED:
-                logger.info(f"todo {self.title} is expired, ignore")
-                return False
-            case AgentTodo.TODO_STATE_EXEC_FAILED:
-                if self.retry_count > 3:
-                    logger.info(f"todo {self.title} retry count ({self.retry_count}) is too many, ignore")
-                    return False
-
-        now = datetime.now().timestamp()
-        time_diff = self.due_date - now
-        if time_diff < 0:
-            logger.info(f"todo {self.title} is expired, ignore")
-            self.state = AgentTodo.TODO_STATE_EXPIRED
-            return False
-
-        if time_diff > 7*24*3600:
-            logger.info(f"todo {self.title} is far before due date, ignore")
-            return False
-
-        if self.last_do_time:
-            time_diff = now - self.last_do_time
-            if time_diff < 60*15:
-                logger.info(f"todo {self.title} is already do ignore")
-                return False
-
-        logger.info(f"todo {self.title} can do.")
-        return True
-
-
-class AgentWorkLog:
-    def __init__(self) -> None:
-        pass
 
 
 class BaseAIAgent(abc.ABC):
@@ -420,19 +35,9 @@ class BaseAIAgent(abc.ABC):
     def get_max_token_size(self) -> int:
         pass
 
-    def token_len(self, text:str=None, prompt:AgentPrompt=None) -> int:
-        from ..frame.compute_kernel import ComputeKernel 
-        if text:
-            return ComputeKernel.llm_num_tokens_from_text(text,self.get_llm_model_name())
-        elif prompt:
-            result = 0
-            if prompt.system_message:
-                result += ComputeKernel.llm_num_tokens_from_text(prompt.system_message.get("content"),self.get_llm_model_name())
-            for msg in prompt.messages:
-                result += ComputeKernel.llm_num_tokens_from_text(msg.get("content"),self.get_llm_model_name())
-            return result
-        else:
-            return 0
+    @abstractmethod
+    async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
+        pass
 
     @classmethod
     def get_inner_functions(cls, env:BaseEnvironment) -> (dict,int):
@@ -458,7 +63,7 @@ class BaseAIAgent(abc.ABC):
 
     async def do_llm_complection(
         self,
-        prompt:AgentPrompt,
+        prompt:LLMPrompt,
         org_msg:AgentMsg=None,
         env:BaseEnvironment=None,
         inner_functions=None,
@@ -503,7 +108,7 @@ class BaseAIAgent(abc.ABC):
             inner_func_call_node = result_message.get("function_call")
 
         if inner_func_call_node:
-            call_prompt : AgentPrompt = copy.deepcopy(prompt)
+            call_prompt : LLMPrompt = copy.deepcopy(prompt)
             func_msg = copy.deepcopy(result_message)
             del func_msg["tool_calls"]
             call_prompt.messages.append(func_msg)
@@ -515,7 +120,7 @@ class BaseAIAgent(abc.ABC):
         self,
         env: BaseEnvironment,
         inner_func_call_node: dict,
-        prompt: AgentPrompt,
+        prompt: LLMPrompt,
         inner_functions: dict,
         org_msg:AgentMsg,
         stack_limit = 5

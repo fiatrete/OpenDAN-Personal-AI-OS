@@ -87,7 +87,7 @@ class TelegramTunnel(AgentTunnel):
         async def _run_app():
             try:
                 update_id = (await self.bot.get_updates())[0].update_id
-            except IndexError:
+            except Exception as e:
                 update_id = None
             except Exception as e:
                 logger.error(f"tg_tunnel error:{e}")
@@ -97,7 +97,11 @@ class TelegramTunnel(AgentTunnel):
             #logger.info("listening for new messages...")
             while True:
                 try:
-                    update_id = await self._do_process_raw_message(self.bot, update_id)
+                    if update_id:
+                        update_id = await self._do_process_raw_message(self.bot, update_id)
+                    else:
+                        update_id = (await self.bot.get_updates())[0].update_id
+
                 except NetworkError:
                     await asyncio.sleep(1)
                 except Forbidden:

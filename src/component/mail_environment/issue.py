@@ -218,7 +218,7 @@ class IssueAgent(CustomAIAgent):
         super().__init__(agent_id, llm_model_name, max_token_size)
 
 
-class IssueParserEnvironment(Environment):
+class IssueParserEnvironment(SimpleEnvironment):
     def __init__(self, env_id: str, storage: IssueStorage) -> None:
         super().__init__(env_id)
         self.storage = storage
@@ -305,7 +305,7 @@ class IssueParser:
 
         mail_desc = Mail.prompt_desc()
         issue_desc = Issue.prompt_desc()
-        prompt = AgentPrompt()
+        prompt = LLMPrompt()
         prompt.system_message = {"role": "system", "content": f'''
         I'm a CEO of a company named 巴克云; You'ar my assistant, and you should help me to manage my issues. Issues is a concept in software development of this company, but I use it to manage my work.
         I'll give you a mail in json format, {mail_desc};

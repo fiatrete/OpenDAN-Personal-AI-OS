@@ -5,7 +5,7 @@ import random
 from pathlib import Path
 from typing import Dict
 
-from ..agent.ai_function import AIFunction
+from ..proto.ai_function import *
 from ..frame.compute_kernel import ComputeKernel
 from ..storage.storage import AIStorage
 

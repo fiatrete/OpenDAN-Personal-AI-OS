@@ -10,7 +10,7 @@ from typing import Optional
 import aiosqlite
 
 from ..proto.compute_task import *
-from ..agent.ai_function import SimpleAIFunction
+from ..proto.ai_function import *
 from ..frame.compute_kernel import ComputeKernel
 from ..frame.contact_manager import ContactManager,Contact,FamilyMember
 from ..storage.storage import AIStorage
@@ -302,7 +302,7 @@ class CalenderEnvironment(SimpleEnvironment):
             return f'exec paint OK, saved as a local file, path is: {result.result["file"]}'
 
 
-class PaintEnvironment(BaseEnvironment):
+class PaintEnvironment(SimpleEnvironment):
     def __init__(self, env_id: str) -> None:
         super().__init__(env_id)
         self.is_run = False

@@ -6,8 +6,12 @@ import sqlite3
 import asyncio
 from typing import Any,List,Dict
 import chardet
-from ..agent.agent_base import AgentMsg,AgentTodo,AgentPrompt,AgentTodoResult
-from ..agent.ai_function import AIFunction,SimpleAIFunction, SimpleAIOperation
+
+from ..proto.agent_task import *
+from ..proto.ai_function import *
+from ..proto.compute_task import *
+from ..agent.agent_base import *
+
 from ..storage.storage import AIStorage,ResourceLocation
 from .environment import SimpleEnvironment, CompositeEnvironment
 
@@ -289,16 +293,16 @@ class WorkspaceEnvironment(CompositeEnvironment):
     def get_prompt(self) -> AgentMsg:
         return None
     
-    def get_role_prompt(self,role_id:str) -> AgentPrompt:
+    def get_role_prompt(self,role_id:str) -> LLMPrompt:
         return None
 
-    def get_do_prompt(self,todo:AgentTodo=None)->AgentPrompt:
+    def get_do_prompt(self,todo:AgentTodo=None)->LLMPrompt:
         return None
 
     # result mean: list[op_error_str],have_error
     async def exec_op_list(self,oplist:List,agent_id:str)->tuple[List[str],bool]:
         result_str = "op list is none"
-        if oplist is None:
+        if oplist is None or len(oplist) == 0:
             return None,False
         
         result_str = []

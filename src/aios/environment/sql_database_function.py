@@ -3,7 +3,7 @@ from typing import Dict
 
 from cachetools import TLRUCache, cached
 
-from ..agent.ai_function import AIFunction
+from ..proto.ai_function import *
 from .sql_database import SQLDatabase, get_from_env
 
 

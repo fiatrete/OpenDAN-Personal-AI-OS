@@ -1,7 +1,7 @@
 import json
 from typing import Dict
 
-from ..agent.ai_function import AIFunction
+from ..proto.ai_function import *
 from duckduckgo_search import AsyncDDGS
 
 

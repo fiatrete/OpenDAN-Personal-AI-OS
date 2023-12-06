@@ -8,7 +8,7 @@ from asyncio import Queue
 
 from ..proto.compute_task import *
 from ..knowledge import ObjectID
-from ..agent.agent_base import AgentPrompt
+
 from .compute_node import ComputeNode
 
 logger = logging.getLogger(__name__)
@@ -106,6 +106,9 @@ class ComputeKernel:
 
     @staticmethod
     def llm_num_tokens_from_text(text:str,model:str) -> int:
+        if model is None:
+            model = "gpt4"
+
         try:
             encoding = tiktoken.encoding_for_model(model)
         except KeyError:
@@ -115,9 +118,12 @@ class ComputeKernel:
         token_count = len(encoding.encode(text))
         return token_count
 
+    @staticmethod
+    def llm_num_tokens(prompt: LLMPrompt, model_name: str = None) -> int:
+        return ComputeKernel.llm_num_tokens_from_text(prompt.as_str(), model_name)
 
     # friendly interface for use:
-    def llm_completion(self, prompt: AgentPrompt, resp_mode:str="text",mode_name: Optional[str] = None, max_token: int = 0,inner_functions = None):
+    def llm_completion(self, prompt: LLMPrompt, resp_mode:str="text",mode_name: Optional[str] = None, max_token: int = 0,inner_functions = None):
         # craete a llm_work_task ,push on queue's end
         # then task_schedule would run this task.(might schedule some work_task to another host)
         task_req = ComputeTask()
@@ -153,7 +159,7 @@ class ComputeKernel:
             return time_out_result
 
 
-    async def do_llm_completion(self, prompt: AgentPrompt,resp_mode:str="text", mode_name: Optional[str]=None, max_token:int=0, inner_functions=None, timeout=60) -> str:
+    async def do_llm_completion(self, prompt: LLMPrompt,resp_mode:str="text", mode_name: Optional[str]=None, max_token:int=0, inner_functions=None, timeout=60) -> str:
         task_req = self.llm_completion(prompt, resp_mode,mode_name, max_token,inner_functions)
         return await self._wait_task(task_req, timeout)
 

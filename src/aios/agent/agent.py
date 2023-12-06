@@ -13,10 +13,12 @@ import copy
 import sys
 
 from ..proto.agent_msg import AgentMsg
+from ..proto.ai_function import *
+from ..proto.agent_task import *
+from ..proto.compute_task import *
 
 from .agent_base import *
 from .chatsession import *
-from .ai_function import *
 from ..environment.workspace_env import WorkspaceEnvironment, TodoListType
 
 from ..frame.contact_manager import ContactManager,Contact,FamilyMember
@@ -69,7 +71,7 @@ class AIAgentTemplete:
         self.template_id:str = None
         self.introduce:str = None
         self.author:str = None
-        self.prompt:AgentPrompt = None
+        self.prompt:LLMPrompt = None
 
     def load_from_config(self,config:dict) -> bool:
         if config.get("llm_model_name") is not None:
@@ -79,7 +81,7 @@ class AIAgentTemplete:
         if config.get("template_id") is not None:
             self.template_id = config["template_id"]
         if config.get("prompt") is not None:
-            self.prompt = AgentPrompt()
+            self.prompt = LLMPrompt()
             if self.prompt.load_from_config(config["prompt"]) is False:
                 logger.error("load prompt from config failed!")
                 return False
@@ -90,9 +92,9 @@ class AIAgentTemplete:
 
 class AIAgent(BaseAIAgent):
     def __init__(self) -> None:
-        self.role_prompt:AgentPrompt = None
-        self.agent_prompt:AgentPrompt = None
-        self.agent_think_prompt:AgentPrompt = None
+        self.role_prompt:LLMPrompt = None
+        self.agent_prompt:LLMPrompt = None
+        self.agent_think_prompt:LLMPrompt = None
         self.llm_model_name:str = None
         self.max_token_size:int = 128000
         self.agent_energy = 15
@@ -149,26 +151,26 @@ class AIAgent(BaseAIAgent):
             self.enable_thread = bool(config["enable_thread"])
 
         if config.get("prompt") is not None:
-            self.agent_prompt = AgentPrompt()
+            self.agent_prompt = LLMPrompt()
             self.agent_prompt.load_from_config(config["prompt"])
 
         if config.get("think_prompt") is not None:
-            self.agent_think_prompt = AgentPrompt()
+            self.agent_think_prompt = LLMPrompt()
             self.agent_think_prompt.load_from_config(config["think_prompt"])
 
         def load_todo_config(todo_type:str) -> bool:
             todo_config = config.get(todo_type)
             if todo_config is not None:
                 if todo_config.get("do") is not None:
-                    prompt = AgentPrompt()
+                    prompt = LLMPrompt()
                     prompt.load_from_config(todo_config["do"])
                     self.todo_prompts[todo_type]["do"] = prompt
                 if todo_config.get("check") is not None:
-                    prompt = AgentPrompt()
+                    prompt = LLMPrompt()
                     prompt.load_from_config(todo_config["check"])
                     self.todo_prompts[todo_type]["check"] = prompt
                 if todo_config.get("review_prompt") is not None:
-                    prompt = AgentPrompt()
+                    prompt = LLMPrompt()
                     prompt.load_from_config(todo_config["review_prompt"])
                     self.todo_prompts[todo_type]["review"] = prompt
         
@@ -224,16 +226,16 @@ class AIAgent(BaseAIAgent):
     def get_max_token_size(self) -> int:
         return self.max_token_size
 
-    def get_agent_role_prompt(self) -> AgentPrompt:
+    def get_agent_role_prompt(self) -> LLMPrompt:
         return self.role_prompt
 
-    def _get_remote_user_prompt(self,remote_user:str) -> AgentPrompt:
+    def _get_remote_user_prompt(self,remote_user:str) -> LLMPrompt:
         cm = ContactManager.get_instance()
         contact = cm.find_contact_by_name(remote_user)
         if contact is None:
             #create guest prompt
             if self.guest_prompt_str is not None:
-                prompt = AgentPrompt()
+                prompt = LLMPrompt()
                 prompt.system_message = {"role":"system","content":self.guest_prompt_str}
                 return prompt
             return None
@@ -241,25 +243,25 @@ class AIAgent(BaseAIAgent):
             if contact.is_family_member:
                 if self.owner_promp_str is not None:
                     real_str = self.owner_promp_str.format_map(contact.to_dict())
-                    prompt = AgentPrompt()
+                    prompt = LLMPrompt()
                     prompt.system_message = {"role":"system","content":real_str}
                     return prompt
             else:
                 if self.contact_prompt_str is not None:
                     real_str = self.contact_prompt_str.format_map(contact.to_dict())
-                    prompt = AgentPrompt()
+                    prompt = LLMPrompt()
                     prompt.system_message = {"role":"system","content":real_str}
                     return prompt
 
         return None
 
-    def get_agent_prompt(self) -> AgentPrompt:
+    def get_agent_prompt(self) -> LLMPrompt:
         return self.agent_prompt
 
-    async def _get_agent_think_prompt(self) -> AgentPrompt:
+    async def _get_agent_think_prompt(self) -> LLMPrompt:
         return self.agent_think_prompt
 
-    def _format_msg_by_env_value(self,prompt:AgentPrompt):
+    def _format_msg_by_env_value(self,prompt:LLMPrompt):
         for msg in prompt.messages:
             old_content = msg.get("content")
             msg["content"] = old_content.format_map(self.agent_workspace)
@@ -284,7 +286,7 @@ class AIAgent(BaseAIAgent):
             return image_path
 
     async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
-        msg_prompt = AgentPrompt()
+        msg_prompt = LLMPrompt()
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
             need_process = False
             if msg.is_image_msg():
@@ -378,7 +380,7 @@ class AIAgent(BaseAIAgent):
 
         workspace = self.get_workspace_by_msg(msg)
 
-        prompt = AgentPrompt()
+        prompt = LLMPrompt()
         if workspace:
             prompt.append(workspace.get_prompt())
             prompt.append(workspace.get_role_prompt(self.agent_id))
@@ -390,7 +392,7 @@ class AIAgent(BaseAIAgent):
         if self.need_session_summmary(msg,chatsession):
             # get relate session(todos) summary
             summary = self.llm_select_session_summary(msg,chatsession)
-            prompt.append(AgentPrompt(summary))
+            prompt.append(LLMPrompt(summary))
 
         known_info_str = "# Known information\n"
         have_known_info = False
@@ -399,7 +401,7 @@ class AIAgent(BaseAIAgent):
             have_known_info = True
             known_info_str += f"## todo\n{todos_str}\n"
         inner_functions,function_token_len = BaseAIAgent.get_inner_functions(self.agent_workspace)
-        system_prompt_len = self.token_len(prompt=prompt)
+        system_prompt_len = ComputeKernel.llm_num_tokens(prompt)
         input_len = len(msg.body)
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
             history_str,history_token_len = await self._get_prompt_from_session_for_groupchat(chatsession,system_prompt_len + function_token_len,input_len)
@@ -410,7 +412,7 @@ class AIAgent(BaseAIAgent):
             known_info_str += history_str
 
         if have_known_info:
-            known_info_prompt = AgentPrompt(known_info_str)
+            known_info_prompt = LLMPrompt(known_info_str)
             prompt.append(known_info_prompt) # chat context
 
         prompt.append(msg_prompt)
@@ -436,7 +438,7 @@ class AIAgent(BaseAIAgent):
             final_result = llm_result.resp
 
 
-        await workspace.exec_op_list(llm_result.op_list,self.agent_id)
+        await workspace.exec_op_list(llm_result.action_list,self.agent_id)
 
         is_ignore = False
         result_prompt_str = ""
@@ -471,12 +473,12 @@ class AIAgent(BaseAIAgent):
         return None
 
 
-    async def _get_history_prompt_for_think(self,chatsession:AIChatSession,summary:str,system_token_len:int,pos:int)->(AgentPrompt,int):
+    async def _get_history_prompt_for_think(self,chatsession:AIChatSession,summary:str,system_token_len:int,pos:int)->(LLMPrompt,int):
         history_len = (self.max_token_size * 0.7) - system_token_len
 
         messages = chatsession.read_history(self.history_len,pos,"natural") # read
         result_token_len = 0
-        result_prompt = AgentPrompt()
+        result_prompt = LLMPrompt()
         have_summary = False
         if summary is not None:
             if len(summary) > 1:
@@ -511,7 +513,7 @@ class AIAgent(BaseAIAgent):
         history_len = (self.max_token_size * 0.7) - system_token_len - input_token_len
         messages = chatsession.read_history(self.history_len) # read
         result_token_len = 0
-        result_prompt = AgentPrompt()
+        result_prompt = LLMPrompt()
         read_history_msg = 0
         for msg in reversed(messages):
             read_history_msg += 1
@@ -569,13 +571,13 @@ class AIAgent(BaseAIAgent):
 
     async def _llm_read_report(self,report:AgentReport,worksapce:WorkspaceEnvironment):
         work_summary = worksapce.get_work_summary(self.agent_id)
-        prompt : AgentPrompt = AgentPrompt()
+        prompt : LLMPrompt = LLMPrompt()
         prompt.append(self.agent_prompt)
         prompt.append(worksapce.get_role_prompt(self.agent_id))
         prompt.append(self.read_report_prompt)
         # report is a message from other agent(human) about work
-        prompt.append(AgentPrompt(work_summary))
-        prompt.append(AgentPrompt(report.content))
+        prompt.append(LLMPrompt(work_summary))
+        prompt.append(LLMPrompt(report.content))
 
         task_result:ComputeTaskResult = await self.do_llm_complection(prompt)
 
@@ -606,7 +608,7 @@ class AIAgent(BaseAIAgent):
             
             do_prompts = self._can_do_todo(todo_list_type, todo)
             if do_prompts:
-                prompt : AgentPrompt = AgentPrompt()
+                prompt : LLMPrompt = LLMPrompt()
                 prompt.append(self.agent_prompt)
                 prompt.append(workspace.get_role_prompt(self.agent_id))
                 prompt.append(do_prompts)
@@ -635,13 +637,13 @@ class AIAgent(BaseAIAgent):
 
             check_prompts = self._can_check_todo(todo_list_type, todo)
             if check_prompts:
-                prompt : AgentPrompt = AgentPrompt()
+                prompt : LLMPrompt = LLMPrompt()
                 prompt.append(self.agent_prompt)
                 prompt.append(workspace.get_role_prompt(self.agent_id))
                 prompt.append(check_prompts)
 
                 if todo.last_check_result:
-                    prompt.append(AgentPrompt(todo.last_check_result))
+                    prompt.append(LLMPrompt(todo.last_check_result))
 
                 prompt.append(todo.detail)
                 prompt.append(todo.result)
@@ -669,7 +671,7 @@ class AIAgent(BaseAIAgent):
                 prompt.append(review_prompts)
 
                 todo_tree = todo_list.get_todo_tree("/")
-                prompt.append(AgentPrompt(todo_tree))
+                prompt.append(LLMPrompt(todo_tree))
 
                 do_result : AgentTodoResult = await self._llm_review_todo(todo, prompt, workspace)
                 todo.last_review_time = datetime.datetime.now().timestamp()
@@ -690,7 +692,7 @@ class AIAgent(BaseAIAgent):
         logger.info(f"agent {self.agent_id} ,check:{check_count} todo,do:{do_count} todo.")
     
    
-    def _can_review_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> AgentPrompt:
+    def _can_review_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> LLMPrompt:
         do_prompts = self.todo_prompts[todo_list_type].get("review")
         if not do_prompts:
             return None
@@ -701,7 +703,7 @@ class AIAgent(BaseAIAgent):
         return do_prompts
         
 
-    def _can_check_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> AgentPrompt:
+    def _can_check_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> LLMPrompt:
         do_prompts = self.todo_prompts[todo_list_type].get("check")
         if not do_prompts:
             return None
@@ -720,7 +722,7 @@ class AIAgent(BaseAIAgent):
 
         return do_prompts
 
-    def _can_do_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> AgentPrompt:
+    def _can_do_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> LLMPrompt:
         do_prompts = self.todo_prompts[todo_list_type].get("do")
         if not do_prompts:
             return None
@@ -739,7 +741,7 @@ class AIAgent(BaseAIAgent):
 
         return do_prompts
 
-    async def _llm_do_todo(self, todo: AgentTodo, prompt: AgentPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
+    async def _llm_do_todo(self, todo: AgentTodo, prompt: LLMPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
         result = AgentTodoResult()
         
         task_result:ComputeTaskResult = await self.do_llm_complection(prompt, is_json_resp=True)
@@ -763,7 +765,7 @@ class AIAgent(BaseAIAgent):
                 resp = await AIBus.get_default_bus().post_message(msg)
                 logging.info(f"agent {self.agent_id} send msg to {msg.target} result:{resp}")
 
-        result_str, have_error = await workspace.exec_op_list(llm_result.op_list, self.agent_id)
+        result_str, have_error = await workspace.exec_op_list(llm_result.action_list, self.agent_id)
         if have_error:
             result.result_code = AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR
             #result.error_str = error_str
@@ -771,7 +773,7 @@ class AIAgent(BaseAIAgent):
         result.result_str = result_str
         return result
 
-    async def _llm_check_todo(self, todo: AgentTodo, prompt: AgentPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
+    async def _llm_check_todo(self, todo: AgentTodo, prompt: LLMPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
         result = AgentTodoResult()
         
         inner_functions,_ = BaseAIAgent.get_inner_functions(workspace)
@@ -786,7 +788,7 @@ class AIAgent(BaseAIAgent):
         todo.last_check_result = task_result.result_str
         return result
     
-    async def _llm_review_todo(self, todo:AgentTodo, prompt: AgentPrompt, workspace: WorkspaceEnvironment):
+    async def _llm_review_todo(self, todo:AgentTodo, prompt: LLMPrompt, workspace: WorkspaceEnvironment):
         inner_functions,_ = BaseAIAgent.get_inner_functions(workspace)
 
         task_result:ComputeTaskResult = await self.do_llm_complection(prompt,inner_functions=inner_functions)
@@ -842,10 +844,10 @@ class AIAgent(BaseAIAgent):
         while True:
             cur_pos = chatsession.summarize_pos
             summary = chatsession.summary
-            prompt:AgentPrompt = AgentPrompt()
+            prompt:LLMPrompt = LLMPrompt()
             #prompt.append(self._get_agent_prompt())
             prompt.append(await self._get_agent_think_prompt())
-            system_prompt_len = self.token_len(prompt=prompt)
+            system_prompt_len = ComputeKernel.llm_num_tokens(prompt)
             #think env?
             history_prompt,next_pos = await self._get_history_prompt_for_think(chatsession,summary,system_prompt_len,cur_pos)
             prompt.append(history_prompt)
@@ -864,7 +866,7 @@ class AIAgent(BaseAIAgent):
                 chatsession.update_think_progress(next_pos,new_summary)
         return
 
-    async def get_prompt_from_session(self,chatsession:AIChatSession,system_token_len,input_token_len) -> AgentPrompt:
+    async def get_prompt_from_session(self,chatsession:AIChatSession,system_token_len,input_token_len) -> LLMPrompt:
         # TODO: get prompt from group chat is different from single chat
         if self.enable_thread:
             return None

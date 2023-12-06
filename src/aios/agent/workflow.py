@@ -9,11 +9,11 @@ from abc import ABC, abstractmethod
 
 from ..proto.compute_task import *
 from ..proto.agent_msg import *
+from ..proto.ai_function import *
 
 from .agent_base import *
 from .chatsession import AIChatSession
 from .role import AIRole,AIRoleGroup
-from .ai_function import AIFunction,FunctionItem
 
 from ..frame.compute_kernel import ComputeKernel
 from ..frame.bus import AIBus
@@ -48,7 +48,7 @@ class Workflow:
     def __init__(self) -> None:
         self.workflow_name : str = None
         self.workflow_id : str = None
-        self.rule_prompt : AgentPrompt = None
+        self.rule_prompt : LLMPrompt = None
         self.workflow_config = None
         self.role_group : dict = None
         self.input_filter : MessageFilter= None
@@ -83,7 +83,7 @@ class Workflow:
             self.db_file = self.owner_workflow.db_file
 
         if config.get("prompt") is not None:
-            self.rule_prompt = AgentPrompt()
+            self.rule_prompt = LLMPrompt()
             if self.rule_prompt.load_from_config(config.get("prompt")) is False:
                 logger.error("Workflow load prompt failed")
                 return False
@@ -279,7 +279,7 @@ class Workflow:
         logger.info(f"{msg.sender} post message {msg.msg_id} to AIBus: {msg.target}")
         return await self.get_bus().send_message(msg)
 
-    async def role_call(self,func_item:FunctionItem,the_role:AIRole):
+    async def role_call(self,func_item:ActionItem,the_role:AIRole):
         logger.info(f"{the_role.role_id} call {func_item.name} ")
         arguments = func_item.args
 
@@ -290,11 +290,11 @@ class Workflow:
         result_str:str = await func_node.execute(**arguments)
         return result_str
 
-    async def role_post_call(self,func_item:FunctionItem,the_role:AIRole):
+    async def role_post_call(self,func_item:ActionItem,the_role:AIRole):
         logger.info(f"{the_role.role_id} post call {func_item.name} ")
         return await self.role_call(func_item,the_role)
 
-    def _format_msg_by_env_value(self,prompt:AgentPrompt):
+    def _format_msg_by_env_value(self,prompt:LLMPrompt):
         if self.workflow_env is None:
             return
 
@@ -326,7 +326,7 @@ class Workflow:
             return result_func
         return None
 
-    async def _role_execute_func(self,the_role:AIRole,inenr_func_call_node:dict,prompt:AgentPrompt,org_msg:AgentMsg,stack_limit = 5) -> [str,int]:
+    async def _role_execute_func(self,the_role:AIRole,inenr_func_call_node:dict,prompt:LLMPrompt,org_msg:AgentMsg,stack_limit = 5) -> [str,int]:
 
         func_name = inenr_func_call_node.get("name")
         arguments = json.loads(inenr_func_call_node.get("arguments"))
@@ -372,7 +372,7 @@ class Workflow:
     async def role_process_msg(self,msg:AgentMsg,the_role:AIRole,workflow_chat_session:AIChatSession) -> AgentMsg:
         msg.target = the_role.get_role_id()
 
-        prompt = AgentPrompt()
+        prompt = LLMPrompt()
         prompt.append(the_role.agent.agent_prompt)
         prompt.append(self.get_workflow_rule_prompt())
         prompt.append(the_role.get_prompt())
@@ -382,7 +382,7 @@ class Workflow:
         #support group chat, user content include sender name!
         prompt.append(await self._get_prompt_from_session(the_role,workflow_chat_session))
 
-        msg_prompt = AgentPrompt()
+        msg_prompt = LLMPrompt()
         msg_prompt.messages = [{"role":"user","content":f"user name is {msg.sender}, his question is :{msg.body}"}]
         prompt.append(msg_prompt)
 
@@ -461,20 +461,20 @@ class Workflow:
                              # message will be saved in role.process_message
                             pass
 
-                    this_llm_resp_prompt = AgentPrompt()
+                    this_llm_resp_prompt = LLMPrompt()
                     this_llm_resp_prompt.messages = [{"role":"assistant","content":result_str}]
                     prompt.append(this_llm_resp_prompt)
 
-                    result_prompt = AgentPrompt()
+                    result_prompt = LLMPrompt()
                     result_prompt.messages = [{"role":"user","content":result_prompt_str}]
                     prompt.append(result_prompt)
                     return await _do_process_msg()
 
         return await _do_process_msg()
 
-    async def _get_prompt_from_session(self,the_role:AIRole,chatsession:AIChatSession) -> AgentPrompt:
+    async def _get_prompt_from_session(self,the_role:AIRole,chatsession:AIChatSession) -> LLMPrompt:
         messages = chatsession.read_history(the_role.history_len) # read last 10 message
-        result_prompt = AgentPrompt()
+        result_prompt = LLMPrompt()
         
         for msg in reversed(messages):
             if msg.sender == the_role.role_id:
@@ -484,10 +484,10 @@ class Workflow:
 
         return result_prompt
 
-    def _get_knowlege_prompt(self,role_name:str) -> AgentPrompt:
+    def _get_knowlege_prompt(self,role_name:str) -> LLMPrompt:
         pass
 
-    def get_workflow_rule_prompt(self) -> AgentPrompt:
+    def get_workflow_rule_prompt(self) -> LLMPrompt:
         return self.rule_prompt
 
     # def _env_event_to_msg(self,env_event:EnvironmentEvent) -> AgentMsg:

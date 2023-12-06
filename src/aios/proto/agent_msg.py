@@ -232,9 +232,4 @@ class AgentMsg:
     def get_quote_msg_id(self) -> str:
         return self.quote_msg_id
 
-    @classmethod
-    def parse_function_call(cls,func_string:str):
-        str_list = shlex.split(func_string)
-        func_name = str_list[0]
-        params = str_list[1:]
-        return func_name, params
+

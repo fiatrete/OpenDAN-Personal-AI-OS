@@ -1,6 +1,6 @@
 import logging
 
-from .agent_base import AgentPrompt
+from .agent_base import LLMPrompt
 
 class AIRole:
     def __init__(self) -> None:
@@ -9,7 +9,7 @@ class AIRole:
         self.role_id :str = None # $workflow_id.$sub_workflow_id.$role_name
         self.fullname : str = None
         self.agent_name : str = None
-        self.prompt : AgentPrompt = None
+        self.prompt : LLMPrompt = None
         self.introduce : str = None
         self.agent = None
         self.enable_function_list : list[str] = None
@@ -31,7 +31,7 @@ class AIRole:
 
         prompt_node = config.get("prompt")
         if prompt_node:
-            self.prompt = AgentPrompt()
+            self.prompt = LLMPrompt()
             if self.prompt.load_from_config(prompt_node) is False:
                 logging.error("load prompt failed!")
                 return False
@@ -56,7 +56,7 @@ class AIRole:
     def get_name(self) -> str:
         return self.role_name
 
-    def get_prompt(self) -> AgentPrompt:
+    def get_prompt(self) -> LLMPrompt:
         return self.prompt
 
 class AIRoleGroup:

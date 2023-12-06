@@ -1,3 +1,4 @@
+import asyncio
 import openai
 from openai import AsyncOpenAI
 import os
@@ -237,7 +238,8 @@ class OpenAI_ComputeNode(ComputeNode):
                     return result
 
                 logger.info(f"openai response: {resp}")
-                if mode_name == "gpt-4-vision-preview":
+                #TODO: gpt-4v api is image_2_text ?
+                if mode_name == "gpt-4-vision-preview": 
                     status_code = resp.choices[0].finish_reason
                     if status_code is None:
                         status_code = resp.choices[0].finish_details['type']
@@ -265,6 +267,7 @@ class OpenAI_ComputeNode(ComputeNode):
 
                 if token_usage:
                     result.result_refers["token_usage"] = token_usage
+                    
                 logger.info(f"openai success response: {result.result_str}")
                 return result
             case _:

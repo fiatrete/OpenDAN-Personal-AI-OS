@@ -40,7 +40,7 @@ from sd_node import *
 from st_node import *
 
 from agent_manager import AgentManager
-# from workflow_manager import WorkflowManager
+from workflow_manager import WorkflowManager
 from knowledge_manager import KnowledgePipelineManager
 from tg_tunnel import TelegramTunnel
 from email_tunnel import EmailTunnel
@@ -148,9 +148,9 @@ class AIOS_Shell:
         if await AgentManager.get_instance().initial() is not True:
             logger.error("agent manager initial failed!")
             return False
-        # if await WorkflowManager.get_instance().initial() is not True:
-        #     logger.error("workflow manager initial failed!")
-        #     return False
+        if await WorkflowManager.get_instance().initial() is not True:
+             logger.error("workflow manager initial failed!")
+             return False
 
         open_ai_node = OpenAI_ComputeNode.get_instance()
         if await open_ai_node.initial() is not True:

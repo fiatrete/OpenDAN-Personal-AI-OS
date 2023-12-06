@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional,Dict,Awaitable,List
 import logging
-from ..agent.ai_function import AIFunction, AIOperation
+from ..proto.ai_function import *
 
 
 logger = logging.getLogger(__name__)

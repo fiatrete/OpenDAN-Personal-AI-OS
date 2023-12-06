@@ -1,6 +1,6 @@
 import os
 from typing import Any,List,Dict
-from aios import AgentMsg,AgentTodo,AgentPrompt
+from aios import AgentMsg,AgentTodo,LLMPrompt
 from aios import SimpleAIFunction, SimpleAIOperation
 from aios import SimpleEnvironment
 
