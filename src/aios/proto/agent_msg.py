@@ -210,6 +210,13 @@ class AgentMsg:
             return True
         return False
 
+    def is_audio_msg(self) -> bool:
+        if self.body_mime is None:
+            return False
+        if self.body_mime.startswith("audio/"):
+            return True
+        return False
+
     def get_msg_id(self) -> str:
         return self.msg_id
 
