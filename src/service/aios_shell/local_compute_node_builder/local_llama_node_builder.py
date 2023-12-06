@@ -10,10 +10,10 @@ from prompt_toolkit.formatted_text import FormattedText
 from aios.storage.storage import AIStorage
 from aios import ComputeKernel
 from component.llama_node.local_llama_compute_node import LocalLlama_ComputeNode
-from service.aios_shell.compute_node_config import ComputeNodeConfig
+from compute_node_config import ComputeNodeConfig
 from .local_compute_node_builder import BuildParameter, BuilderState, LocalComputeNodeBuilder, ParameterApplier
 
-class BuildParameterModelPath:
+class BuildParameterModelPath(ParameterApplier):
     async def apply(self, state: BuilderState, name: str, value: str or None = None) -> str or None:
         if value:
             if os.path.exists(value):
@@ -24,7 +24,7 @@ class BuildParameterModelPath:
             state.next_step += 1
 
 
-class BuildParameterModelUrl:
+class BuildParameterModelUrl(ParameterApplier):
     async def apply(self, state: BuilderState, name: str, value: str or None = None) -> str or None:
         if value is None:
             value = "1"
@@ -61,46 +61,46 @@ class BuildParameterModelUrl:
         except Exception as e:
             print_formatted_text(FormattedText([("class:error", f"Download model failed: {e}\nYou can retry it or select another one.")]), style = state.shell_style)
 
-class ParameterNodeNameApplier:
+class ParameterNodeNameApplier(ParameterApplier):
     async def apply(self, state: BuilderState, name: str, value: str or None = None) -> str or None:
         value = value or os.path.basename(state.params["model_path"])
         state.params["node_name"] = value
         state.next_step += 1
 
-class ParameterPortApplier:
+class ParameterPortApplier(ParameterApplier):
     async def apply(self, state: BuilderState, name: str, value: str or None = None) -> str or None:
-        if value is None or value == "0":
+        if value is None or value == "0" or value == "":
             value = str(random.randint(10000, 60000))
             
         state.params["port"] = value
         state.next_step += 1
 
-class ParameterNGpuLayersApplier:
+class ParameterNGpuLayersApplier(ParameterApplier):
     async def apply(self, state: BuilderState, name: str, value: str or None = None) -> str or None:
         value = value or "83"
         state.params["n_gpu_layers"] = value
         state.next_step += 1
 
-class ParameterNCtxApplier:
+class ParameterNCtxApplier(ParameterApplier):
     async def apply(self, state: BuilderState, name: str, value: str or None = None) -> str or None:
         value = value or "4096"
         state.params["n_ctx"] = value
         state.next_step += 1
 
-class ParameterChatFormatApplier:
+class ParameterChatFormatApplier(ParameterApplier):
     async def apply(self, state: BuilderState, name: str, value: str or None = None) -> str or None:
         value = value or "llama-2"
         state.params["chat_format"] = value
         state.next_step += 1
 
-class ParameterExternParamsApplier:
+class ParameterExternParamsApplier(ParameterApplier):
     async def apply(self, state: BuilderState, name: str, value: str or None = None) -> str or None:
         extern_params = value
         docker_image = ""
         gpu_options = []
         state.next_step += 1
 
-        if state.params["n_gpu_layers"] == "0":
+        if False and state.params["n_gpu_layers"] == "0":
             docker_image = "ghcr.io/abetlen/llama-cpp-python:latest"
         else:
             gpu_options = ["--gpus", "all"]
@@ -118,7 +118,7 @@ class ParameterExternParamsApplier:
                 else:
                     result = subprocess.run(['git', 'clone', llama_cpp_python_repo_url, llama_cpp_python_path], stdout = subprocess.PIPE, stderr = subprocess.PIPE, text = True)
 
-                if result.stderr:
+                if result.returncode:
                     print_formatted_text(FormattedText([("class:warn", result.stderr)]), style = state.shell_style)
                     while True:
                         sel = await state.prompt_session.prompt_async(f"Update 'llama-cpp-python' failed, you can press 'r' to retry, or 'c' to continue with the current version.", style = state.shell_style)
@@ -140,7 +140,7 @@ class ParameterExternParamsApplier:
                 result = subprocess.run(['docker', 'rmi', docker_image], stdout = subprocess.PIPE, stderr = subprocess.PIPE, text = True)
                 result = subprocess.run(['docker', 'build', '-t', docker_image, f"{llama_cpp_python_path}/docker/cuda_simple/"], stdout = subprocess.PIPE, stderr = subprocess.PIPE, text = True)
 
-                if result.stderr:
+                if result.returncode:
                     print_formatted_text(FormattedText([("class:warn", result.stderr)]), style = state.shell_style)
                     while True:
                         sel = await state.prompt_session.prompt_async(f"Build the image failed, you can press 'r' to retry, or 'c' to continue with the current version.", style = state.shell_style)
@@ -165,7 +165,7 @@ class ParameterExternParamsApplier:
             run_options.extend([
                 '-p', f"{state.params['port']}:8000",
                 '-v', f"{os.path.dirname(state.params['model_path'])}:/models", '-e', f"MODEL=/models/{os.path.basename(state.params['model_path'])}",
-                'llama-cpp-python-cuda',
+                docker_image,
                 'python3', '-m', 'llama_cpp.server',
                 '--n_gpu_layers', state.params["n_gpu_layers"],
                 '--n_ctx', state.params["n_ctx"],
@@ -179,7 +179,7 @@ class ParameterExternParamsApplier:
 
             result = subprocess.run(run_options, stdout = subprocess.PIPE, stderr = subprocess.PIPE, text = True)
 
-            if result.stderr:
+            if result.returncode:
                 print_formatted_text(FormattedText([("class:warn", result.stderr)]), style = state.shell_style)
                 while True:
                     sel = await state.prompt_session.prompt_async(f"Start the node service failed, you can press 'r' to retry, or 'a' to abort.", style = state.shell_style)
