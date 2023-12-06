@@ -73,6 +73,6 @@ class KnowledgeObject(ABC):
     def encode(self) -> bytes:
         return pickle.dumps(self)
 
-    # @staticmethod
-    # def decode(data: bytes) -> "ImageObject":
-    #     return pickle.loads(data)
+    @staticmethod
+    def decode(data: bytes) -> "KnowledgeObject":
+        return pickle.loads(data)

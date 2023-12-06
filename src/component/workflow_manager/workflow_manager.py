@@ -2,7 +2,7 @@ import logging
 import toml
 import os
 
-from aios import Workflow,AIStorage,PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
+from aios import AIStorage,PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
 from agent_manager import AgentManager
 logger = logging.getLogger(__name__)
 

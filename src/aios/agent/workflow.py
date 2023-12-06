@@ -18,7 +18,7 @@ from .ai_function import AIFunction,FunctionItem
 from ..frame.compute_kernel import ComputeKernel
 from ..frame.bus import AIBus
 
-from ..environment.environment import Environment,EnvironmentEvent
+from ..environment.environment import BaseEnvironment
 from ..environment.workflow_env import WorkflowEnvironment
 
 
@@ -490,15 +490,15 @@ class Workflow:
     def get_workflow_rule_prompt(self) -> AgentPrompt:
         return self.rule_prompt
 
-    def _env_event_to_msg(self,env_event:EnvironmentEvent) -> AgentMsg:
+    # def _env_event_to_msg(self,env_event:EnvironmentEvent) -> AgentMsg:
+    #     pass
+
+    def get_inner_environment(self,env_id:str) -> BaseEnvironment:
         pass
 
-    def get_inner_environment(self,env_id:str) -> Environment:
-        pass
-
-    def connect_to_environment(self,the_env:Environment,conn_info:dict) -> None:
+    def connect_to_environment(self,the_env:BaseEnvironment,conn_info:dict) -> None:
         if the_env is not None:
-            self.workflow_env.add_owner_env(the_env)
+            self.workflow_env.add_env(the_env)
 
             #for event2msg in conn_info:
             #    for k,v in event2msg:

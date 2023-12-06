@@ -14,7 +14,7 @@ from typing import List, Tuple
 from .ai_function import FunctionItem, AIFunction
 from ..proto.agent_msg import AgentMsg, AgentMsgType
 from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode
-from ..environment.environment import Environment
+from ..environment.environment import BaseEnvironment
 
 
 logger = logging.getLogger(__name__)
@@ -55,16 +55,6 @@ class AgentPrompt:
                 self.system_message["content"] += prompt.system_message.get("content")
 
         self.messages.extend(prompt.messages)
-
-    def get_prompt_token_len(self):
-        result = 0
-
-        if self.system_message:
-            result += len(self.system_message.get("content"))
-        for msg in self.messages:
-            result += len(msg.get("content"))
-
-        return result
 
     def load_from_config(self,config:list) -> bool:
         if isinstance(config,list) is not True:
@@ -139,6 +129,8 @@ class LLMResult:
 
         if llm_result_str[0] == "{":
             return LLMResult.from_json_str(llm_result_str)
+        # if llm_result_str.startswith("json"):
+        #     return LLMResult.from_json_str(llm_result_str[4:])
 
         lines = llm_result_str.splitlines()
         is_need_wait = False
@@ -245,8 +237,9 @@ class AgentTodo:
     TODO_STATE_EXEC_FAILED = "exec_failed"
     TDDO_STATE_CHECKFAILED = "check_failed"
 
-    TODO_STATE_CASNCEL = "cancel"
+    TODO_STATE_CANCEL = "cancel"
     TODO_STATE_DONE = "done"
+    TODO_STATE_REVIEWED = "reviewed"
     TODO_STATE_EXPIRED = "expired"
 
     def __init__(self):
@@ -341,6 +334,23 @@ class AgentTodo:
         result["retry_count"] = self.retry_count
 
         return result
+    
+    def to_prompt(self) -> AgentPrompt:
+        json_str = json.dumps(self.raw_obj)
+        return AgentPrompt(json_str)
+        
+    def can_review(self) -> bool:
+        if self.state != AgentTodo.TODO_STATE_DONE:
+            return False
+
+        now = datetime.now().timestamp()
+        if self.last_review_time:
+            time_diff = now - self.last_review_time
+            if time_diff < 60*15:
+                logger.info(f"todo {self.title} is already reviewed, ignore")
+                return False
+
+        return True
 
     def can_check(self)->bool:
         if self.state != AgentTodo.TODO_STATE_WAITING_CHECK:
@@ -360,7 +370,7 @@ class AgentTodo:
             case AgentTodo.TODO_STATE_DONE:
                 logger.info(f"todo {self.title} is done, ignore")
                 return False
-            case AgentTodo.TODO_STATE_CASNCEL:
+            case AgentTodo.TODO_STATE_CANCEL:
                 logger.info(f"todo {self.title} is cancel, ignore")
                 return False
             case AgentTodo.TODO_STATE_EXPIRED:
@@ -410,12 +420,22 @@ class BaseAIAgent(abc.ABC):
     def get_max_token_size(self) -> int:
         pass
 
-    @abstractmethod
-    async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
-        pass
+    def token_len(self, text:str=None, prompt:AgentPrompt=None) -> int:
+        from ..frame.compute_kernel import ComputeKernel 
+        if text:
+            return ComputeKernel.llm_num_tokens_from_text(text,self.get_llm_model_name())
+        elif prompt:
+            result = 0
+            if prompt.system_message:
+                result += ComputeKernel.llm_num_tokens_from_text(prompt.system_message.get("content"),self.get_llm_model_name())
+            for msg in prompt.messages:
+                result += ComputeKernel.llm_num_tokens_from_text(msg.get("content"),self.get_llm_model_name())
+            return result
+        else:
+            return 0
 
     @classmethod
-    def get_inner_functions(cls, env:Environment) -> (dict,int):
+    def get_inner_functions(cls, env:BaseEnvironment) -> (dict,int):
         if env is None:
             return None,0
 
@@ -440,7 +460,7 @@ class BaseAIAgent(abc.ABC):
         self,
         prompt:AgentPrompt,
         org_msg:AgentMsg=None,
-        env:Environment=None,
+        env:BaseEnvironment=None,
         inner_functions=None,
         is_json_resp=False,
     ) -> ComputeTaskResult:
@@ -493,7 +513,7 @@ class BaseAIAgent(abc.ABC):
 
     async def _execute_func(
         self,
-        env: Environment,
+        env: BaseEnvironment,
         inner_func_call_node: dict,
         prompt: AgentPrompt,
         inner_functions: dict,

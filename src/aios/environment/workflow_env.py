@@ -15,13 +15,13 @@ from ..frame.compute_kernel import ComputeKernel
 from ..frame.contact_manager import ContactManager,Contact,FamilyMember
 from ..storage.storage import AIStorage
 
-from .environment import Environment,EnvironmentEvent
+from .environment import SimpleEnvironment, CompositeEnvironment
 from .script_to_speech_function import ScriptToSpeechFunction
 from .image_2_text_function import Image2TextFunction
 
 logger = logging.getLogger(__name__)
 
-class CalenderEvent(EnvironmentEvent):
+class CalenderEvent(SimpleEnvironment):
     def __init__(self,data) -> None:
         super().__init__()
         self.event_name = "timer"
@@ -31,7 +31,7 @@ class CalenderEvent(EnvironmentEvent):
         return f"#event timer:{self.data}"
 
 # AI Calender GOAL: Let user use "create notify after 2 days" to create a timer event
-class CalenderEnvironment(Environment):
+class CalenderEnvironment(SimpleEnvironment):
     def __init__(self, env_id: str) -> None:
         super().__init__(env_id)
         self.db_file = AIStorage.get_instance().get_myai_dir() / "calender.db"
@@ -302,7 +302,7 @@ class CalenderEnvironment(Environment):
             return f'exec paint OK, saved as a local file, path is: {result.result["file"]}'
 
 
-class PaintEnvironment(Environment):
+class PaintEnvironment(BaseEnvironment):
     def __init__(self, env_id: str) -> None:
         super().__init__(env_id)
         self.is_run = False
@@ -327,14 +327,14 @@ class PaintEnvironment(Environment):
 
 
 # Default Workflow Environment(Context)
-class WorkflowEnvironment(Environment):
+class WorkflowEnvironment(CompositeEnvironment):
     def __init__(self, env_id: str,db_file:str) -> None:
         super().__init__(env_id)
         self.db_file = db_file
         self.local = threading.local()
         self.table_name = "WorkflowEnv_" + env_id
-        self.add_ai_function(ScriptToSpeechFunction())
-        self.add_ai_function(Image2TextFunction())
+        # self.add_ai_function(ScriptToSpeechFunction())
+        # self.add_ai_function(Image2TextFunction())
 
 
     def _get_conn(self):

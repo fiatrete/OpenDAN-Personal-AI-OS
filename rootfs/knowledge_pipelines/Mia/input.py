@@ -6,7 +6,6 @@ import aiofiles
 import chardet
 import logging
 import string
-
 import docx2txt
 from PyPDF2 import PdfReader
 

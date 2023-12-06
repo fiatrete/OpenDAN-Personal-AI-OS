@@ -1,4 +1,0 @@
-name = "Mail.Issue"
-input.module = "input.py"
-input.params.path = "${myai_dir}/data"
-
