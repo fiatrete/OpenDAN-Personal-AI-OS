@@ -192,14 +192,14 @@ class TelegramTunnel(AgentTunnel):
             ext = audio_file.file_path.rsplit(".")[-1]
             file_path = os.path.join(self.get_cache_path(), audio_file.file_id + f".{ext}")
             await audio_file.download_to_drive(file_path)
-            agent_msg.body = file_path
+            agent_msg.body = agent_msg.create_audio_body(file_path, message.caption)
             agent_msg.body_mime = f"audio/{ext}"
         elif message.voice is not None:
             audio_file = await message.voice.get_file()
             ext = audio_file.file_path.rsplit(".")[-1]
             file_path = os.path.join(self.get_cache_path(), audio_file.file_id + f".{ext}")
             await audio_file.download_to_drive(file_path)
-            agent_msg.body = file_path
+            agent_msg.body = agent_msg.create_audio_body(file_path, message.caption)
             agent_msg.body_mime = f"audio/{ext}"
 
         agent_msg.create_time = time.time()
@@ -304,10 +304,10 @@ class TelegramTunnel(AgentTunnel):
         logger.info(f"process message {agent_msg.msg_id} from {agent_msg.sender} to {agent_msg.target}")
         if agent_msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
             self.ai_bus.register_message_handler(agent_msg.target, self._process_message)
-            resp_msg = await self.ai_bus.send_message(agent_msg,self.target_id,agent_msg.target)
+            resp_msg: AgentMsg = await self.ai_bus.send_message(agent_msg,self.target_id,agent_msg.target)
         else:
             #self.ai_bus.register_message_handler(reomte_user_name, self._process_message)
-            resp_msg = await self.ai_bus.send_message(agent_msg)
+            resp_msg: AgentMsg = await self.ai_bus.send_message(agent_msg)
         #await bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
 
@@ -345,14 +345,32 @@ class TelegramTunnel(AgentTunnel):
                         return
                 await update.message.reply_text(resp_msg.body)
             else:
-                if resp_msg.body_mime.startswith("image"):
-                    photo_file = open(resp_msg.body,"rb")
-                    if photo_file:
-                        await update.message.reply_photo(resp_msg.body)
-                        photo_file.close()
+                if resp_msg.is_image_msg():
+                    text, images = resp_msg.get_image_body()
+                    if text is not None:
+                        await update.message.reply_text(text)
+                    for image in images:
+                        if os.path.exists(image):
+                            await update.message.reply_photo(image)
+                        else:
+                            await update.message.reply_text(image)
+                elif resp_msg.is_video_msg():
+                    text, video_file = resp_msg.get_video_body()
+                    if text is not None:
+                        await update.message.reply_text(text)
+                    if os.path.exists(video_file):
+                        await update.message.reply_video(video_file)
                     else:
-                        await update.message.reply_text(resp_msg.body)
+                        await update.message.reply_text(video_file)
+                elif resp_msg.is_audio_msg():
+                    text, audio_file = resp_msg.get_audio_body()
+                    if text is not None:
+                        await update.message.reply_text(text)
 
+                    if os.path.exists(audio_file):
+                        await update.message.reply_voice(audio_file)
+                    else:
+                        await update.message.reply_text(audio_file)
                 else:
                     await update.message.reply_text(resp_msg.body)
 

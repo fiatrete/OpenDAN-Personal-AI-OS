@@ -153,4 +153,4 @@ oracledb
 html2text
 docx2txt
 opencv-python
-
+discord.py

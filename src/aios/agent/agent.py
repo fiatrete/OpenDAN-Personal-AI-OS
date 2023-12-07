@@ -311,14 +311,20 @@ class AIAgent(BaseAIAgent):
                     content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
                     msg_prompt.messages = [{"role": "user", "content": content}]
             elif msg.is_audio_msg():
-                audio_file = msg.body
+                prompt, audio_file = msg.get_audio_body()
                 resp = await ComputeKernel.get_instance().do_speech_to_text(audio_file, None, prompt=None, response_format="text")
                 if resp.result_code != ComputeTaskResultCode.OK:
                     error_resp = msg.create_error_resp(resp.error_str)
                     return error_resp
                 else:
-                    msg.body = resp.result_str
-                    msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{resp.result_str}"}]
+                    if prompt is None or prompt == "":
+                        msg.body_mime = "text/plain"
+                        msg.body = resp.result_str
+                        msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{resp.result_str}"}]
+                    else:
+                        msg.body_mime = "text/plain"
+                        msg.body = f"{msg.sender} prompt:{prompt}\nasr response:{resp.result_str}"
+                        msg_prompt.messages = [{"role": "user", "content": msg.body}]
             else:
                 msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
             session_topic = msg.target + "#" + msg.topic
@@ -352,14 +358,20 @@ class AIAgent(BaseAIAgent):
                     content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
                     msg_prompt.messages = [{"role": "user", "content": content}]
             elif msg.is_audio_msg():
-                audio_file = msg.body
+                prompt, audio_file = msg.get_audio_body()
                 resp = await (ComputeKernel.get_instance().do_speech_to_text(audio_file, None, prompt=None, response_format="text"))
                 if resp.result_code != ComputeTaskResultCode.OK:
                     error_resp = msg.create_error_resp(resp.error_str)
                     return error_resp
                 else:
-                    msg.body = resp.result_str
-                    msg_prompt.messages = [{"role":"user","content":resp.result_str}]
+                    if prompt is None or prompt == "":
+                        msg.body_mime = "text/plain"
+                        msg.body = resp.result_str
+                        msg_prompt.messages = [{"role":"user","content":resp.result_str}]
+                    else:
+                        msg.body_mime = "text/plain"
+                        msg.body = f"user prompt:{prompt}\nasr response:{resp.result_str}"
+                        msg_prompt.messages = [{"role": "user", "content": msg.body}]
             else:
                 msg_prompt.messages = [{"role":"user","content":msg.body}]
             session_topic = msg.get_sender() + "#" + msg.topic

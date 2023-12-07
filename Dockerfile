@@ -1,4 +1,14 @@
 FROM python:3.11
+
+ENV PYTHON_VERSION=3.11
+RUN apt-get update && apt-get install -y --no-install-recommends \
+		python${PYTHON_VERSION}-venv \
+    	python${PYTHON_VERSION}-dev \
+    	default-libmysqlclient-dev \
+    	build-essential \
+    	pkg-config \
+        && rm -rf /var/lib/apt/lists/* \
+
 WORKDIR /opt/aios
 COPY ./src /opt/aios
 COPY ./rootfs /opt/aios/app
