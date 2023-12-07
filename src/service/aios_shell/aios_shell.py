@@ -19,6 +19,8 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
+from discord_tunnel import DiscordTunnel
+
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
@@ -230,6 +232,7 @@ class AIOS_Shell:
 
         TelegramTunnel.register_to_loader()
         EmailTunnel.register_to_loader()
+        DiscordTunnel.register_to_loader()
         user_data_dir = str(AIStorage.get_instance().get_myai_dir())
         tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
         tunnel_config = None
@@ -285,6 +288,9 @@ class AIOS_Shell:
                 input_table["smtp"] = UserConfigItem("smtp server address,like hostname:port")
                 input_table["user"] = UserConfigItem("mail server login user name")
                 input_table["password"] = UserConfigItem("main server login password")
+            case "discord":
+                tunnel_config["type"] = "DiscordTunnel"
+                input_table["token"] = UserConfigItem("discord bot token\n You can get it from https://discord.com/developers/applications ,read https://discordpy.readthedocs.io/en/stable/discord.html for more details")
             case _:
                 error_text = FormattedText([("class:error", f"tunnel type {tunnel_type}not support!")])
                 print_formatted_text(error_text,style=shell_style)
@@ -423,7 +429,7 @@ class AIOS_Shell:
         elif sub_cmd == "add":
             if len(args) < 3:
                 return show_text
-            
+
             model_name = args[1]
             url = args[2]
             ComputeNodeConfig.get_instance().add_node("llama", url, model_name)
@@ -434,7 +440,7 @@ class AIOS_Shell:
         elif sub_cmd == "rm":
             if len(args) < 3:
                 return show_text
-            
+
             model_name = args[1]
             url = args[2]
             ComputeNodeConfig.get_instance().remove_node("llama", url, model_name)
@@ -535,7 +541,7 @@ class AIOS_Shell:
                     tunnel_type = "telegram"
                 else:
                     tunnel_type = args[1]
-
+                tunnel_type = tunnel_type.lower()
                 tunnel_config = await self.get_tunnel_config_from_input(tunnel_target,tunnel_type)
                 if tunnel_config:
                     if await AgentTunnel.load_tunnel_from_config(tunnel_config):

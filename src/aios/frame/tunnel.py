@@ -34,7 +34,7 @@ class AgentTunnel(ABC):
                     tunnel.connect_to(AIBus.get_default_bus(),tunnel.target_id)
                     await tunnel.start()
                 else:
-                    logger.error(f"load tunnel {tunnel_id} failed") 
+                    logger.error(f"load tunnel {tunnel_id} failed")
             else:
                 logger.error(f"load tunnel {tunnel_id} failed,loader not found")
 
@@ -49,12 +49,12 @@ class AgentTunnel(ABC):
                 await tunnel.start()
                 return True
             else:
-                logger.error(f"load tunnel {tunnel_config['tunnel_id']} failed") 
+                logger.error(f"load tunnel {tunnel_config['tunnel_id']} failed")
         else:
             logger.error(f"load tunnel {tunnel_config['type']} failed,loader not found")
 
         return False
-    
+
     @classmethod
     async def get_tunnel_by_agentid(cls,agent_id:str):
         result = []
@@ -62,14 +62,14 @@ class AgentTunnel(ABC):
             if tunnel.target_id == agent_id:
                 result.append(tunnel)
         return result
-    
+
 
     def __init__(self) -> None:
         super().__init__()
         self.tunnel_id = None
         self.target_id = None
         self.target_type = None
-        self.ai_bus = None
+        self.ai_bus: AIBus = None
         self.is_connected = False
 
     def connect_to(self, ai_bus:AIBus,target_id: str) -> None:
@@ -87,7 +87,7 @@ class AgentTunnel(ABC):
     @abstractmethod
     def post_message(self, msg: AgentMsg) -> None:
         pass
-        
+
 
     @abstractmethod
     async def start(self) -> bool:

@@ -164,6 +164,15 @@ class AgentMsg:
         body = json.loads(video_body)
         return body.get("prompt"), body.get("video")
 
+    @staticmethod
+    def create_audio_body(audio: str, prompt: str = None):
+        return json.dumps({"audio": audio, "prompt": prompt})
+
+    @staticmethod
+    def parse_audio_body(audio_body: str) -> Tuple[str, str]:
+        body = json.loads(audio_body)
+        return body.get("prompt"), body.get("audio")
+
     def set_image(self, sender: str, target: str, image_format: str, images: [str], prompt: str = None, topic: str = None):
         self.sender = sender
         self.target = target
@@ -209,6 +218,22 @@ class AgentMsg:
         if self.body_mime.startswith("video/"):
             return True
         return False
+
+    def set_audio(self, sender: str, target: str, audio_format: str, audio: str, prompt: str = None, topic: str = None):
+        self.sender = sender
+        self.target = target
+        self.create_time = time.time()
+        self.body_mime = f"audio/{audio_format}"
+        self.body = self.create_audio_body(audio, prompt)
+        if topic:
+            self.topic = topic
+
+    def get_audio_body(self) -> Tuple[str, str]:
+        if self.body_mime is None:
+            return None
+        if self.body_mime.startswith("audio/"):
+            return self.parse_audio_body(self.body)
+        return None
 
     def is_audio_msg(self) -> bool:
         if self.body_mime is None:
