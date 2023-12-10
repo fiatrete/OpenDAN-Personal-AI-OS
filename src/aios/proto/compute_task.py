@@ -6,7 +6,8 @@ import shlex
 import uuid
 import time
 from typing import List, Union
-from ..proto.ai_function import *
+from .ai_function import *
+from .agent_msg import *
 from ..knowledge import ObjectID
 from ..storage.storage import AIStorage
 
@@ -40,20 +41,63 @@ class ComputeTaskType(Enum):
     TEXT_EMBEDDING ="text_embedding"
     IMAGE_EMBEDDING ="image_embedding"
 
+# class Function(TypedDict, total=False):
+#     name: Required[str]
+#     """The name of the function to be called.
+
+#     Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length
+#     of 64.
+#     """
+
+#     parameters: Required[shared_params.FunctionParameters]
+#     """The parameters the functions accepts, described as a JSON Schema object.
+
+#     See the [guide](https://platform.openai.com/docs/guides/gpt/function-calling)
+#     for examples, and the
+#     [JSON Schema reference](https://json-schema.org/understanding-json-schema/) for
+#     documentation about the format.
+
+#     To describe a function that accepts no parameters, provide the value
+#     `{"type": "object", "properties": {}}`.
+#     """
+
+#     description: str
+#     """
+#     A description of what the function does, used by the model to choose when and
+#     how to call the function.
+#     """
+
 class LLMPrompt:
     def __init__(self,prompt_str = None) -> None:
-        self.messages = []
+        self.messages : List[Dict] = []
         if prompt_str:
             self.messages.append({"role":"user","content":prompt_str})
-        self.system_message = None
+        self.system_message : Dict = None
+        self.inner_functions : List[Dict] = []
+
+    def append_system_message(self,content:str):
+        if content is None:
+            return
+        
+        if self.system_message is None:
+            self.system_message = {"role":"system","content":content}
+        else:
+            self.system_message["content"] += content
+    
+    def append_user_message(self,content:str):
+        if content is None:
+            return
+        
+        self.messages.append({"role":"user","content":content})
 
     def as_str(self)->str:
         result_str = ""
         if self.system_message:
-            result_str += self.system_message.get("role") + ":" + self.system_message.get("content") + "\n"
+            result_str = json.dumps(self.system_message)
         if self.messages:
-            for msg in self.messages:
-                result_str += msg.get("role") + ":" + msg.get("content") + "\n"
+            result_str += json.dumps(self.messages)
+        if self.inner_functions:
+            result_str += json.dumps(self.inner_functions)
 
         return result_str
 
@@ -63,10 +107,18 @@ class LLMPrompt:
             result.append(self.system_message)
         result.extend(self.messages)
         return result
+    
+    
 
     def append(self,prompt:'LLMPrompt'):
         if prompt is None:
             return
+        
+        if prompt.inner_functions:
+            if self.inner_functions is None:
+                self.inner_functions = copy.deepcopy(prompt.inner_functions)
+            else:
+                self.inner_functions.extend(prompt.inner_functions)
 
         if prompt.system_message is not None:
             if self.system_message is None:
@@ -76,11 +128,11 @@ class LLMPrompt:
 
         self.messages.extend(prompt.messages)
 
-    def load_from_config(self,config:list) -> bool:
+    def load_from_config(self,config:List[Dict]) -> bool:
         if isinstance(config,list) is not True:
             logger.error("prompt is not list!")
             return False
-        self.messages = []
+        self.messages : List[Dict] = []
         for msg in config:
             if msg.get("content"):
                 if msg.get("role") == "system":
@@ -126,11 +178,16 @@ class LLMResult:
         if llm_json_str == "**IGNORE**":
             r.state = LLMResultStates.IGNORE
             return r
+        
+        r.state = LLMResultStates.OK
 
         llm_json = json.loads(llm_json_str)
         r.resp = llm_json.get("resp")
         r.raw_result = llm_json
-        r.action_list = llm_json.get("actions")
+        action_list = llm_json.get("actions")
+        for action in action_list:
+            action_item = ActionItem.from_json(action)
+            r.action_list.append(action_item)
 
         return r
 

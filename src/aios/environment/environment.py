@@ -102,3 +102,9 @@ class CompositeEnvironment(SimpleEnvironment):
         operations = env.get_all_ai_operations()
         for op in operations:
             self.operations[op.get_name()] = op
+
+    def get_value(self,key:str) -> Optional[str]:
+        for env in self.envs:
+            val = env.get_value(key)
+            if val is not None:
+                return val

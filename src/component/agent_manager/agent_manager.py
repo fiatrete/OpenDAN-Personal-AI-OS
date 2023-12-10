@@ -80,9 +80,14 @@ class AgentManager:
         if the_agent is None:
             logger.warn(f"load agent {agent_id} from media failed!")
             return None
-
+        
         the_agent.chat_db = self.db_path
-        return the_agent
+        if await the_agent.initial():
+            return the_agent
+        else:
+            logger.warn(f"initial agent {agent_id} failed!")
+            return None
+        
 
     def remove(self,agent_id:str)->int:
         pass
@@ -141,7 +146,7 @@ class AgentManager:
                 else:
                     init_env(owner_env)
 
-            if result_agent.load_from_config(config) is False:
+            if await result_agent.load_from_config(config) is False:
                 logger.error(f"load agent from {agent_media} failed!")
                 return None
             return result_agent

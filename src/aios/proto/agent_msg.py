@@ -75,6 +75,11 @@ class AgentMsg:
         self.inner_call_chain = []
         self.resp_msg = None
 
+        self.action_list = []
+
+        #context info
+        self.context_info:dict= {}
+
     @classmethod
     def from_json(cls,json_obj:dict) -> 'AgentMsg':
         msg = AgentMsg()

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict,Coroutine,Callable
+from typing import Dict,Coroutine,Callable,List
 
 class ParameterDefine:
     def __init__(self) -> None:
@@ -74,10 +74,11 @@ class AIFunction:
     #    pass
 
 class ActionItem:
-    def __init__(self,name,args) -> None:
-        self.name = name
-        self.args = args
-        self.body = None
+    def __init__(self,name:str,args:List[str]) -> None:
+        self.name:str= name
+        self.args:List[str]= args
+        self.body:str = None
+        self.parms : Dict = None
 
     def append_body(self,body:str) -> None:
         if self.body is None:
@@ -87,6 +88,17 @@ class ActionItem:
 
     def dumps(self) -> str:
         pass
+
+    @classmethod
+    def from_json(cls,json_obj:dict) -> 'ActionItem':
+        args = json_obj.get("args",[])
+        r = ActionItem(json_obj["name"],args)
+        if json_obj.get("body"):
+            r.body = json_obj["body"]
+        r.parms = json_obj
+
+        return r
+    
 
 # call chain is a combination of ai_function,group of ai_function.
 class CallChain:

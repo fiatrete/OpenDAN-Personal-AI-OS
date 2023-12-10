@@ -6,6 +6,7 @@ import threading
 import datetime
 import uuid
 import json
+from typing import List
 
 from ..proto.agent_msg import AgentMsgType, AgentMsg, AgentMsgStatus
 
@@ -83,7 +84,8 @@ class ChatSessionDB:
                     ActionResult TEXT,
                     DoneTime TEXT,     
                          
-                    Status INTEGER
+                    Status INTEGER,
+                    Tags TEXT
                 );
             """)
             conn.commit()
@@ -104,7 +106,7 @@ class ChatSessionDB:
             logging.error("Error occurred while inserting session: %s", e)
             return -1  # return -1 if an error occurs
 
-    def insert_message(self, msg:AgentMsg):
+    def insert_message(self, msg:AgentMsg,tags:List[str] = None):
         """ insert a new message into the Messages table """
         try:
             action_name = None
@@ -128,13 +130,15 @@ class ChatSessionDB:
                 case AgentMsgType.TYPE_EVENT:
                     action_name = msg.event_name
                     action_params = json.dumps(msg.event_args)
+            if tags is None:
+                tags = []
 
-
+            str_tags = ','.join(tags)
             conn = self._get_conn()
             conn.execute("""
-                INSERT INTO Messages (MessageID, SessionID, MsgType, PrevMsgID, SenderID, ReceiverID, Timestamp, Topic,Mentions,ContentMIME,Content,ActionName,ActionParams,ActionResult,DoneTime,Status)
-                VALUES (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (msg.msg_id, msg.session_id, msg.msg_type.value, msg.prev_msg_id, msg.sender, msg.target, msg.create_time, msg.topic,mentions,msg.body_mime,msg.body,action_name,action_params,action_result,msg.done_time,msg.status.value))
+                INSERT INTO Messages (MessageID, SessionID, MsgType, PrevMsgID, SenderID, ReceiverID, Timestamp, Topic,Mentions,ContentMIME,Content,ActionName,ActionParams,ActionResult,DoneTime,Status,Tags)
+                VALUES (?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?,?)
+            """, (msg.msg_id, msg.session_id, msg.msg_type.value, msg.prev_msg_id, msg.sender, msg.target, msg.create_time, msg.topic,mentions,msg.body_mime,msg.body,action_name,action_params,action_result,msg.done_time,msg.status.value,str_tags))
             conn.commit()
 
             if msg.inner_call_chain:
@@ -385,9 +389,9 @@ class AIChatSession:
             result.append(agent_msg)
         return result
 
-    def append(self,msg:AgentMsg) -> None:
+    def append(self,msg:AgentMsg,tags:List[str] = None) -> None:
         msg.session_id = self.session_id
-        self.db.insert_message(msg)
+        self.db.insert_message(msg,tags)
 
 
     def update_think_progress(self,progress:int,new_summary:str) -> None:

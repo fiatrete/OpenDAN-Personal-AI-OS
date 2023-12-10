@@ -18,6 +18,7 @@ from ..proto.agent_task import *
 from ..proto.compute_task import *
 
 from .agent_base import *
+from .llm_process import *
 from .chatsession import *
 from ..environment.workspace_env import WorkspaceEnvironment, TodoListType
 
@@ -64,6 +65,8 @@ logger = logging.getLogger(__name__)
 # 我给你一段内容，尝试为期建立目录。目录的标题不能超过16个字，
 # 目录要指向正文的位置（用字符偏移即可），整个目录的文本长度不能超过256个字节。并用json表达这个目录
 # """
+
+
 class AIAgentTemplete:
     def __init__(self) -> None:
         self.llm_model_name:str = "gpt-4-0613"
@@ -72,6 +75,7 @@ class AIAgentTemplete:
         self.introduce:str = None
         self.author:str = None
         self.prompt:LLMPrompt = None
+
 
     def load_from_config(self,config:dict) -> bool:
         if config.get("llm_model_name") is not None:
@@ -87,9 +91,6 @@ class AIAgentTemplete:
                 return False
 
 
-        return True
-
-
 class AIAgent(BaseAIAgent):
     def __init__(self) -> None:
         self.role_prompt:LLMPrompt = None
@@ -102,7 +103,6 @@ class AIAgent(BaseAIAgent):
         self.last_recover_time = time.time()
         self.enable_thread = False
         self.can_do_unassigned_task = True
-
 
         self.agent_id:str = None
         self.template_id:str = None
@@ -135,7 +135,24 @@ class AIAgent(BaseAIAgent):
         self.owenr_bus = None
         self.enable_function_list = None
 
-    def load_from_config(self,config:dict) -> bool:
+        self.llm_process:Dict[str,BaseLLMProcess] = {}
+        
+
+    async def initial(self,params:Dict = None):
+        self.memory = AgentMemory(self.agent_id,self.chat_db)
+
+        init_params = {}
+        init_params["memory"] = self.memory
+        for process_name in self.llm_process.keys():
+            init_result = await self.llm_process[process_name].initial(init_params)
+            if init_result is False:
+                logger.error(f"llm process {process_name} initial failed! initial return False")
+                return False
+        
+        self.wake_up()
+        return True
+
+    async def load_from_config(self,config:dict) -> bool:
         if config.get("instance_id") is None:
             logger.error("agent instance_id is None!")
             return False
@@ -203,8 +220,23 @@ class AIAgent(BaseAIAgent):
             self.enable_timestamp = bool(config["enable_timestamp"])
         if config.get("history_len"):
             self.history_len = int(config.get("history_len"))
+ 
+        #load all LLMProcess
+        self.llm_process = {}
+        LLMProcess = config.get("LLMProcess")
+        for process_config_name in LLMProcess.keys():
+            process_config = LLMProcess[process_config_name]
+            real_config = {}
+            real_config.update(config)
+            real_config.update(process_config)
+            load_result = await LLMProcessLoader.get_instance().load_from_config(real_config)
+            if load_result:
+                self.llm_process[process_config_name] = load_result
+            else:
+                logger.error(f"load LLMProcess {process_config_name} failed!")
+                return False
 
-        self.wake_up()
+       
 
         return True
 
@@ -284,52 +316,14 @@ class AIAgent(BaseAIAgent):
             return image_utils.to_base64(image_path, (1024, 1024))
         else:
             return image_path
-
-    async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
-        msg_prompt = LLMPrompt()
+        
+    async def llm_process_msg(self,msg:AgentMsg) -> AgentMsg:
+        need_process:bool = True
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
             need_process = False
-            if msg.is_image_msg():
-                image_prompt, images = msg.get_image_body()
-                if image_prompt is None:
-                    content = [[{"type": "text", "text": f"{msg.sender}'s message"}]]
-                    content.extend([{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images])
-                    msg_prompt.messages = [{"role": "user", "content": content}]
-                else:
-                    content = [{"type": "text", "text": f"{msg.sender}:{image_prompt}"}]
-                    content.extend([{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images])
-                    msg_prompt.messages = [{"role": "user", "content": content}]
-            elif msg.is_video_msg():
-                video_prompt, video = msg.get_video_body()
-                frames = video_utils.extract_frames(video, (1024, 1024))
-                if video_prompt is None:
-                    content = [{"type": "text", "text": f"{msg.sender}'s message"}]
-                    content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
-                    msg_prompt.messages = [{"role": "user", "content": content}]
-                else:
-                    content = [{"type": "text", "text": f"{msg.sender}:{video_prompt}"}]
-                    content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
-                    msg_prompt.messages = [{"role": "user", "content": content}]
-            elif msg.is_audio_msg():
-                prompt, audio_file = msg.get_audio_body()
-                resp = await ComputeKernel.get_instance().do_speech_to_text(audio_file, None, prompt=None, response_format="text")
-                if resp.result_code != ComputeTaskResultCode.OK:
-                    error_resp = msg.create_error_resp(resp.error_str)
-                    return error_resp
-                else:
-                    if prompt is None or prompt == "":
-                        msg.body_mime = "text/plain"
-                        msg.body = resp.result_str
-                        msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{resp.result_str}"}]
-                    else:
-                        msg.body_mime = "text/plain"
-                        msg.body = f"{msg.sender} prompt:{prompt}\nasr response:{resp.result_str}"
-                        msg_prompt.messages = [{"role": "user", "content": msg.body}]
-            else:
-                msg_prompt.messages = [{"role":"user","content":f"{msg.sender}:{msg.body}"}]
+           
             session_topic = msg.target + "#" + msg.topic
             chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
-
             if msg.mentions is not None:
                 if self.agent_id in msg.mentions:
                     need_process = True
@@ -339,6 +333,39 @@ class AIAgent(BaseAIAgent):
                 chatsession.append(msg)
                 resp_msg = msg.create_group_resp_msg(self.agent_id,"")
                 return resp_msg
+        
+        input_parms = {
+            "msg":msg
+        }
+        msg_process = self.llm_process.get("message")
+        llm_result : LLMResult = await msg_process.process(input_parms)
+        if llm_result.state == LLMResultStates.ERROR:
+            error_resp = msg.create_error_resp(llm_result.error_str)
+            return error_resp
+        elif llm_result.state == LLMResultStates.IGNORE:
+            return None
+        else: # OK
+            resp_msg = llm_result.raw_result.get("resp_msg")
+            return resp_msg
+
+    async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
+        msg.context_info = {}
+        msg.context_info["location"] = "SanJose"
+        msg.context_info["now"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        msg.context_info["weather"] = "Partly Cloudy, 60°F"
+        return await self.llm_process_msg(msg)
+        msg_prompt = LLMPrompt()
+        need_process = True
+        if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
+            need_process = False
+           
+            session_topic = msg.target + "#" + msg.topic
+            chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
+
+            if msg.mentions is not None:
+                if self.agent_id in msg.mentions:
+                    need_process = True
+                    logger.info(f"agent {self.agent_id} recv a group chat message from {msg.sender},but is not mentioned,ignore!")
         else:
             if msg.is_image_msg():
                 image_prompt, images = msg.get_image_body()
@@ -358,20 +385,14 @@ class AIAgent(BaseAIAgent):
                     content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
                     msg_prompt.messages = [{"role": "user", "content": content}]
             elif msg.is_audio_msg():
-                prompt, audio_file = msg.get_audio_body()
+                audio_file = msg.body
                 resp = await (ComputeKernel.get_instance().do_speech_to_text(audio_file, None, prompt=None, response_format="text"))
                 if resp.result_code != ComputeTaskResultCode.OK:
                     error_resp = msg.create_error_resp(resp.error_str)
                     return error_resp
                 else:
-                    if prompt is None or prompt == "":
-                        msg.body_mime = "text/plain"
-                        msg.body = resp.result_str
-                        msg_prompt.messages = [{"role":"user","content":resp.result_str}]
-                    else:
-                        msg.body_mime = "text/plain"
-                        msg.body = f"user prompt:{prompt}\nasr response:{resp.result_str}"
-                        msg_prompt.messages = [{"role": "user", "content": msg.body}]
+                    msg.body = resp.result_str
+                    msg_prompt.messages = [{"role":"user","content":resp.result_str}]
             else:
                 msg_prompt.messages = [{"role":"user","content":msg.body}]
             session_topic = msg.get_sender() + "#" + msg.topic
