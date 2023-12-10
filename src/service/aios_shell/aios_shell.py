@@ -19,7 +19,7 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
-from discord_tunnel import DiscordTunnel
+
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
@@ -46,6 +46,7 @@ from workflow_manager import WorkflowManager
 from knowledge_manager import KnowledgePipelineManager
 from tg_tunnel import TelegramTunnel
 from email_tunnel import EmailTunnel
+from discord_tunnel import DiscordTunnel
 from common_environment import LocalKnowledgeBase, FilesystemEnvironment, ShellEnvironment, ScanLocalDocument, ParseLocalDocument
 
 from compute_node_config import *
