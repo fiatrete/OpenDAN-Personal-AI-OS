@@ -1,9 +1,15 @@
 
+from abc import ABC, abstractmethod
+from typing import List, Optional
 import datetime
 import time
-
+import uuid
 from anyio import Path
+import logging
+from enum import Enum
+from datetime import datetime
 
+logger = logging.getLogger(__name__)
 
 class AgentTodoResult:
     TODO_RESULT_CODE_OK = 0,
@@ -67,6 +73,7 @@ class AgentTodo:
         self.last_check_result = None
         self.retry_count = 0
         self.raw_obj = None
+
 
     @classmethod
     def from_dict(cls,json_obj:dict) -> 'AgentTodo':
@@ -182,40 +189,294 @@ class AgentTodo:
 
         logger.info(f"todo {self.title} can do.")
         return True
+    
+############################################################################################
+class AgentTaskState(Enum):
+    TASK_STATE_WAIT= "wait_assign"
+    TASK_STATE_ASSIGNED  = "assigned"
+    TASK_STATE_CONFIRMED = "confirmed"
+
+    TASK_STATE_CANCEL = "cancel"
+    TASK_STATE_EXPIRED = "expired"
+
+    TASK_STATE_DOING = "doing"
+    TASK_STATE_WAITING_CHECK = "wait_check"
+    TASK_STATE_CHECKFAILED = "check_failed"
+    TASK_STATE_DONE = "done"
+    TASK_STATE_FAILED = "failed"
+    @staticmethod
+    def from_str(value):
+        return next((s for s in AgentTaskState.__members__.values() if s.value == value), None)
+
+class AgentTodoState(Enum):
+    TODO_STATE_WAITING = "waiting"
+    TODO_STATE_WORKING = "working"
+    TODO_STATE_WAIT_CHECK = "wait_check"
+    TODO_STATE_CHECK_FAILED = "check_failed" 
+    TODO_STATE_DONE = "done"
+    TASK_STATE_FAILED = "failed"
+
+    @staticmethod
+    def from_str(value):
+        return next((s for s in AgentTodoState.__members__.values() if s.value == value), None)
+
+class AgentTodoTask:
+    def __init__(self) -> None:
+        self.todo_id = "todo#" + uuid.uuid4().hex
+        self.todo_path : str = None
+        self.owner_taskid = None
+        self.name:str = None
+        self.detail:str = None
+        self.state = AgentTodoState.TODO_STATE_WAITING
+        self.category = None
+        self.step_order:int = 0
+
+    def to_dict(self) -> dict:
+        pass
+
+    def from_dict(self,json_obj:dict) -> 'AgentTask':
+        pass  
 
 class AgentTask:
     def __init__(self) -> None:
         self.task_id : str = "task#" + uuid.uuid4().hex
-        self.task_path : Path = None # get parent todo,sub todo by path
+        self.task_path : str = None # get parent todo,sub todo by path
         self.title = None
         self.detail = None
-       
-        self.create_time = time.time()
-
-        self.state = "wait_assign"
+        self.state = AgentTaskState.TASK_STATE_WAIT
+        self.priority:int = 5 # 1-10
+        self.tags:List[str] = []
         self.worker = None
         self.createor = None
 
+        # if due_date is none ,means no due date
         self.due_date = time.time() + 3600 * 24 * 2
-        self.depend_task_ids = []
-        self.step_todos = {}
+        # 确定的执行时间（执行条件）
+        self.next_do_time = None
+        # 如果next check time设置，说明任务适合在该时间点可能具备执行调教，尝试检查并执行
+        self.next_check_time = None
 
+        self.depend_task_ids = []
+        #self.step_todo_ids = []
+
+        self.create_time = time.time()
+        self.done_time = None
+
+        self.last_do_time = None
         self.last_plan_time = None
         self.last_check_time = None
         #self.last_review_time = None
 
-        self.result : LLMResult = None
-        self.last_check_result = None
-        self.retry_count = 0
-        self.raw_obj = None
+    def is_finish(self) -> bool:
+        if self.state == AgentTaskState.TASK_STATE_DONE:
+            return True
+        
+        if self.state == AgentTaskState.TASK_STATE_CANCEL:
+            return True
+        
+        if self.state == AgentTaskState.TASK_STATE_EXPIRED:
+            return True
+        
+        if self.state == AgentTaskState.TASK_STATE_FAILED:
+            return True
+        return False
 
+    def to_dict(self) -> dict:
+        result = {}
+        result["task_id"] = self.task_id
+        result["title"] = self.title
+        result["detail"] = self.detail 
+        result["state"] = self.state.value
+        result["priority"] = self.priority
+        result["tags"] = self.tags
+        result["worker"] = self.worker
+        result["createor"] = self.createor
+        if self.due_date:
+            result["due_date"] = datetime.fromtimestamp(self.due_date).isoformat()
+        if self.next_do_time:
+            result["next_do_time"] = datetime.fromtimestamp(self.next_do_time).isoformat()
+        if self.next_check_time:
+            result["next_check_time"] = datetime.fromtimestamp(self.next_check_time).isoformat()
+        result["depend_task_ids"] = self.depend_task_ids
+        #result["step_todo_ids"] = self.step_todo_ids
+        result["create_time"] = datetime.fromtimestamp(self.create_time).isoformat()
+        if self.done_time:
+            result["done_time"] = datetime.fromtimestamp(self.done_time).isoformat()
+        if self.last_do_time:
+            result["last_do_time"] = datetime.fromtimestamp(self.last_do_time).isoformat() 
+        if self.last_plan_time:
+            result["last_plan_time"] = datetime.fromtimestamp(self.last_plan_time).isoformat()
+        if self.last_check_time:
+            result["last_check_time"] = datetime.fromtimestamp(self.last_check_time).isoformat()
 
+        return result
+    @classmethod
+    def from_dict(cls,json_obj:dict) -> 'AgentTask':
+        result = AgentTask()
+        result.task_id = json_obj.get("task_id")
+        result.title = json_obj.get("title")
+        result.detail = json_obj.get("detail")
+        result.state = AgentTaskState.from_str(json_obj.get("state"))
+        result.priority = json_obj.get("priority")
+        result.tags = json_obj.get("tags")
+        result.worker = json_obj.get("worker")
+        result.createor = json_obj.get("createor")
+        due_date = json_obj.get("due_date")
+        if due_date:
+            result.due_date = datetime.fromisoformat(due_date).timestamp()
+        next_do_time = json_obj.get("next_do_time")
+        if next_do_time:
+            result.next_do_time = datetime.fromisoformat(next_do_time).timestamp()
+        next_check_time = json_obj.get("next_check_time")
+        if next_check_time:
+            result.next_check_time = datetime.fromisoformat(next_check_time).timestamp()
+        result.depend_task_ids = json_obj.get("depend_task_ids")
+        #result.step_todo_ids = json_obj.get("step_todo_ids")
+        create_time = json_obj.get("create_time")
+        if create_time:
+            result.create_time = datetime.fromisoformat(create_time).timestamp()
+        done_time = json_obj.get("done_time")
+        if done_time:
+            result.done_time = datetime.fromisoformat(done_time).timestamp()
+        last_do_time = json_obj.get("last_do_time")
+        if last_do_time:
+            result.last_do_time = datetime.fromisoformat(last_do_time).timestamp()
+        last_plan_time = json_obj.get("last_plan_time")
+        if last_plan_time:
+            result.last_plan_time = datetime.fromisoformat(last_plan_time).timestamp()
+        last_check_time = json_obj.get("last_check_time")
+        if last_check_time:
+            result.last_check_time = datetime.fromisoformat(last_check_time).timestamp()  
+
+        if result.task_id is None or result.title is None or result.create_time is None or result.create_time is None:
+            logger.error(f"invalid task {json_obj}")
+            return None
+
+        return result
+    @classmethod
+    def create_by_dict(cls,json_obj:dict) -> 'AgentTask':
+        creator = json_obj.get("creator")
+        if creator is None:
+            logger.error(f"invalid create task, creator is None")
+            return None
+        
+        result = AgentTask()
+        
+        result.title = json_obj.get("title")
+        result.detail = json_obj.get("detail")
+        if result.detail is None:
+            result.detail = result.title 
+        result.priority = json_obj.get("priority")
+        if result.priority is None:
+            result.priority = 5
+
+        result.tags = json_obj.get("tags")
+        result.worker = json_obj.get("worker")
+        result.createor = creator
+        due_date = json_obj.get("due_date")
+        if due_date:
+            result.due_date = datetime.fromisoformat(due_date).timestamp()
+        
+        return result
 
 class AgentWorkLog:
     def __init__(self) -> None:
+        self.logid = "worklog#" + uuid.uuid4().hex
+        self.owner_taskid:str = None
+        self.owner_todoid:str = None
+        self.type:str = "" # 默认为普通类型的log,特殊类型的Log一般伴随着重要的状态改变
+        self.timestamp = time.time()
+        self.content:str = None
+        self.result:str = None
+        self.meta : dict = None
+        self.operator = None
+        
+    def to_dict(self) -> dict:
         pass
 
-
-class AgentReport:
+class AgentTaskManager(ABC):
     def __init__(self) -> None:
         pass
+    
+    @abstractmethod
+    async def create_task(self,task:AgentTask,parent_id:str = None) -> str:
+        pass
+
+    @abstractmethod
+    async def create_todos(self,owner_task_id:str,todos:List[AgentTodoTask]):
+        # return todo_id
+        pass
+
+    @abstractmethod
+    async def append_worklog(self,log:AgentWorkLog):
+        pass
+
+    @abstractmethod
+    async def get_worklog(self,obj_id:str)->List[AgentWorkLog]:
+        pass
+
+    @abstractmethod   
+    async def get_task(self,task_id:str) -> AgentTask:
+        pass
+
+    #@abstractmethod
+    #async def get_task_by_fullpath(self,task_path:str) -> AgentTask:
+    #    pass
+
+    @abstractmethod   
+    async def get_todo(self,todo_id:str) -> AgentTodoTask:
+        pass
+
+    @abstractmethod    
+    async def get_sub_tasks(self,task_id:str) -> List[AgentTask]:
+        pass
+
+    @abstractmethod    
+    async def get_sub_todos(self,task_id:str) -> List[AgentTodoTask]:
+        pass
+
+    #@abstractmethod    
+    #async def get_task_depends(self,task_id:str) -> List[AgentTask]:
+    #    pass
+
+    @abstractmethod    
+    async def list_task(self,filter:Optional[dict]) -> List[AgentTask]:
+        pass
+
+    @abstractmethod    
+    async def update_task(self,task:AgentTask):
+        pass
+
+    @abstractmethod
+    async def update_todo(self,todo:AgentTodoTask):
+        pass
+
+    #@abstractmethod    
+    #async def update_task_state(self,task_id,state:str):
+    #    pass
+    
+    #@abstractmethod    
+    #async def update_todo_state(self,task_id,state:str):
+    #    pass
+
+    #subtask,todo共享其所在task的文件夹
+    @abstractmethod    
+    async def get_task_file(self,task_id:str,path:str)->str:
+        #return fileid
+        pass
+    
+    @abstractmethod
+    async def set_task_file(self,task_id:str,path:str,fileid:str):
+        pass
+
+    @abstractmethod
+    async def list_task_file(self,task_id:str,path:str):
+        pass
+
+    @abstractmethod
+    async def remove_task_file(self,task_id:str,path:str):
+        pass
+
+
+
+

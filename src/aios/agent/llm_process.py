@@ -15,6 +15,7 @@ from ..proto.ai_function import *
 
 from .agent_base import *
 from .agent_memory import *
+from .workspace import *
 
 from ..frame.compute_kernel import *
 from ..environment.environment import *
@@ -45,6 +46,19 @@ class BaseLLMProcess(ABC):
         self.envs : Dict[str,BaseEnvironment] = []
         self.env : CompositeEnvironment = None
 
+    def aifunction_to_inner_function(self,all_inner_function:List[AIFunction]) -> List[Dict]:
+        result_func = []
+        result_len = 0
+        for inner_func in all_inner_function:
+            func_name = inner_func.get_name()
+            this_func = {}
+            this_func["name"] = func_name
+            this_func["description"] = inner_func.get_description()
+            this_func["parameters"] = inner_func.get_parameters()
+            result_len += len(json.dumps(this_func)) / 4
+            result_func.append(this_func)
+        return result_func
+
     @abstractmethod
     async def prepare_prompt(self,input:Dict) -> LLMPrompt:
         pass
@@ -54,7 +68,7 @@ class BaseLLMProcess(ABC):
         pass
 
     @abstractmethod
-    async def exec_actions(self,actions:List[ActionItem],input:Dict,llm_result:LLMResult) -> bool:
+    async def post_llm_process(self,actions:List[ActionItem],input:Dict,llm_result:LLMResult) -> bool:
         pass
 
     @abstractmethod
@@ -87,8 +101,9 @@ class BaseLLMProcess(ABC):
     def _format_content_by_env_value(self,content:str,env)->str:
         return content.format_map(env)
 
-    async def _execute_inner_func(self,inner_func_call_node,prompt: LLMPrompt,stack_limit = 5) -> ComputeTaskResult:
+    async def _execute_inner_func(self,inner_func_call_node,prompt: LLMPrompt,stack_limit = 1) -> ComputeTaskResult:
         arguments = None
+        stack_limit = stack_limit - 1
         try:
             func_name = inner_func_call_node.get("name")
             arguments = json.loads(inner_func_call_node.get("arguments"))
@@ -117,13 +132,18 @@ class BaseLLMProcess(ABC):
             task_result.result_code = ComputeTaskResultCode.ERROR
             task_result.error_str = f"prompt too long,can not predict"
             return task_result
+        
+        if stack_limit > 0:
+            inner_functions=prompt.inner_functions
+        else:
+            inner_functions = None
        
         task_result: ComputeTaskResult = await (ComputeKernel.get_instance().do_llm_completion(
             prompt,
             resp_mode=resp_mode,
             mode_name=self.model_name,
             max_token=max_result_token,
-            inner_functions=prompt.inner_functions, #NOTICE: inner_function in prompt can be a subset of get_inner_function
+            inner_functions=inner_functions, #NOTICE: inner_function in prompt can be a subset of get_inner_function
             timeout=self.timeout))
 
         if task_result.result_code != ComputeTaskResultCode.OK:
@@ -131,19 +151,15 @@ class BaseLLMProcess(ABC):
             return task_result
 
         inner_func_call_node = None
-        if stack_limit > 0:
-            result_message : dict = task_result.result.get("message")
-            if result_message:
-                inner_func_call_node = result_message.get("function_call")
-                if inner_func_call_node:
-                    func_msg = copy.deepcopy(result_message)
-                    del func_msg["tool_calls"]#TODO: support tool_calls?
-                    prompt.messages.append(func_msg)
-        else:
-            logger.error(f"inner function call stack limit reached")
-            task_result.result_code = ComputeTaskResultCode.ERROR
-            task_result.error_str = "inner function call stack limit reached"
-            return task_result
+ 
+        result_message : dict = task_result.result.get("message")
+        if result_message:
+            inner_func_call_node = result_message.get("function_call")
+            if inner_func_call_node:
+                func_msg = copy.deepcopy(result_message)
+                del func_msg["tool_calls"]#TODO: support tool_calls?
+                prompt.messages.append(func_msg)
+
 
         if inner_func_call_node:
             return await self._execute_inner_func(inner_func_call_node,prompt,stack_limit-1)
@@ -194,7 +210,7 @@ class BaseLLMProcess(ABC):
 
         # use action to save history?
         if llm_result.action_list or len(llm_result.action_list) > 0:
-            await self.exec_actions(llm_result.action_list,input,llm_result)
+            await self.post_llm_process(llm_result.action_list,input,llm_result)
 
         return llm_result
     
@@ -213,7 +229,7 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         self.enable_inner_functions : Dict[str,bool] = None
         self.enable_actions : Dict[str,AIOperation] = None
         self.actions_desc : Dict[str,Dict] = None
-        self.workspace : WorkspaceEnvironment = None
+        self.workspace : AgentWorkspace = None
 
         self.memory : AgentMemory = None
         self.enable_kb = False
@@ -236,7 +252,8 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         if self.memory is None:
             logger.error(f"LLMAgeMessageProcess initial failed! memory not found")
             return False
-        
+        self.workspace = params.get("workspace")
+
         self.init_actions()
         return True
 
@@ -370,6 +387,8 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         ### 修改todo/task的action
         ### workspace提供的额外的action
         system_prompt_dict["support_actions"] = await self.get_action_desc()
+
+
         #prompt.append_system_message(await self.get_action_desc())
 
         ## Context （文本替换）,是否应该覆盖全部消息
@@ -403,6 +422,9 @@ class LLMAgentMessageProcess(BaseLLMProcess):
             #prompt.append_system_message(self.tools_tips)
             prompt.inner_functions.extend(self.get_inner_function_desc_from_env())
 
+        if self.workspace:
+            prompt.inner_functions.extend(self.aifunction_to_inner_function(self.workspace.get_inner_function_desc()))
+
         ## 给予查询KB的权限    
         if self.enable_kb:        
             prompt.inner_functions.extend(self.get_inner_function_desc_from_kb())
@@ -415,9 +437,9 @@ class LLMAgentMessageProcess(BaseLLMProcess):
     
 
     async def get_inner_function(self,func_name:str) -> AIFunction:
-        return None
+        return self.workspace.inner_functions.get(func_name)
 
-    async def exec_actions(self,actions:List[ActionItem],input:Dict,llm_result:LLMResult) -> bool:
+    async def post_llm_process(self,actions:List[ActionItem],input:Dict,llm_result:LLMResult) -> bool:
         msg = input.get("msg")
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
             resp_msg = msg.create_group_resp_msg(self.memory.agent_id,llm_result.resp)
@@ -436,6 +458,7 @@ class LLMAgentMessageProcess(BaseLLMProcess):
                 action_item.parms["resp_msg"] = resp_msg  
                 action_item.parms["llm_result"] = llm_result
                 action_item.parms["start_at"] = datetime.now()
+                action_item.parms["creator"] = self.memory.agent_id
                 action_item.parms["result"] = await op.execute(action_item.parms)
                 action_item.parms["end_at"] = datetime.now()
             else:
@@ -461,7 +484,25 @@ class ReviewTaskProcess(BaseLLMProcess):
     async def get_inner_function(self,func_name:str) -> AIFunction:
         pass
 
-    async def exec_actions(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
+        pass
+
+class QuickReviewTaskProcess(BaseLLMProcess):
+    def __init__(self) -> None:
+        super().__init__()
+
+    async def load_from_config(self, config: dict) -> Coroutine[Any, Any, bool]:
+        if await super().load_from_config(config) is False:
+            return False
+
+    async def prepare_prompt(self) -> LLMPrompt:
+        prompt = LLMPrompt()
+        pass  
+
+    async def get_inner_function(self,func_name:str) -> AIFunction:
+        pass
+
+    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
         pass
 
 class DoTodoProcess(BaseLLMProcess):
@@ -479,7 +520,7 @@ class DoTodoProcess(BaseLLMProcess):
     async def get_inner_function(self,func_name:str) -> AIFunction:
         pass
 
-    async def exec_actions(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
         pass
 
 
@@ -498,7 +539,7 @@ class CheckTodoProcess(BaseLLMProcess):
     async def get_inner_function(self,func_name:str) -> AIFunction:
         pass
 
-    async def exec_actions(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
         pass
 
 class SelfLearningProcess(BaseLLMProcess):
@@ -516,7 +557,7 @@ class SelfLearningProcess(BaseLLMProcess):
     async def get_inner_function(self,func_name:str) -> AIFunction:
         pass
 
-    async def exec_actions(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
         pass
 
 class SelfThinkingProcess(BaseLLMProcess):
@@ -534,7 +575,7 @@ class SelfThinkingProcess(BaseLLMProcess):
     async def get_inner_function(self,func_name:str) -> AIFunction:
         pass
 
-    async def exec_actions(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
         pass
     
 class LLMProcessLoader:

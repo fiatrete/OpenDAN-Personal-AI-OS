@@ -50,6 +50,7 @@ class TodoListEnvironment(SimpleEnvironment):
             todoObj = AgentTodo.from_dict(params["todo"])
             parent_id = params.get("parent")
             return await self.create_todo(parent_id,todoObj)
+        
         self.add_ai_operation(SimpleAIOperation(
             op="create_todo",
             description="create todo",
@@ -61,6 +62,7 @@ class TodoListEnvironment(SimpleEnvironment):
             todo_id = params["id"]
             new_stat = params["state"]
             return await self.update_todo(todo_id,new_stat)
+        
         self.add_ai_operation(SimpleAIOperation(
             op="update_todo",
             description="update todo",

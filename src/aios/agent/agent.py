@@ -135,16 +135,20 @@ class AIAgent(BaseAIAgent):
         self.owenr_bus = None
         self.enable_function_list = None
 
-        self.llm_process:Dict[str,BaseLLMProcess] = {}
+        self.memory : AgentMemory = None
+        self.prviate_workspace : AgentWorkspace = None
+        self.behaviors:Dict[str,BaseLLMProcess] = {}
+        
         
 
     async def initial(self,params:Dict = None):
         self.memory = AgentMemory(self.agent_id,self.chat_db)
-
+        self.prviate_workspace = AgentWorkspace(self.agent_id) 
         init_params = {}
         init_params["memory"] = self.memory
-        for process_name in self.llm_process.keys():
-            init_result = await self.llm_process[process_name].initial(init_params)
+        init_params["workspace"] = self.prviate_workspace
+        for process_name in self.behaviors.keys():
+            init_result = await self.behaviors[process_name].initial(init_params)
             if init_result is False:
                 logger.error(f"llm process {process_name} initial failed! initial return False")
                 return False
@@ -222,16 +226,16 @@ class AIAgent(BaseAIAgent):
             self.history_len = int(config.get("history_len"))
  
         #load all LLMProcess
-        self.llm_process = {}
-        LLMProcess = config.get("LLMProcess")
-        for process_config_name in LLMProcess.keys():
-            process_config = LLMProcess[process_config_name]
+        self.behaviors = {}
+        behaviors = config.get("behavior")
+        for process_config_name in behaviors.keys():
+            process_config = behaviors[process_config_name]
             real_config = {}
             real_config.update(config)
             real_config.update(process_config)
             load_result = await LLMProcessLoader.get_instance().load_from_config(real_config)
             if load_result:
-                self.llm_process[process_config_name] = load_result
+                self.behaviors[process_config_name] = load_result
             else:
                 logger.error(f"load LLMProcess {process_config_name} failed!")
                 return False
@@ -337,7 +341,7 @@ class AIAgent(BaseAIAgent):
         input_parms = {
             "msg":msg
         }
-        msg_process = self.llm_process.get("message")
+        msg_process = self.behaviors.get("on_message")
         llm_result : LLMResult = await msg_process.process(input_parms)
         if llm_result.state == LLMResultStates.ERROR:
             error_resp = msg.create_error_resp(llm_result.error_str)
@@ -602,7 +606,7 @@ class AIAgent(BaseAIAgent):
     async def _llm_review_unassigned_todos(self,workspace:WorkspaceEnvironment):
         pass
 
-    async def _llm_read_report(self,report:AgentReport,worksapce:WorkspaceEnvironment):
+    async def _llm_read_report(self,report,worksapce:WorkspaceEnvironment):
         work_summary = worksapce.get_work_summary(self.agent_id)
         prompt : LLMPrompt = LLMPrompt()
         prompt.append(self.agent_prompt)
