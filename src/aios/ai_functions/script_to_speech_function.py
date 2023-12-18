@@ -1,3 +1,5 @@
+# pylint:disable=E0402
+
 import io
 import logging
 import os
@@ -17,9 +19,30 @@ logger = logging.getLogger(__name__)
 
 class ScriptToSpeechFunction(AIFunction):
     def __init__(self):
-        self.func_id = "script_to_speech"
-        self.description = "根据输入的剧本生成音频文件，成功时会返回音频文件路径"
+        self.func_id = "aigc.script_to_speech"
+        self.description = "Generate audio files according to the input script, and the audio file path will be returned when successful"
         self.speech_path = os.path.join(AIStorage.get_instance().get_myai_dir(), "tts")
+        self.parameters = ParameterDefine.create_parameters({
+                "language": {"type": "string", "description": "Actual language", "enum": ["zh", "en"]},
+                "model": {"type": "string", "description": "Studio", "enum": ["tts-1", "tts-1-hd"]},
+                "roles": {"type": "array", "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Character name"},
+                        "gender": {"type": "string", "description": "Gender", "enum": ["man", "female"]},
+                        "age": {"type": "string", "description": "age", "enum": ["child", "adult"]},
+                    }}},
+                "lines": {"type": "array", "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Character name"},
+                        "tone": {"type": "string", "description": "Sovereign emotions",
+                                 "enum": ["happy", "sad", "angry", "fear", "disgust", "surprise", "neutral"]},
+                        "text": {"type": "string", "description": "Line"},
+                    }
+                }}
+            })
+        
         Path(self.speech_path).mkdir(exist_ok=True)
 
     def get_name(self) -> str:
@@ -28,33 +51,11 @@ class ScriptToSpeechFunction(AIFunction):
     def get_description(self) -> str:
         return self.description
 
-    def get_parameters(self) -> Dict:
-        return {
-            "type": "object",
-            "properties": {
-                "language": {"type": "string", "description": "演播语言", "enum": ["zh", "en"]},
-                "model": {"type": "string", "description": "演播模型", "enum": ["tts-1", "tts-1-hd"]},
-                "roles": {"type": "array", "items": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "角色名字"},
-                        "gender": {"type": "string", "description": "角色性别", "enum": ["man", "female"]},
-                        "age": {"type": "string", "description": "年龄", "enum": ["child", "adult"]},
-                    }}},
-                "lines": {"type": "array", "items": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "角色名字"},
-                        "tone": {"type": "string", "description": "演播情感",
-                                 "enum": ["happy", "sad", "angry", "fear", "disgust", "surprise", "neutral"]},
-                        "text": {"type": "string", "description": "台词"},
-                    }
-                }}
-            }
-        }
+    def get_parameters(self):
+        return self.parameters
 
     async def execute(self, **kwargs) -> str:
-        logger.info(f"execute text_to_speech function: {kwargs}")
+        logger.info(f"execute aigc.script_to_speech function: {kwargs}")
 
         language = kwargs.get("language")
         if language is None:
@@ -86,16 +87,16 @@ class ScriptToSpeechFunction(AIFunction):
                         audio = audio + AudioSegment.from_mp3(io.BytesIO(data))
                     break
                 except Exception as e:
-                    logger.error(f"do_text_to_speech failed: {e}")
+                    logger.error(f"script_to_speech failed: {e}")
                     i += 1
                     continue
 
         if audio is not None:
             path = os.path.join(self.speech_path, "{}.mp3".format(''.join(random.sample('zyxwvutsrqponmlkjihgfedcba', 10))))
             audio.export(path, format="mp3")
-            return "exec text_to_speech OK，speech file store at ```{}```".format(path)
+            return "exec script_to_speech OK，speech file store at ```{}```".format(path)
         else:
-            return "exec text_to_speech failed"
+            return "exec script_to_speech failed"
 
     def is_local(self) -> bool:
         return True

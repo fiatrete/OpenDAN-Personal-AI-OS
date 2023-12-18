@@ -1,29 +1,21 @@
 import os
 from typing import Any,List,Dict
-from aios import AgentMsg,AgentTodo,LLMPrompt
-from aios import SimpleAIFunction, SimpleAIOperation
+from aios import SimpleAIFunction
 from aios import SimpleEnvironment
+from aios import GlobaToolsLibrary,ParameterDefine
 
 class ShellEnvironment(SimpleEnvironment):
-    def __init__(self, workspace: str) -> None:
-        super().__init__(workspace)
+    def __init__(self) -> None:
+        super().__init__("shell")
 
-        operator_param = {
-            "command": "command will execute",
-        }
-        self.add_ai_function(SimpleAIFunction("shell_exec",
+    @classmethod
+    def register_global_functions(cls):
+        operator_param = ParameterDefine.create_parameters({"command":"command will execute"})
+        GlobaToolsLibrary.get_instance().register_tool_function(SimpleAIFunction("system.shell.exec",
                                         "execute shell command in linux bash",
-                                        self.shell_exec,operator_param))
-        
-        #run_code_param = {
-        #    "pycode": "python code will execute",
-        #}
-        #self.add_ai_function(SimpleAIFunction("run_code",
-        #                                "execute python code",
-        #                                self.run_code,run_code_param))
-        
-
-    async def shell_exec(self,command:str) -> str:
+                                        ShellEnvironment.shell_exec,operator_param))
+    @staticmethod
+    async def shell_exec(command:str) -> str:
         import asyncio.subprocess
         process = await asyncio.create_subprocess_shell(
             command,

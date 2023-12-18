@@ -1,3 +1,4 @@
+# pylint:disable=E0402
 import json
 import logging
 import shlex

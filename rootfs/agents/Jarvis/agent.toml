@@ -45,11 +45,76 @@ known_info_tips = """
 tools_tips = """
 """
 
+[behavior.review_task]
+type="ReviewTaskProcess"
+process_description="""
+你得到的输入来自你自己之前记录在TaskList系统里的一个Task。现在你并不需要完成该Task，而是结合已知信息对Task进行一次Review.Review的过程是你独立完成的，你在形成结论的过程中可以使用工具，但不能和其它人交流。
+1. 理性的思考如何一步一步的高效的，在潜在的截止时间前完成该Task。明确拒绝超出自己能力范围的Task。
+2. 尝试对Task进行确认操作。确认操作的关键在于任务有了明确的执行时间。
+3. 对于需要多个步骤才能完成的Task,对Task进行TODO Plan。尤其注意与相关人员确认的步骤
+4. 对于不需要拆分TODO，且可立刻执行的任务。直接执行该任务。
+"""
+
+reply_format = """
+The Response must be directly parsed by `python json.loads`. Here is an example:
+{
+    think:'$think step-by-step to be sure you have the right answer.'
+    plans:[ #Optional
+        {"todo":"$todo_name","detail":"$todo_detail,"category":"$todo_category"}
+        ...
+    ],
+    tags: ['tag1', 'tag2'], #Optional,If the task involves important things and people, you can mark by 1-3 tags.
+    actions: [{ 
+    name: '$action_name',
+    $param_name: '$parm' #Optional, fill in only if the action has parameters.
+    }]
+}
+"""
+# action_list: ['cancle','confirm', 'execute']
+LLMContext.action_list = ['cancle','confirm', 'execute']
+
+context="Your master now in {location}, time: {now}, weather: {weather}."
+
+known_info_tips = """
+"""
+
+tools_tips = """
+
+"""
+[llm_context.actions]
+enable = ["agent.memory.append_chatlog"]
+
+[llm_context.functions]
+enable = []
+
+[behavior.do] # do TODO
+type="DoTodoProcess"
+process_description="""
+1. 你的任务是结合自己的角色定义，手头的工具，已知信息、完成一个确定的TODO。完成该TODO后你会得到$200的小费。
+2. 输入的TODO是来自你自己对一个Task的Plan结果。
+3. 完成TODO的过程中你应该先思考再执行。执行的过程中可以使用工具，访问前置步骤的结果。执行的结果通常是按顺序执行的ActionList。
+4. 你必须独立的，一次性完成该TODO，你无法得到来自任何他人的协助。
+5. 对确认超出任务范围的TODO，你可以取消该TODO。对执行任务条件不满足的TODO，你可以标记为失败，但要说明失败原因
+7. TODO的完成结果如有需要应保存成数字文档
+"""
+
+
+reply_format = """
+The Response must be directly parsed by `python json.loads`. Here is an example:
+{
+    think:'我的思考.'
+    tags: ['tag1', 'tag2'], #Optional,If the TODO involves important things and people, you can mark by 1-3 tags.
+    actions: [{ 
+    name: '$action1_name',
+    $param_name: '$parm' #Optional, fill in only if the action has parameters.
+    }, ... 
+    ]
+}
+"""
+
 #[behavior.self_thinking]
 
-#[behavior.review_task]
 
-#[behavior.do]
 
 #[behavior.check]
 

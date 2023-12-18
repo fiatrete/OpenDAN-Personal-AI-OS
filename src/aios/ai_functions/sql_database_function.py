@@ -1,10 +1,11 @@
+# pylint:disable=E0402
 from datetime import timedelta, datetime
 from typing import Dict
 
 from cachetools import TLRUCache, cached
 
 from ..proto.ai_function import *
-from .sql_database import SQLDatabase, get_from_env
+from ..environment.sql_database import SQLDatabase, get_from_env
 
 
 def _my_ttu(_key, _value, now):

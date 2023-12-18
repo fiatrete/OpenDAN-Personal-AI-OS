@@ -3,7 +3,7 @@ import os
 import aiofiles
 from typing import Any,List,Dict
 import chardet
-from aios import SimpleAIOperation
+from aios import SimpleAIAction
 from aios import SimpleEnvironment
 
 class FilesystemEnvironment(SimpleEnvironment):
@@ -19,7 +19,7 @@ class FilesystemEnvironment(SimpleEnvironment):
             if is_append is None:
                 is_append = False
             return await self.write(op["path"],op["content"],is_append)
-        self.add_ai_operation(SimpleAIOperation(
+        self.add_ai_operation(SimpleAIAction(
             op="write",
             description="write file",
             func_handler=write,
@@ -27,7 +27,7 @@ class FilesystemEnvironment(SimpleEnvironment):
 
         async def delete(op):  
             return await self.delete(op["path"])
-        self.add_ai_operation(SimpleAIOperation(
+        self.add_ai_operation(SimpleAIAction(
             op="delete",
             description="delete path",
             func_handler=delete,
@@ -35,7 +35,7 @@ class FilesystemEnvironment(SimpleEnvironment):
 
         async def rename(op):  
             return await self.move(op["path"],op["new_name"])
-        self.add_ai_operation(SimpleAIOperation(
+        self.add_ai_operation(SimpleAIAction(
             op="rename",
             description="rename path",
             func_handler=rename,

@@ -1,6 +1,6 @@
 # basic environment class
 # we have some built-in environment: Calender(include timer),Home(connect to IoT device in your home), ,KnwoledgeBase,FileSystem,
-
+# pylint:disable=E0402
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional,Dict,Awaitable,List
 import logging
@@ -11,6 +11,19 @@ logger = logging.getLogger(__name__)
 
 
 class BaseEnvironment:
+    @classmethod
+    def get_env_by_id(cls,env_id:str)->'BaseEnvironment':
+        if cls.all_env is None:
+            cls.all_env = {}
+        return cls.all_env.get(env_id)
+    
+    @classmethod
+    def register_env(cls,env_id:str,env:'BaseEnvironment')->None:
+        if cls.all_env is None:
+            cls.all_env = {}
+        cls.all_env[env_id] = env
+    
+
     def __init__(self, workspace: str) -> None:
         pass
 
@@ -29,11 +42,11 @@ class BaseEnvironment:
 
 
     @abstractmethod
-    def get_ai_operation(self,op_name:str) -> AIOperation:
+    def get_ai_operation(self,op_name:str) -> AIAction:
         pass
 
     @abstractmethod
-    def get_all_ai_operations(self) -> List[AIOperation]:
+    def get_all_ai_operations(self) -> List[AIAction]:
         pass
     
     def __getitem__(self, key):
@@ -57,7 +70,7 @@ class SimpleEnvironment(BaseEnvironment):
     def __init__(self, workspace: str) -> None:
         super().__init__(workspace)
         self.functions: Dict[str,AIFunction] = {}
-        self.operations: Dict[str,AIOperation] = {}
+        self.operations: Dict[str,AIAction] = {}
  
     def add_ai_function(self,func:AIFunction) -> None:
         self.functions[func.get_name()] = func
@@ -73,16 +86,16 @@ class SimpleEnvironment(BaseEnvironment):
         func_list.extend(self.functions.values())
         return func_list
     
-    def add_ai_operation(self,op:AIOperation) -> None:
+    def add_ai_operation(self,op:AIAction) -> None:
         self.operations[op.get_name()] = op
     
-    def get_ai_operation(self,op_name:str) -> AIOperation:
+    def get_ai_operation(self,op_name:str) -> AIAction:
         op = self.operations.get(op_name)
         if op is not None:
             return op
         return None
 
-    def get_all_ai_operations(self) -> List[AIOperation]:
+    def get_all_ai_operations(self) -> List[AIAction]:
         op_list = []
         op_list.extend(self.operations.values())
         return op_list

@@ -2,6 +2,8 @@
 Taken from: langchain
 SQLAlchemy wrapper around a database.
 """
+# pylint:disable=E0402
+
 from __future__ import annotations
 import os
 

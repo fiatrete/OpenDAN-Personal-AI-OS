@@ -1,4 +1,4 @@
-
+# pylint:disable=E0402
 import sqlite3 # Because sqlite3 IO operation is small, so we can use sqlite3 directly.(so we don't need to use async sqlite3 now)
 from sqlite3 import Error
 import logging
@@ -38,9 +38,10 @@ class ChatSessionDB:
         return conn
 
     def close(self):
-        if not hasattr(self.local, 'conn'):
+        local = threading.local()
+        if not hasattr(local, 'conn'):
             return
-        self.local.conn.close()
+        local.conn.close()
 
     def _create_table(self, conn):
         """ create table """
@@ -119,7 +120,7 @@ class ChatSessionDB:
             match msg.msg_type:
                 case AgentMsgType.TYPE_MSG:
                     pass
-                case AgentMsgType.TYPE_ACTION:
+                case AgentMsgType.TYPE_ACTION:# THIS Action is not AIAction
                     action_name = msg.func_name
                     action_params = json.dumps(msg.args)
                     action_result = msg.result_str

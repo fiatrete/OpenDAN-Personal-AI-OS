@@ -1,4 +1,4 @@
-
+# pylint:disable=E0402
 from datetime import datetime
 import asyncio
 import json
@@ -9,6 +9,7 @@ import logging
 from typing import Optional
 import aiosqlite
 
+from ..agent.llm_context import GlobaToolsLibrary
 from ..proto.compute_task import *
 from ..proto.ai_function import *
 from ..frame.compute_kernel import ComputeKernel
@@ -16,8 +17,8 @@ from ..frame.contact_manager import ContactManager,Contact,FamilyMember
 from ..storage.storage import AIStorage
 
 from .environment import SimpleEnvironment, CompositeEnvironment
-from .script_to_speech_function import ScriptToSpeechFunction
-from .image_2_text_function import Image2TextFunction
+from ..ai_functions.script_to_speech_function import ScriptToSpeechFunction
+from ..ai_functions.image_2_text_function import Image2TextFunction
 
 logger = logging.getLogger(__name__)
 
@@ -36,38 +37,40 @@ class CalenderEnvironment(SimpleEnvironment):
         super().__init__(env_id)
         self.db_file = AIStorage.get_instance().get_myai_dir() / "calender.db"
         self.is_run = False
+        gl = GlobaToolsLibrary.get_instance()
 
-        self.add_ai_function(SimpleAIFunction("get_time",
+        gl.register_tool_function(SimpleAIFunction("system.now",
                                         "get current time",
                                         self._get_now))
-        get_param = {
+        
+        get_param = ParameterDefine.create_parameters({
             "start_time": "start time (UTC) of event",
             "end_time": "end time (UTC) of event"
-        }
-        self.add_ai_function(SimpleAIFunction("get_events",
+        })
+        gl.register_tool_function(SimpleAIFunction("system.calender.get_events",
                                               "get events in calender by time range",
                                               self._get_events_by_time_range,get_param))
 
-        add_param = {
+        add_param = ParameterDefine.create_parameters({
             "title": "title of event",
             "start_time": "start time (UTC) of event",
             "end_time": "end time (UTC) of event",
             "participants": "participants of event",
             "location": "location of event",
             "details": "details of event"
-        }
-        self.add_ai_function(SimpleAIFunction("add_event",
+        })
+        gl.register_tool_function(SimpleAIFunction("system.calender.add_event",
                                         "add event to calender",
                                         self._add_event,add_param))
 
-        delete_param = {
+        delete_param = ParameterDefine.create_parameters({
             "event_id": "id of event"
-        }
-        self.add_ai_function(SimpleAIFunction("delete_event",
+        })
+        gl.register_tool_function(SimpleAIFunction("system.calender.delete_event",
                                         "delete event from calender",
                                         self._delete_event,delete_param))
 
-        update_param = {
+        update_param = ParameterDefine.create_parameters({
             "event_id": "id of event",
             "new_title": "new title of event",
             "new_participants": "new participants of event",
@@ -75,26 +78,11 @@ class CalenderEnvironment(SimpleEnvironment):
             "new_details": "new details of event",
             "start_time": "new start time (UTC) of event",
             "end_time": "new end time (UTC) of event"
-        }
-        self.add_ai_function(SimpleAIFunction("update_event",
+        })
+        gl.register_tool_function(SimpleAIFunction("system.calender.update_event",
                                         "update event in calender",
                                         self._update_event,update_param))
 
-
-        self.add_ai_function(SimpleAIFunction("get_contact",
-                                        "get contact info",
-                                        self._get_contact,{"name":"name of contact"}))
-
-        self.add_ai_function(SimpleAIFunction("set_contact",
-                                        "set contact info",
-                                        self._set_contact,{"name":"name of contact","contact_info":"A json to descrpit contact"}))
-
-
-
-
-        #self.add_ai_function(SimpleAIFunction("user_confirm",
-        #                                      "user confirm",
-        #                                      self._user_confirm))
 
     async def init_db(self):
         async with aiosqlite.connect(self.db_file) as db:
@@ -305,12 +293,15 @@ class CalenderEnvironment(SimpleEnvironment):
 class PaintEnvironment(SimpleEnvironment):
     def __init__(self, env_id: str) -> None:
         super().__init__(env_id)
-        self.is_run = False
 
-        paint_param = {
+    
+
+    
+    def register_functions(self):
+        paint_param = ParameterDefine.create_parameters({
             "prompt": "Description of the content of the painting",
-        }
-        self.add_ai_function(SimpleAIFunction("paint",
+        })
+        GlobaToolsLibrary.get_instance().register_tool_function(SimpleAIFunction("aigc.text_2_image",
                                         "Draw a picture according to the description",
                                         self._paint,paint_param))
 

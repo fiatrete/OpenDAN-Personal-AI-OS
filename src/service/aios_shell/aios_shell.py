@@ -95,6 +95,8 @@ class AIOS_Shell:
 
         #Stability_ComputeNode.declare_user_config()
 
+    def init_global_action_lib(self):
+        AgentMemory.register_actions()
 
 
     async def _handle_no_target_msg(self,bus:AIBus,target_id:str) -> bool:
@@ -144,9 +146,9 @@ class AIOS_Shell:
         # paint_env = PaintEnvironment("paint")
         # Environment.set_env_by_id("paint",paint_env)
 
-        AgentManager.get_instance().register_environment("bash", ShellEnvironment)
-        AgentManager.get_instance().register_environment("fs", FilesystemEnvironment)
-        AgentManager.get_instance().register_environment("knowledge", LocalKnowledgeBase)
+        #AgentManager.get_instance().register_environment("bash", ShellEnvironment)
+        #AgentManager.get_instance().register_environment("fs", FilesystemEnvironment)
+        #AgentManager.get_instance().register_environment("knowledge", LocalKnowledgeBase)
 
         if await AgentManager.get_instance().initial() is not True:
             logger.error("agent manager initial failed!")

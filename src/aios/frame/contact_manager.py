@@ -5,6 +5,8 @@ import logging
 
 from datetime import datetime
 from ..proto.agent_msg import AgentMsg
+from ..proto.ai_function import ParameterDefine, SimpleAIFunction
+from ..agent.llm_context import GlobaToolsLibrary
 from .tunnel import AgentTunnel
 from .contact import Contact,FamilyMember
 
@@ -19,6 +21,23 @@ class ContactManager:
         if cls._instance is None:
             cls._instance = ContactManager(str(filename))
         return cls._instance
+    
+    def register_global_functions(self):
+        gl = GlobaToolsLibrary.get_instance()
+
+        get_parameters = ParameterDefine.create_parameters({"name":"name"})
+        gl.register_tool_function(SimpleAIFunction("system.contacts.get",
+                                        "get contact info",
+                                        self._get_contact,get_parameters))
+
+        update_parameters = ParameterDefine.create_parameters({"name":"name","contact_info":"A json to descrpit contact"})
+        gl.register_tool_function(SimpleAIFunction("system.contacts.set",
+                                        "set contact info",
+                                        self._set_contact,update_parameters))
+
+        return 
+
+
 
     def __init__(self, filename="contacts.toml"):
         self.filename = filename

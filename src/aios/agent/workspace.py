@@ -1,14 +1,17 @@
+# pylint:disable=E0402
 from ast import Dict
 import json
 import sqlite3
 import os
+import logging
 from typing import List
 
 import aiofiles
 
-from ..proto.ai_function import *
-from ..proto.agent_task import *
-from ..storage.storage import *
+from ..proto.ai_function import AIFunction,SimpleAIFunction,ActionNode,SimpleAIAction
+from ..proto.agent_task import AgentTask,AgentTodoTask,AgentWorkLog,AgentTaskManager
+from ..storage.storage import AIStorage
+from .llm_context import GlobaToolsLibrary
 
 logger = logging.getLogger(__name__)
 
@@ -313,26 +316,48 @@ class AgentWorkspace:
     def __init__(self,owner_agent_id:str) -> None:
         self.agent_id : str = owner_agent_id
         self.task_mgr : AgentTaskManager = LocalAgentTaskManger(owner_agent_id)
-        self.actions : Dict[str,ActionItem] = {}
+        self.actions : Dict[str,ActionNode] = {}
         self.inner_functions : Dict[str,AIFunction] = {}
 
-        self.init_actions()
-        self.init_inner_functions()
+        #self.init_actions()
+        #self.init_inner_functions()
 
-
-    def init_actions(self):
+    @staticmethod
+    def register_actions():
         async def create_task(params):  
+            _self = params.get("_workspace")
+            if _self is None:
+                return "self not found"
+            
             taskObj = AgentTask.create_by_dict(params)
             parent_id = params.get("parent")
-            return await self.task_mgr.create_task(taskObj,parent_id)
+            return await _self.task_mgr.create_task(taskObj,parent_id)
         
-        create_task_action = SimpleAIOperation(
-            "create_task",
+        create_task_action = SimpleAIAction(
+            "agent.workspace.create_task",
             "Create a task in the task system, the supported parameters are: title, detail (simple task can not be filled), tags,due_date",
             create_task,
         )
 
-        self.actions[create_task_action.get_name()] = create_task_action
+        GlobaToolsLibrary.get_instance().register_tool_function(create_task_action)
+
+        async def cancel_task(parameters):
+            _self = parameters.get("_workspace")
+            if _self is None:
+                return "self not found"
+            task_id = parameters.get("task_id")
+            task = await _self.task_mgr.get_task(task_id)
+            if task is None:
+                return f"task {task_id} not found"
+            task.state = "cancel"
+            return await _self.task_mgr.update_task(task)
+        cancel_task_action = SimpleAIAction(
+            "agent.workspace.cancel_task",
+            "Cancel this task",
+            cancel_task,
+        )
+        GlobaToolsLibrary.get_instance().register_tool_function(create_task_action)
+
         
     def get_actions(self) -> Dict:
         return self.actions
@@ -355,3 +380,6 @@ class AgentWorkspace:
         func_list = []
         func_list.extend(self.inner_functions.values())
         return func_list
+    
+    def get_actions_for_task_review(self) -> Dict:
+        return self.actions

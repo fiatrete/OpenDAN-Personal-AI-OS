@@ -1,4 +1,4 @@
-
+# pylint:disable=E0402
 import sqlite3
 import json
 import threading

@@ -1,13 +1,13 @@
-
+# pylint:disable=E0402
 import copy
 from enum import Enum
 import json
 import shlex
 import uuid
 import time
-from typing import List, Union
-from .ai_function import *
-from .agent_msg import *
+from typing import List, Union,Dict
+from .ai_function import AIFunction,ActionNode
+from .agent_msg import AgentMsg
 from ..knowledge import ObjectID
 from ..storage.storage import AIStorage
 
@@ -33,13 +33,15 @@ class ComputeTaskState(Enum):
 class ComputeTaskType(Enum):
     NONE = "None"
     LLM_COMPLETION = "llm_completion"
+    TEXT_EMBEDDING ="text_embedding"
+    IMAGE_EMBEDDING ="image_embedding"
+
     TEXT_2_IMAGE = "text_2_image"
     IMAGE_2_TEXT = "image_2_text"
     IMAGE_2_IMAGE = "image_2_image"
     VOICE_2_TEXT = "voice_2_text"
     TEXT_2_VOICE = "text_2_voice"
-    TEXT_EMBEDDING ="text_embedding"
-    IMAGE_EMBEDDING ="image_embedding"
+
 
 # class Function(TypedDict, total=False):
 #     name: Required[str]
@@ -155,11 +157,8 @@ class LLMResult:
         self.compute_error_str = None
         self.resp : str = "" # llm say:
         self.raw_result = None # raw result from compute kernel
-        self.inner_functions : List[AIFunction] = []
-        self.action_list : List[ActionItem] = [] # op_list is a optimize design for saving token
-        
-        #self.post_msgs : List[AgentMsg] = [] # move to op_list
-        # self.send_msgs : List[AgentMsg] = [] # move to op_list
+        #self.inner_functions : List[AIFunction] = []
+        self.action_list : List[ActionNode] = [] # op_list is a optimize design for saving token
 
 
     @classmethod
@@ -185,9 +184,11 @@ class LLMResult:
         r.resp = llm_json.get("resp")
         r.raw_result = llm_json
         action_list = llm_json.get("actions")
-        for action in action_list:
-            action_item = ActionItem.from_json(action)
-            r.action_list.append(action_item)
+        if action_list:
+            for action in action_list:
+                action_item = ActionNode.from_json(action)
+                if action_item:
+                    r.action_list.append(action_item)
 
         return r
 
@@ -215,7 +216,7 @@ class LLMResult:
         lines = llm_result_str.splitlines()
         is_need_wait = False
 
-        def check_args(action_item:ActionItem):
+        def check_args(action_item:ActionNode):
             match action_item.name:
                 case "post_msg":# /post_msg $target_id
                     if len(action_item.args) != 1:
@@ -232,7 +233,7 @@ class LLMResult:
             return False
 
 
-        current_action : ActionItem = None
+        current_action : ActionNode = None
         for line in lines:
             if line.startswith("##/"):
                 if current_action:
@@ -242,7 +243,7 @@ class LLMResult:
                         r.action_list.append(current_action)
 
                 action_name,action_args = LLMResult.parse_action(line[3:])
-                current_action = ActionItem(action_name,action_args)
+                current_action = ActionNode(action_name,action_args)
             else:
                 if current_action:
                     current_action.append_body(line + "\n")

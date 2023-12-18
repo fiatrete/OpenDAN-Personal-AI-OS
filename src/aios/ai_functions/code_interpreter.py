@@ -1,3 +1,4 @@
+# pylint:disable=E0402
 import logging
 import os
 import pathlib
@@ -424,3 +425,36 @@ def execute_code(
     # return the exit code, logs and image
     return exit_code, logs
 
+class CodeInterpreterFunction(AIFunction):
+    def __init__(self):
+        self.func_id = "system.code_interpreter"
+        self.description = "execute python code"
+        self.parameters = ParameterDefine.create_parameters({
+            "code": {"type": "string", "description": "python code"}
+        })
+
+    def get_name(self) -> str:
+        return self.func_id
+
+    def get_description(self) -> str:
+        return self.description
+
+    def get_parameters(self) -> Dict:
+        return self.parameters
+
+    async def execute(self, **kwargs) -> str:
+        code = kwargs.get("code")
+        ret_code, result = execute_code(code=code)
+        if ret_code == 0:
+            return result.strip()
+        else:
+            return result.strip()
+
+    def is_local(self) -> bool:
+        return True
+
+    def is_in_zone(self) -> bool:
+        return True
+
+    def is_ready_only(self) -> bool:
+        return False

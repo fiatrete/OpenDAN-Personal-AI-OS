@@ -1,34 +1,31 @@
 # Old name is behavior, I belive new name "llm_process" is better
+# pylint:disable=E0402
+from ..utils import video_utils,image_utils
+
+from ..proto.compute_task import LLMPrompt,LLMResult,ComputeTaskResult,ComputeTaskResultCode
+from ..proto.ai_function import AIFunction,AIAction,ActionNode
+from ..proto.agent_msg import AgentMsg,AgentMsgType
+
+from .agent_memory import AgentMemory
+from .workspace import AgentWorkspace
+from .llm_context import LLMProcessContext,GlobaToolsLibrary, SimpleLLMContext
+
+from ..frame.compute_kernel import ComputeKernel
+
 from abc import ABC,abstractmethod
 import copy
 import json
-import shlex
+import datetime
+from datetime import datetime
 from typing import Any, Callable, Coroutine, Optional,Dict,Awaitable,List
 from enum import Enum
-
-from aios.agent.chatsession import AIChatSession
-
-from ..utils import video_utils
-
-from ..proto.compute_task import *
-from ..proto.ai_function import *
-
-from .agent_base import *
-from .agent_memory import *
-from .workspace import *
-
-from ..frame.compute_kernel import *
-from ..environment.environment import *
-from ..environment.workspace_env import *
-
 import logging
+
 logger = logging.getLogger(__name__)
 
 MIN_PREDICT_TOKEN_LEN = 32
 
-class LLMProcessContext:
-    def __init__(self) -> None:
-        pass
+
 
 class BaseLLMProcess(ABC):
     def __init__(self) -> None:
@@ -38,37 +35,23 @@ class BaseLLMProcess(ABC):
         self.result_example:str = None #llm_result样例
         
         self.enable_json_resp = False
-        self.model_name = "gpt-4"
+        #None means system default,
+        # TODO: support abcstract model name like: local-hight,local-low,local-medium,remote-hight,remote-low,remote-medium
+        self.model_name = None 
         self.max_token = 1000 # result_token
         self.max_prompt_token = 1000 # not include input prompt
         self.timeout = 1800 # 30 min
-
-        self.envs : Dict[str,BaseEnvironment] = []
-        self.env : CompositeEnvironment = None
-
-    def aifunction_to_inner_function(self,all_inner_function:List[AIFunction]) -> List[Dict]:
-        result_func = []
-        result_len = 0
-        for inner_func in all_inner_function:
-            func_name = inner_func.get_name()
-            this_func = {}
-            this_func["name"] = func_name
-            this_func["description"] = inner_func.get_description()
-            this_func["parameters"] = inner_func.get_parameters()
-            result_len += len(json.dumps(this_func)) / 4
-            result_func.append(this_func)
-        return result_func
 
     @abstractmethod
     async def prepare_prompt(self,input:Dict) -> LLMPrompt:
         pass
 
-    @abstractmethod
-    async def get_inner_function(self,func_name:str) -> AIFunction:
-        pass
+    
+    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
+        return GlobaToolsLibrary.get_instance().get_tool_function(func_name)
 
     @abstractmethod
-    async def post_llm_process(self,actions:List[ActionItem],input:Dict,llm_result:LLMResult) -> bool:
+    async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
         pass
 
     @abstractmethod
@@ -93,15 +76,11 @@ class BaseLLMProcess(ABC):
     @abstractmethod
     async def initial(self,params:Dict = None) -> bool:
         pass
-
-    def append_envs(self,envs:Dict[str,BaseEnvironment]):
-        self.envs.update(envs)
-        self.env = CompositeEnvironment(self.envs)
     
     def _format_content_by_env_value(self,content:str,env)->str:
         return content.format_map(env)
 
-    async def _execute_inner_func(self,inner_func_call_node,prompt: LLMPrompt,stack_limit = 1) -> ComputeTaskResult:
+    async def _execute_inner_func(self,inner_func_call_node:Dict,prompt: LLMPrompt,stack_limit = 1) -> ComputeTaskResult:
         arguments = None
         stack_limit = stack_limit - 1
         try:
@@ -109,7 +88,7 @@ class BaseLLMProcess(ABC):
             arguments = json.loads(inner_func_call_node.get("arguments"))
             logger.info(f"LLMProcess execute inner func:{func_name} :\n\t {json.dumps(arguments)}")
 
-            func_node : AIFunction = await self.get_inner_function(func_name)
+            func_node : AIFunction = await self.get_inner_function_for_exec(func_name)
             if func_node is None:
                 result_str:str = f"execute {func_name} error,function not found"
             else:
@@ -172,6 +151,7 @@ class BaseLLMProcess(ABC):
         else:
             resp_mode = "text"
 
+        # Action define in prompt, will be execute after llm compute
         prompt = await self.prepare_prompt(input)
         max_result_token = self.max_token - ComputeKernel.llm_num_tokens(prompt,self.model_name)
         if max_result_token < MIN_PREDICT_TOKEN_LEN:
@@ -209,11 +189,61 @@ class BaseLLMProcess(ABC):
             llm_result = LLMResult.from_str(task_result.result_str)
 
         # use action to save history?
-        if llm_result.action_list or len(llm_result.action_list) > 0:
-            await self.post_llm_process(llm_result.action_list,input,llm_result)
+        await self.post_llm_process(llm_result.action_list,input,llm_result)
 
         return llm_result
     
+class LLMAgentBaseProcess(BaseLLMProcess):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.role_description:str = None
+        self.process_description:str = None
+        self.reply_format:str = None
+        self.context : str = None
+
+        self.known_info_tips :str = None
+        self.tools_tips:str = None
+
+        self.workspace : AgentWorkspace = None # If Workspace is not none , enable Agent Tasklist
+        self.memory : AgentMemory = None
+        self.kb = None    
+
+    async def load_default_config(self) -> bool:
+        return True
+        
+        
+    async def load_from_config(self, config: dict,is_load_default=True) -> Coroutine[Any, Any, bool]:
+        if is_load_default:
+            await self.load_default_config()
+
+        if await super().load_from_config(config) is False:
+            return False
+        
+        self.role_description = config.get("role_desc")
+        if self.role_description is None:
+            logger.error(f"role_description not found in config")
+            return False
+        
+        if config.get("process_description"):
+            self.process_description = config.get("process_description")
+        
+        if config.get("reply_format"):
+            self.reply_format = config.get("reply_format")
+
+        if config.get("context"):
+            self.context = config.get("context")
+
+        if config.get("known_info_tips"):
+            self.known_info_tips = config.get("known_info_tips")
+
+        if config.get("tools_tips"):
+            self.tools_tips = config.get("tools_tips")  
+
+        if config.get("knowledge_base"):
+            self.kb = config.get("knowledge_base")
+        
+
 class LLMAgentMessageProcess(BaseLLMProcess):
     def __init__(self) -> None:
         super().__init__()
@@ -226,27 +256,13 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         self.known_info_tips :str = None
         self.tools_tips:str = None
 
-        self.enable_inner_functions : Dict[str,bool] = None
-        self.enable_actions : Dict[str,AIOperation] = None
-        self.actions_desc : Dict[str,Dict] = None
-        self.workspace : AgentWorkspace = None
-
+        self.workspace : AgentWorkspace = None # If Workspace is not none , enable Agent Tasklist
         self.memory : AgentMemory = None
         self.enable_kb = False
         self.kb = None
 
-    def init_actions(self):
-        self.enable_actions = {}
-        self.actions_desc = {}
-        self.enable_actions.update(self.memory.get_actions())
-        if self.workspace:
-            self.enable_actions.update(self.workspace.get_actions())
-        if self.enable_kb:
-            self.enable_actions.update(self.kb.get_actions())
+        self.llm_context : LLMProcessContext = None
 
-        for name,op in self.enable_actions.items():
-            self.actions_desc[name] = op.get_description()
-        
     async def initial(self,params:Dict = None) -> bool:
         self.memory = params.get("memory")
         if self.memory is None:
@@ -254,7 +270,7 @@ class LLMAgentMessageProcess(BaseLLMProcess):
             return False
         self.workspace = params.get("workspace")
 
-        self.init_actions()
+
         return True
 
     async def load_default_config(self) -> bool:
@@ -290,14 +306,18 @@ class LLMAgentMessageProcess(BaseLLMProcess):
 
         if config.get("enable_kb"):
             self.enable_kb = config.get("enable_kb") == "true"
-        
-        if config.get("enable_function"):
-            self.enable_inner_functions = config.get("enable_function")
-        
-        if config.get("enable_actions"):
-            self.enable_actions = config.get("enable_actions")
+    
+        self.llm_context = SimpleLLMContext()
+        if config.get("llm_context"):
+            self.llm_context.load_from_config(config.get("llm_context"))
 
-        
+   
+    def check_and_to_base64(self, image_path: str) -> str:
+        if image_utils.is_file(image_path):
+            return image_utils.to_base64(image_path, (1024, 1024))
+        else:
+            return image_path
+             
 
     async def get_prompt_from_msg(self,msg:AgentMsg) -> LLMPrompt:
         msg_prompt = LLMPrompt()
@@ -334,8 +354,9 @@ class LLMAgentMessageProcess(BaseLLMProcess):
     
     async def get_action_desc(self) -> Dict:
         result = {}
-        for name,op in self.enable_actions.items():
-            result[name] = op.get_description()
+        actions_list = self.llm_context.get_all_ai_action()
+        for action in actions_list:
+            result[action.get_name()] = action.get_description()
         return result
 
     async def sender_info(self,msg:AgentMsg)->str:
@@ -420,14 +441,16 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         if self.tools_tips:
             system_prompt_dict["tools_tips"] = self.tools_tips
             #prompt.append_system_message(self.tools_tips)
-            prompt.inner_functions.extend(self.get_inner_function_desc_from_env())
+            #self.llm_context.
 
         if self.workspace:
-            prompt.inner_functions.extend(self.aifunction_to_inner_function(self.workspace.get_inner_function_desc()))
+            #TODO eanble workspace functions?
+            logger.info(f"workspace is not none,enable workspace functions")
 
         ## 给予查询KB的权限    
         if self.enable_kb:        
-            prompt.inner_functions.extend(self.get_inner_function_desc_from_kb())
+            logger.info(f"enable kb")
+           
 
         prompt.append_system_message(json.dumps(system_prompt_dict))
         ## 扩展已知信息 (这可能是一个LLM过程)
@@ -436,35 +459,41 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         return prompt
     
 
-    async def get_inner_function(self,func_name:str) -> AIFunction:
-        return self.workspace.inner_functions.get(func_name)
+    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
+        return self.llm_context.get_ai_function(func_name)
 
-    async def post_llm_process(self,actions:List[ActionItem],input:Dict,llm_result:LLMResult) -> bool:
-        msg = input.get("msg")
+    async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
+        msg:AgentMsg = input.get("msg")
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
             resp_msg = msg.create_group_resp_msg(self.memory.agent_id,llm_result.resp)
         else:
             resp_msg = msg.create_resp_msg(llm_result.resp)
         
-        llm_result.raw_result["resp_msg"] = resp_msg
+        llm_result.raw_result["_resp_msg"] = resp_msg
 
         for action_item in actions:
-            op : AIOperation = self.enable_actions.get(action_item.name)
+            op : AIAction = self.llm_context.get_ai_action(action_item.name)
             if op:
                 if action_item.parms is None:
                     action_item.parms = {}
 
-                action_item.parms["input"] = input
-                action_item.parms["resp_msg"] = resp_msg  
-                action_item.parms["llm_result"] = llm_result
-                action_item.parms["start_at"] = datetime.now()
-                action_item.parms["creator"] = self.memory.agent_id
-                action_item.parms["result"] = await op.execute(action_item.parms)
-                action_item.parms["end_at"] = datetime.now()
+                action_item.parms["_input"] = input
+                action_item.parms["_memory"] = self.memory
+                action_item.parms["_workspace"] = self.workspace
+                action_item.parms["_resp_msg"] = resp_msg  
+                action_item.parms["_llm_result"] = llm_result
+                action_item.parms["_start_at"] = datetime.now()
+                action_item.parms["_agentid"] = self.memory.agent_id
+
+                action_item.parms["_result"] = await op.execute(action_item.parms)
+                action_item.parms["_end_at"] = datetime.now()
             else:
                 logger.warn(f"action {action_item.name} not found")
                 return False
-            
+
+        chatsession = self.memory.get_session_from_msg(msg)
+        chatsession.append(msg)
+        chatsession.append(resp_msg)  
         return True
 
         
@@ -473,25 +502,50 @@ class ReviewTaskProcess(BaseLLMProcess):
     def __init__(self) -> None:
         super().__init__()
 
-    async def load_from_config(self, config: dict) -> Coroutine[Any, Any, bool]:
+        self.role_description:str = None
+        self.process_description:str = None
+        self.reply_format = None
+
+        # 虽然在架构上LLM Process可以很容易的去Call另一个Process，但实际应用中还是应该慎重的保持LLM Process的简单性
+        #self.do_task_llm_process : BaseLLMProcess = None
+
+    async def initial(self,params:Dict = None) -> bool:
+        self.memory = params.get("memory")
+        if self.memory is None:
+            logger.error(f"LLMAgeMessageProcess initial failed! memory not found")
+            return False
+        self.workspace = params.get("workspace")
+
+
+        return True
+    async def load_from_config(self, config: dict): 
         if await super().load_from_config(config) is False:
             return False
 
     async def prepare_prompt(self) -> LLMPrompt:
         prompt = LLMPrompt()
-        pass  
+        system_prompt_dict = {}
+        system_prompt_dict["role_description"] = self.role_description
+        system_prompt_dict["process_rule"] = self.process_description
+        system_prompt_dict["reply_format"] = self.reply_format
+        
+        return prompt
+        
 
-    async def get_inner_function(self,func_name:str) -> AIFunction:
+    async def get_review_task_actions(self) -> Dict[str,Dict]:
         pass
 
-    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
+    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
+        pass
+
+    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
         pass
 
 class QuickReviewTaskProcess(BaseLLMProcess):
     def __init__(self) -> None:
         super().__init__()
 
-    async def load_from_config(self, config: dict) -> Coroutine[Any, Any, bool]:
+    async def load_from_config(self, config: dict):
         if await super().load_from_config(config) is False:
             return False
 
@@ -499,17 +553,17 @@ class QuickReviewTaskProcess(BaseLLMProcess):
         prompt = LLMPrompt()
         pass  
 
-    async def get_inner_function(self,func_name:str) -> AIFunction:
+    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
         pass
 
-    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
         pass
 
 class DoTodoProcess(BaseLLMProcess):
     def __init__(self) -> None:
         super().__init__()
 
-    async def load_from_config(self, config: dict) -> Coroutine[Any, Any, bool]:
+    async def load_from_config(self, config: dict):
         if await super().load_from_config(config) is False:
             return False
 
@@ -517,10 +571,10 @@ class DoTodoProcess(BaseLLMProcess):
         prompt = LLMPrompt()
         pass  
 
-    async def get_inner_function(self,func_name:str) -> AIFunction:
+    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
         pass
 
-    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
         pass
 
 
@@ -536,10 +590,10 @@ class CheckTodoProcess(BaseLLMProcess):
         prompt = LLMPrompt()
         pass  
 
-    async def get_inner_function(self,func_name:str) -> AIFunction:
+    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
         pass
 
-    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
         pass
 
 class SelfLearningProcess(BaseLLMProcess):
@@ -554,10 +608,10 @@ class SelfLearningProcess(BaseLLMProcess):
         prompt = LLMPrompt()
         pass  
 
-    async def get_inner_function(self,func_name:str) -> AIFunction:
+    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
         pass
 
-    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
         pass
 
 class SelfThinkingProcess(BaseLLMProcess):
@@ -568,14 +622,82 @@ class SelfThinkingProcess(BaseLLMProcess):
         if await super().load_from_config(config) is False:
             return False
 
+
+    async def _get_history_prompt_for_think(self,chatsession,summary:str,system_token_len:int,pos:int)->(LLMPrompt,int):
+        history_len = (self.max_token_size * 0.7) - system_token_len
+
+        messages = chatsession.read_history(self.history_len,pos,"natural") # read
+        result_token_len = 0
+        result_prompt = LLMPrompt()
+        have_summary = False
+        if summary is not None:
+            if len(summary) > 1:
+                have_summary = True
+
+        if have_summary:
+                result_prompt.messages.append({"role":"user","content":summary})
+                result_token_len -= len(summary)
+        else:
+            result_prompt.messages.append({"role":"user","content":"There is no summary yet."})
+            result_token_len -= 6
+
+        read_history_msg = 0
+        history_str : str = ""
+        for msg in messages:
+            read_history_msg += 1
+            dt = datetime.datetime.fromtimestamp(float(msg.create_time))
+            formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
+            record_str = f"{msg.sender},[{formatted_time}]\n{msg.body}\n"
+            history_str = history_str + record_str
+
+            history_len -= len(msg.body)
+            result_token_len += len(msg.body)
+            if history_len < 0:
+                logger.warning(f"_get_prompt_from_session reach limit of token,just read {read_history_msg} history message.")
+                break
+
+        result_prompt.messages.append({"role":"user","content":history_str})
+        return result_prompt,pos+read_history_msg
+
+    async def _think_chatsession(self,session_id):
+        if self.agent_think_prompt is None:
+            return
+        logger.info(f"agent {self.agent_id} think session {session_id}")
+        chatsession = AIChatSession.get_session_by_id(session_id,self.chat_db)
+
+        while True:
+            cur_pos = chatsession.summarize_pos
+            summary = chatsession.summary
+            prompt:LLMPrompt = LLMPrompt()
+            #prompt.append(self._get_agent_prompt())
+            prompt.append(await self._get_agent_think_prompt())
+            system_prompt_len = ComputeKernel.llm_num_tokens(prompt)
+            #think env?
+            history_prompt,next_pos = await self._get_history_prompt_for_think(chatsession,summary,system_prompt_len,cur_pos)
+            prompt.append(history_prompt)
+            is_finish = next_pos - cur_pos < 2
+            if is_finish:
+                logger.info(f"agent {self.agent_id} think session {session_id} is finished!,no more history")
+                break
+            #3) llm summarize chat history
+            task_result:ComputeTaskResult = await self.do_llm_complection(prompt)
+            if task_result.result_code != ComputeTaskResultCode.OK:
+                logger.error(f"think_chatsession llm compute error:{task_result.error_str}")
+                break
+            else:
+                new_summary= task_result.result_str
+                logger.info(f"agent {self.agent_id} think session {session_id} from {cur_pos} to {next_pos} summary:{new_summary}")
+                chatsession.update_think_progress(next_pos,new_summary)
+        return
+
     async def prepare_prompt(self) -> LLMPrompt:
         prompt = LLMPrompt()
         pass  
 
-    async def get_inner_function(self,func_name:str) -> AIFunction:
+    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
         pass
 
-    async def post_llm_process(self,actions:List[ActionItem]) -> bool:
+    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
         pass
     
 class LLMProcessLoader:

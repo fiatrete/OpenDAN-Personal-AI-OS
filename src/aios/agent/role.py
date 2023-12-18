@@ -1,6 +1,7 @@
+# pylint:disable=E0402
 import logging
 
-from .agent_base import LLMPrompt
+from ..proto.compute_task import LLMPrompt
 
 class AIRole:
     def __init__(self) -> None:

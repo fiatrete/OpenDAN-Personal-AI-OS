@@ -1,16 +1,26 @@
+# pylint:disable=E0402
 import logging
 from typing import Dict
 
-from ..frame.compute_kernel import ComputeKernel
 from ..proto.ai_function import *
+from ..agent.llm_context import GlobaToolsLibrary
+from ..frame.compute_kernel import ComputeKernel
 
 logger = logging.getLogger(__name__)
 
-
 class AsrFunction(AIFunction):
     def __init__(self):
-        self.func_id = "speech_to_text"
-        self.description = "语音识别，将语音转换为文字"
+        self.func_id = "aigc.speech_to_text"
+        self.description = "Voice recognition, convert the voice into text"
+        self.parameters = ParameterDefine.create_parameters({
+                "audio_file": {"type": "string", "description": "Audio file path"},
+                "model": {"type": "string", "description": "Recognition model", "enum": ["openai-whisper"]},
+                "prompt": {"type": "string", "description": "Prompt statement, can be None"},
+                "response_format": {"type": "string", "description": "Return format", "enum": ["text", "json", "srt", "verbose_json", "vtt"]},
+            })
+        
+    def register_function(self):
+        GlobaToolsLibrary.get_instance().register_tool_function(self)
 
     def get_name(self) -> str:
         return self.func_id
@@ -19,15 +29,7 @@ class AsrFunction(AIFunction):
         return self.description
 
     def get_parameters(self) -> Dict:
-        return {
-            "type": "object",
-            "properties": {
-                "audio_file": {"type": "string", "description": "音频文件路径"},
-                "model": {"type": "string", "description": "识别模型", "enum": ["openai-whisper"]},
-                "prompt": {"type": "string", "description": "提示语句,可以为None"},
-                "response_format": {"type": "string", "description": "返回格式", "enum": ["text", "json", "srt", "verbose_json", "vtt"]},
-            }
-        }
+        return self.parameters
 
     async def execute(self, **kwargs) -> str:
         logger.info(f"execute asr function: {kwargs}")

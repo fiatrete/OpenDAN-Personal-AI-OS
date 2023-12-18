@@ -279,7 +279,7 @@ class LocalKnowledgeBase(CompositeEnvironment):
             meta = self.learning_cache.get(full_path)
             meta.update(op)
             
-        self.add_ai_operation(SimpleAIOperation(
+        self.add_ai_operation(SimpleAIAction(
             op="learn",
             description="update knowledge llm summary",
             func_handler=learn,

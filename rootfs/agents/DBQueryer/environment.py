@@ -1,7 +1,7 @@
 from typing import Optional
 
 from aios.environment.environment import Environment
-from aios.environment.sql_database_function import GetTableInfosFunction, ExecuteSqlFunction
+from aios.ai_functions.sql_database_function import GetTableInfosFunction, ExecuteSqlFunction
 
 
 class DBQuerierEnvironment(Environment):

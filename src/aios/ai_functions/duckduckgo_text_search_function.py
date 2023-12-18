@@ -1,7 +1,9 @@
+# pylint:disable=E0402
 import json
 from typing import Dict
 
 from ..proto.ai_function import *
+from ..agent.llm_context import GlobaToolsLibrary
 from duckduckgo_search import AsyncDDGS
 
 
@@ -13,6 +15,12 @@ class DuckDuckGoTextSearchFunction(AIFunction):
         self.safesearch = "moderate"
         self.time = "y"
         self.max_results = 5
+        self.parameters = ParameterDefine.create_parameters({
+            "query": {"type": "string", "description": "The query to search for."}
+        })
+
+    def register_function(self):
+        GlobaToolsLibrary.get_instance().register_tool_function(self)
 
     def get_name(self) -> str:
         return self.name
@@ -21,11 +29,7 @@ class DuckDuckGoTextSearchFunction(AIFunction):
         return self.description
 
     def get_parameters(self) -> Dict:
-        return {"type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "The query to search for."}
-                }
-                }
+        return self.parameters 
 
     async def execute(self, **kwargs) -> str:
         query = kwargs.get("query")

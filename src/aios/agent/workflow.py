@@ -1,3 +1,4 @@
+# pylint:disable=E0402
 import logging
 import asyncio
 import json
@@ -279,7 +280,7 @@ class Workflow:
         logger.info(f"{msg.sender} post message {msg.msg_id} to AIBus: {msg.target}")
         return await self.get_bus().send_message(msg)
 
-    async def role_call(self,func_item:ActionItem,the_role:AIRole):
+    async def role_call(self,func_item:ActionNode,the_role:AIRole):
         logger.info(f"{the_role.role_id} call {func_item.name} ")
         arguments = func_item.args
 
@@ -290,7 +291,7 @@ class Workflow:
         result_str:str = await func_node.execute(**arguments)
         return result_str
 
-    async def role_post_call(self,func_item:ActionItem,the_role:AIRole):
+    async def role_post_call(self,func_item:ActionNode,the_role:AIRole):
         logger.info(f"{the_role.role_id} post call {func_item.name} ")
         return await self.role_call(func_item,the_role)
 
