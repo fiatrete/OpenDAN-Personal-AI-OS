@@ -440,7 +440,7 @@ class AgentTaskManager(ABC):
     #    pass
 
     @abstractmethod    
-    async def list_task(self,filter:Optional[dict]) -> List[AgentTask]:
+    async def list_task(self,filter:Optional[dict] = None) -> List[AgentTask]:
         pass
 
     @abstractmethod    

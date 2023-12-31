@@ -14,7 +14,7 @@ import sys
 
 from ..proto.agent_msg import AgentMsg
 from ..proto.ai_function import *
-from ..proto.agent_task import *
+from ..proto.agent_task import AgentTaskState,AgentTask,AgentTodo,AgentTodoResult
 from ..proto.compute_task import *
 
 from .agent_base import *
@@ -31,7 +31,7 @@ from ..storage.storage import AIStorage
 
 from ..knowledge import *
 from ..utils import video_utils, image_utils
-from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode
+from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode,LLMPrompt,LLMResult
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +238,33 @@ class AIAgent(BaseAIAgent):
         msg.context_info["now"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         msg.context_info["weather"] = "Partly Cloudy, 60°F"
         return await self.llm_process_msg(msg)
+
+
+    async def  llm_review_tasklist(self):
+        llm_process : BaseLLMProcess = self.behaviors.get("review_task")
+        if llm_process:
+            if self.prviate_workspace:
+                tasklist = await self.prviate_workspace.task_mgr.list_task()
+                if tasklist:
+                    for agent_task in tasklist:
+                        if self.agent_energy <= 0:
+                            break
+
+                        if agent_task.state == AgentTaskState.TASK_STATE_WAIT:
+                            input_parms = {
+                                "task":agent_task
+                            }
+                            llm_result : LLMResult = await llm_process.process(input_parms)
+                            if llm_result.state == LLMResultStates.ERROR:
+                                logger.error(f"llm process review_task error:{llm_result.error_str}")
+                                continue
+                            elif llm_result.state == LLMResultStates.IGNORE:
+                                logger.info(f"llm process review_task ignore!")
+                                continue
+                            else:
+                                determine = llm_result.raw_result.get("determine")
+                                logger.info(f"llm process review_task ok!,think is:{determine}")
+                            self.agent_energy -= 1  
 
 
 
@@ -486,8 +513,8 @@ class AIAgent(BaseAIAgent):
 
         return
 
-    async def think_todo_log(self,todo_log:AgentWorkLog):
-        pass
+    #async def think_todo_log(self,todo_log:AgentWorkLog):
+    #    pass
 
 
 
@@ -515,6 +542,8 @@ class AIAgent(BaseAIAgent):
 
                 if self.agent_energy <= 1:
                     continue
+
+                await self.llm_review_tasklist()
 
                 # complete & check todo
                 #await self._llm_run_todo_list(TodoListType.TO_WORK)

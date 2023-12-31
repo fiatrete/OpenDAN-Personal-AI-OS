@@ -522,7 +522,8 @@ class ReviewTaskProcess(BaseLLMProcess):
         if await super().load_from_config(config) is False:
             return False
 
-    async def prepare_prompt(self) -> LLMPrompt:
+    async def prepare_prompt(self,input:Dict) -> LLMPrompt:
+        agent_task = input.get("task")
         prompt = LLMPrompt()
         system_prompt_dict = {}
         system_prompt_dict["role_description"] = self.role_description

@@ -4,7 +4,7 @@ import json
 import sqlite3
 import os
 import logging
-from typing import List
+from typing import List, Optional
 
 import aiofiles
 
@@ -239,7 +239,7 @@ class LocalAgentTaskManger(AgentTaskManager):
     #    pass
 
  
-    async def list_task(self,filter:dict) -> List[AgentTask]:
+    async def list_task(self,filter:Optional[dict] = None ) -> List[AgentTask]:
     
         directory_path = self.root_path
         result_list:List[AgentTask] = []

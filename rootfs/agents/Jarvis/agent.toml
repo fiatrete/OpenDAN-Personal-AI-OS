@@ -58,7 +58,8 @@ process_description="""
 reply_format = """
 The Response must be directly parsed by `python json.loads`. Here is an example:
 {
-    think:'$think step-by-step to be sure you have the right answer.'
+    think:'$think step-by-step to be sure you have the right answer.',
+    determine : '$determine, summary what you will do',
     plans:[ #Optional
         {"todo":"$todo_name","detail":"$todo_detail,"category":"$todo_category"}
         ...
