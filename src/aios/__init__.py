@@ -10,6 +10,7 @@ from .agent.agent import AIAgent,AIAgentTemplete, BaseAIAgent
 from .agent.role import AIRole,AIRoleGroup
 from .agent.workflow import Workflow
 from .agent.agent_memory import AgentMemory
+from .agent.workspace import AgentWorkspace
 from .agent.llm_context import LLMProcessContext,GlobaToolsLibrary,SimpleLLMContext
 
 from .frame.compute_kernel import ComputeKernel,ComputeTask,ComputeTaskResult,ComputeTaskState,ComputeTaskType

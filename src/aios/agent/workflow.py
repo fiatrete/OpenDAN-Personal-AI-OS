@@ -310,7 +310,7 @@ class Workflow:
 
         result_func = []
         for inner_func in all_inner_function:
-            func_name = inner_func.get_name()
+            func_name = inner_func.get_id()
             if the_role.enable_function_list is not None:
                 if len(the_role.enable_function_list) > 0:
                     if func_name not in the_role.enable_function_list:

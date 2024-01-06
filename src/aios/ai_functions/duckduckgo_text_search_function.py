@@ -9,8 +9,8 @@ from duckduckgo_search import AsyncDDGS
 
 class DuckDuckGoTextSearchFunction(AIFunction):
     def __init__(self):
-        self.name = "duckduckgo_text_search"
-        self.description = "Search text from duckduckgo.com"
+        self.name = "web.search.duckduckgo"
+        self.description = "Search web by text (powered by DuckDuckGo)"
         self.region = "wt-wt"
         self.safesearch = "moderate"
         self.time = "y"
@@ -22,7 +22,7 @@ class DuckDuckGoTextSearchFunction(AIFunction):
     def register_function(self):
         GlobaToolsLibrary.get_instance().register_tool_function(self)
 
-    def get_name(self) -> str:
+    def get_id(self) -> str:
         return self.name
 
     def get_description(self) -> str:

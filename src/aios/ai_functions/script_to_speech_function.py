@@ -45,7 +45,7 @@ class ScriptToSpeechFunction(AIFunction):
         
         Path(self.speech_path).mkdir(exist_ok=True)
 
-    def get_name(self) -> str:
+    def get_id(self) -> str:
         return self.func_id
 
     def get_description(self) -> str:

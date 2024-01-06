@@ -73,7 +73,7 @@ class SimpleEnvironment(BaseEnvironment):
         self.operations: Dict[str,AIAction] = {}
  
     def add_ai_function(self,func:AIFunction) -> None:
-        self.functions[func.get_name()] = func
+        self.functions[func.get_id()] = func
 
     def get_ai_function(self,func_name:str) -> AIFunction:
         func = self.functions.get(func_name)
@@ -111,7 +111,7 @@ class CompositeEnvironment(SimpleEnvironment):
         self.envs.append(env)
         functions = env.get_all_ai_functions()
         for func in functions:
-            self.functions[func.get_name()] = func
+            self.functions[func.get_id()] = func
         operations = env.get_all_ai_operations()
         for op in operations:
             self.operations[op.get_name()] = op

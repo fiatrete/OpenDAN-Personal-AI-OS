@@ -26,7 +26,7 @@ class GetTableInfosFunction(AIFunction):
         self.name = "get_table_infos"
         self.description = "Get table informations in the database"
 
-    def get_name(self) -> str:
+    def get_id(self) -> str:
         return self.name
 
     def get_description(self) -> str:
@@ -74,7 +74,7 @@ class ExecuteSqlFunction(AIFunction):
         If an error is returned, rewrite the query, check the query, and try again.
         """
 
-    def get_name(self) -> str:
+    def get_id(self) -> str:
         return self.name
 
     def get_description(self) -> str:

@@ -17,11 +17,11 @@ class LLMProcessContext:
     def function2action(ai_func:AIFunction) -> AIAction:
         async def exec_func(params:Dict) -> str:
             return await ai_func.execute(params)
-        return SimpleAIAction(ai_func.get_name(),ai_func.get_detail_description(),exec_func)
+        return SimpleAIAction(ai_func.get_id(),ai_func.get_detail_description(),exec_func)
     
 
     @staticmethod
-    def aifunction_to_inner_function(self,all_inner_function:List[AIFunction]) -> List[Dict]:
+    def aifunctions_to_inner_functions(all_inner_function:List[AIFunction]) -> List[Dict]:
         result_func = []
         result_len = 0
         for inner_func in all_inner_function:
@@ -33,6 +33,7 @@ class LLMProcessContext:
             result_len += len(json.dumps(this_func)) / 4
             result_func.append(this_func)
         return result_func
+    
     
     @abstractmethod
     def get_ai_function(self,func_name:str) -> AIFunction:
@@ -63,13 +64,14 @@ class LLMProcessContext:
     def get_value(self,key:str) -> Optional[str]:
         pass
 
-    def list_actions(self,path:str) -> List[AIAction]:
-        return "No more actions!"
+    #def list_actions(self,path:str) -> List[AIAction]:
+    #    return "No more actions!"
     
-    def list_functions(self,path:str) -> List[AIFunction]:
-        return "No more tool functions!"
+    #def list_functions(self,path:str) -> List[AIFunction]:
+    #    return "No more tool functions!"
 
 class GlobaToolsLibrary:
+    _instance = None
     @classmethod
     def get_instance(cls) -> 'GlobaToolsLibrary':
         if cls._instance is None:
@@ -89,10 +91,10 @@ class GlobaToolsLibrary:
         return self.all_preset_context.get(preset_id)
     
     def register_tool_function(self,function:AIFunction) -> None:
-        if self.all_tool_functions.get(function.get_name()):
-            logger.warning(f"Tool function {function.get_name()} already exists! will be replaced!")
+        if self.all_tool_functions.get(function.get_id()):
+            logger.warning(f"Tool function {function.get_id()} already exists! will be replaced!")
             
-        self.all_tool_functions[function.get_name()] = function
+        self.all_tool_functions[function.get_id()] = function
 
     def get_tool_function(self,function_name:str) -> AIFunction:
         return self.all_tool_functions.get(function_name)
@@ -139,18 +141,19 @@ class SimpleLLMContext(LLMProcessContext):
                         return None
 
         disable_actions = config.get("disable")
-        for disable_action in disable_actions:
-            if result.get(disable_action):
-                result.pop(disable_action)
-            else:
-                func_set = GlobaToolsLibrary.get_instance().get_function_set(action_id)
-                if func_set:
-                    for _func_id in func_set:
-                        if result.get(_func_id):
-                            result.pop(_func_id)
+        if disable_actions:
+            for disable_action in disable_actions:
+                if result.get(disable_action):
+                    result.pop(disable_action)
                 else:
-                    logger.error(f"load_action_set_from_config failed! disable action id {action_id} not found!")
-                    return None
+                    func_set = GlobaToolsLibrary.get_instance().get_function_set(action_id)
+                    if func_set:
+                        for _func_id in func_set:
+                            if result.get(_func_id):
+                                result.pop(_func_id)
+                    else:
+                        logger.error(f"load_action_set_from_config failed! disable action id {action_id} not found!")
+                        return None
                 
         return result
     
@@ -182,18 +185,19 @@ class SimpleLLMContext(LLMProcessContext):
 
 
         disable_functions = config.get("disable")
-        for disable_function in disable_functions:
-            if result.get(disable_function):
-                result.pop(disable_function)
-            else:
-                func_set = GlobaToolsLibrary.get_instance().get_function_set(func_id)
-                if func_set:
-                    for func_id in func_set:
-                        if result.get(func_id):
-                            result.pop(func_id)
+        if disable_functions:
+            for disable_function in disable_functions:
+                if result.get(disable_function):
+                    result.pop(disable_function)
                 else:
-                    logger.error(f"load_function_set_from_config failed! disable function id {disable_function} not found!")
-                    return None
+                    func_set = GlobaToolsLibrary.get_instance().get_function_set(func_id)
+                    if func_set:
+                        for func_id in func_set:
+                            if result.get(func_id):
+                                result.pop(func_id)
+                    else:
+                        logger.error(f"load_function_set_from_config failed! disable function id {disable_function} not found!")
+                        return None
                 
         return result
 
@@ -268,15 +272,14 @@ class SimpleLLMContext(LLMProcessContext):
     def set_value(self,key:str,value:str):
         self.values[key] = value
 
-    #def get_ai_function(self,func_name:str) -> AIFunction:
-    #    func = self.functions.get(func_name)
-    #    if func is not None:
-    #        return func
-
-    #    for set_name in self.func_sets.keys():
-    #        func = self.func_sets[set_name].get(func_name)
-    #        if func is not None:
-    #            return func
+    def get_ai_function(self,func_name:str) -> AIFunction:
+        for func in self.functions.values():
+            if func.get_name() == func_name:
+                return func
+        #for set_name in self.func_sets.keys():
+        #    func = self.func_sets[set_name].get(func_name)
+        #    if func is not None:
+        #        return func
 
     def get_function_set(self,set_name:str = None) -> List[AIFunction]:
         if set_name is None:

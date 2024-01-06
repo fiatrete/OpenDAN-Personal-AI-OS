@@ -22,6 +22,13 @@ class ParameterDefine:
 
 class AIFunction:
     @abstractmethod
+    def get_id(self) -> str:
+        """
+        return the id of the function (should be snake case)
+        """
+        pass
+
+    @abstractmethod
     def get_name(self) -> str:
         """
         return the name of the function (should be snake case)
@@ -140,7 +147,7 @@ class AIFunction:
         return {"type": "object", "properties": {}}
     
     @abstractmethod
-    async def execute(self, **kwargs) -> str:
+    async def execute(self, arguments:Dict) -> str:
         """
         Execute the function and return a JSON serializable dict by LLM
         The parameters are passed in the form of kwargs
@@ -210,8 +217,11 @@ class SimpleAIFunction(AIFunction):
         self.func_handler = func_handler
         self.parameters:Dict[str,ParameterDefine] = parameters
 
-    def get_name(self) -> str: 
+    def get_id(self) -> str: 
         return self.func_id
+    
+    def get_name(self) -> str:
+        return self.func_id.split('.')[-1].strip()
     
     def get_description(self) -> str:
         return self.description
@@ -219,11 +229,11 @@ class SimpleAIFunction(AIFunction):
     def get_parameters(self) -> Dict[str,ParameterDefine]:
         return self.parameters
     
-    async def execute(self,**kwargs) -> str:
+    async def execute(self,parameters:Dict) -> str:
         if self.func_handler is None:
             return f"error: function {self.func_id} not implemented"
         
-        return await self.func_handler(**kwargs)
+        return await self.func_handler(parameters)
 
     def is_local(self) -> bool:
         return True
@@ -284,7 +294,7 @@ class AIFunction2Action(AIAction):
 
     @abstractmethod
     def get_name(self) -> str:
-        return self.func.get_name()
+        return self.func.get_id()
 
     @abstractmethod
     def get_description(self) -> str:

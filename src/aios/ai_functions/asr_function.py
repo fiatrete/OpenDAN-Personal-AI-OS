@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class AsrFunction(AIFunction):
     def __init__(self):
-        self.func_id = "aigc.speech_to_text"
+        self.func_id = "aigc.voice_to_text"
         self.description = "Voice recognition, convert the voice into text"
         self.parameters = ParameterDefine.create_parameters({
                 "audio_file": {"type": "string", "description": "Audio file path"},
@@ -22,7 +22,7 @@ class AsrFunction(AIFunction):
     def register_function(self):
         GlobaToolsLibrary.get_instance().register_tool_function(self)
 
-    def get_name(self) -> str:
+    def get_id(self) -> str:
         return self.func_id
 
     def get_description(self) -> str:

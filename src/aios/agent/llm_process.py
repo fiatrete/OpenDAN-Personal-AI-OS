@@ -80,6 +80,9 @@ class BaseLLMProcess(ABC):
     def _format_content_by_env_value(self,content:str,env)->str:
         return content.format_map(env)
 
+    def prepare_inner_function_context_for_exec(self,inner_func_name:str,parameters:Dict):
+        return 
+
     async def _execute_inner_func(self,inner_func_call_node:Dict,prompt: LLMPrompt,stack_limit = 1) -> ComputeTaskResult:
         arguments = None
         stack_limit = stack_limit - 1
@@ -92,7 +95,8 @@ class BaseLLMProcess(ABC):
             if func_node is None:
                 result_str:str = f"execute {func_name} error,function not found"
             else:
-                result_str:str = await func_node.execute(**arguments)
+                self.prepare_inner_function_context_for_exec(func_name,arguments)
+                result_str:str = await func_node.execute(arguments)
         except Exception as e:
             result_str = f"execute {func_name} error:{str(e)}"
             logger.error(f"LLMProcess execute inner func:{func_name} error:\n\t{e}")
@@ -440,9 +444,8 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         ## 可以使用的tools(inner function)的解释，注意不定义该tips,则不会导入任何workspace中的tools
         if self.tools_tips:
             system_prompt_dict["tools_tips"] = self.tools_tips
-            #prompt.append_system_message(self.tools_tips)
-            #self.llm_context.
 
+        prompt.inner_functions =LLMProcessContext.aifunctions_to_inner_functions(self.llm_context.get_all_ai_functions())
         if self.workspace:
             #TODO eanble workspace functions?
             logger.info(f"workspace is not none,enable workspace functions")
@@ -458,6 +461,8 @@ class LLMAgentMessageProcess(BaseLLMProcess):
 
         return prompt
     
+    def prepare_inner_function_context_for_exec(self,inner_func_name:str,parameters:Dict):
+        parameters["_workspace"] = self.workspace
 
     async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
         return self.llm_context.get_ai_function(func_name)
@@ -518,9 +523,30 @@ class ReviewTaskProcess(BaseLLMProcess):
 
 
         return True
-    async def load_from_config(self, config: dict): 
+    
+    async def load_from_config(self, config: dict,is_load_default=True) -> Coroutine[Any, Any, bool]:
+
+
         if await super().load_from_config(config) is False:
             return False
+        
+        self.role_description = config.get("role_desc")
+        if self.role_description is None:
+            logger.error(f"role_description not found in config")
+            return False
+        
+        if config.get("process_description"):
+            self.process_description = config.get("process_description")
+        
+        if config.get("reply_format"):
+            self.reply_format = config.get("reply_format")
+
+        if config.get("context"):
+            self.context = config.get("context")
+    
+        self.llm_context = SimpleLLMContext()
+        if config.get("llm_context"):
+            self.llm_context.load_from_config(config.get("llm_context"))
 
     async def prepare_prompt(self,input:Dict) -> LLMPrompt:
         agent_task = input.get("task")
@@ -529,7 +555,8 @@ class ReviewTaskProcess(BaseLLMProcess):
         system_prompt_dict["role_description"] = self.role_description
         system_prompt_dict["process_rule"] = self.process_description
         system_prompt_dict["reply_format"] = self.reply_format
-        
+        prompt.append_system_message(json.dumps(system_prompt_dict))
+        prompt.append_user_message(json.dumps(agent_task.to_dict()))
         return prompt
         
 

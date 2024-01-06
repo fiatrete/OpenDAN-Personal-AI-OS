@@ -8,7 +8,7 @@ from typing import List, Optional
 
 import aiofiles
 
-from ..proto.ai_function import AIFunction,SimpleAIFunction,ActionNode,SimpleAIAction
+from ..proto.ai_function import AIFunction, ParameterDefine,SimpleAIFunction,ActionNode,SimpleAIAction
 from ..proto.agent_task import AgentTask,AgentTodoTask,AgentWorkLog,AgentTaskManager
 from ..storage.storage import AIStorage
 from .llm_context import GlobaToolsLibrary
@@ -77,11 +77,12 @@ class LocalAgentTaskManger(AgentTaskManager):
             logger.info("create_task at %s",detail_path)
             async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
                 await f.write(json.dumps(task.to_dict()))
+            return "create task ok"
         except Exception as e:
             logger.error("create_task failed:%s",e)
             return str(e)
         
-        return None
+
 
     async def create_todos(self,owner_task_id:str,todos:List[AgentTodoTask]):
         owner_task_path = self._get_obj_path(owner_task_id)
@@ -240,7 +241,6 @@ class LocalAgentTaskManger(AgentTaskManager):
 
  
     async def list_task(self,filter:Optional[dict] = None ) -> List[AgentTask]:
-    
         directory_path = self.root_path
         result_list:List[AgentTask] = []
 
@@ -251,15 +251,13 @@ class LocalAgentTaskManger(AgentTaskManager):
                 continue
             if entry.name == "workspace":
                 continue
-            task_item = await self.get_task_by_path(entry.path)
+            task_item = await self._get_task_by_fullpath(entry.path)
             if task_item:
                 if not task_item.is_finish():
                     result_list.append(task_item)
         
         return result_list
         
-
-
 
     async def update_task(self,task:AgentTask):
         detail_path = f"{self.root_path}/{task.task_path}/detail"
@@ -316,70 +314,68 @@ class AgentWorkspace:
     def __init__(self,owner_agent_id:str) -> None:
         self.agent_id : str = owner_agent_id
         self.task_mgr : AgentTaskManager = LocalAgentTaskManger(owner_agent_id)
-        self.actions : Dict[str,ActionNode] = {}
-        self.inner_functions : Dict[str,AIFunction] = {}
 
-        #self.init_actions()
-        #self.init_inner_functions()
 
     @staticmethod
-    def register_actions():
+    def register_ai_functions():
         async def create_task(params):  
-            _self = params.get("_workspace")
-            if _self is None:
-                return "self not found"
+            _workspace = params.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
             
             taskObj = AgentTask.create_by_dict(params)
             parent_id = params.get("parent")
-            return await _self.task_mgr.create_task(taskObj,parent_id)
-        
-        create_task_action = SimpleAIAction(
+            return await _workspace.task_mgr.create_task(taskObj,parent_id)
+        parameters = ParameterDefine.create_parameters({
+            "title": {"type": "string", "description": "task title"},
+            "detail": {"type": "string", "description": "task detail(simple task can not be filled)"},
+            "tags": {"type": "string", "description": "optional,task tags"},
+            "due_date": {"type": "string", "description": "optional,task due date"},
+            "parent": {"type": "string", "description": "optional,parent task id"},
+        })
+        create_task_action = SimpleAIFunction(
             "agent.workspace.create_task",
-            "Create a task in the task system, the supported parameters are: title, detail (simple task can not be filled), tags,due_date",
+            "Create a task",
             create_task,
+            parameters,
         )
-
         GlobaToolsLibrary.get_instance().register_tool_function(create_task_action)
 
         async def cancel_task(parameters):
-            _self = parameters.get("_workspace")
-            if _self is None:
-                return "self not found"
+            _workspace = parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
             task_id = parameters.get("task_id")
-            task = await _self.task_mgr.get_task(task_id)
+            task = await _workspace.task_mgr.get_task(task_id)
             if task is None:
                 return f"task {task_id} not found"
             task.state = "cancel"
-            return await _self.task_mgr.update_task(task)
-        cancel_task_action = SimpleAIAction(
+            await _workspace.task_mgr.update_task(task)
+            return "canncel task ok"
+        
+        parameters = ParameterDefine.create_parameters({
+            "task_id": {"type": "string", "description": "task id which want to cancel"},
+        })
+        cancel_task_action = SimpleAIFunction(
             "agent.workspace.cancel_task",
             "Cancel this task",
             cancel_task,
+            parameters
         )
-        GlobaToolsLibrary.get_instance().register_tool_function(create_task_action)
+        GlobaToolsLibrary.get_instance().register_tool_function(cancel_task_action)
 
-        
-    def get_actions(self) -> Dict:
-        return self.actions
-    
-    def init_inner_functions(self):
-        async def list_tasks():
-            result = {}
-            fitler = {}
-            task_list = await self.task_mgr.list_task(fitler)
-            for task_item in task_list:
-                result[task_item.task_id] = task_item.title
-            
-            return json.dumps(result)
-        
-        self.inner_functions["list_tasks"] = SimpleAIFunction("list_tasks",
-                                              "list all tasks in json format like {{$task_id:$task_title}...}",
-                                              list_tasks)
 
-    def get_inner_function_desc(self) -> List[AIFunction]:
-        func_list = []
-        func_list.extend(self.inner_functions.values())
-        return func_list
-    
-    def get_actions_for_task_review(self) -> Dict:
-        return self.actions
+        async def list_task(parameters):
+            _workspace = parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            all_task = await _workspace.task_mgr.list_task(None)
+            if all_task:
+                return json.dumps([task.to_dict() for task in all_task])
+            else :
+                return "no task"
+        list_task_ai_function = SimpleAIFunction("agent.workspace.list_task",
+                                              "list all tasks in json format",
+                                               list_task,{})
+        GlobaToolsLibrary.get_instance().register_tool_function(list_task_ai_function)
+        

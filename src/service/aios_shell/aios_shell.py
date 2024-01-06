@@ -19,8 +19,6 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
-
-
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
@@ -149,6 +147,7 @@ class AIOS_Shell:
         #AgentManager.get_instance().register_environment("bash", ShellEnvironment)
         #AgentManager.get_instance().register_environment("fs", FilesystemEnvironment)
         #AgentManager.get_instance().register_environment("knowledge", LocalKnowledgeBase)
+        AgentWorkspace.register_ai_functions()
 
         if await AgentManager.get_instance().initial() is not True:
             logger.error("agent manager initial failed!")
