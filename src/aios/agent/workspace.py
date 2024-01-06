@@ -76,7 +76,7 @@ class LocalAgentTaskManger(AgentTaskManager):
             self._save_obj_path(task.task_id,task_path)
             logger.info("create_task at %s",detail_path)
             async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
-                await f.write(json.dumps(task.to_dict()))
+                await f.write(json.dumps(task.to_dict(),ensure_ascii=False))
             return "create task ok"
         except Exception as e:
             logger.error("create_task failed:%s",e)
@@ -97,7 +97,7 @@ class LocalAgentTaskManger(AgentTaskManager):
                 todo_path = f"{self.root_path}/{owner_task_path}/#{step_order} {todo.title}.todo"
                 self._save_obj_path(todo.todo_id,todo_path)
                 async with aiofiles.open(todo_path, mode='w', encoding="utf-8") as f:
-                    await f.write(json.dumps(todo.to_dict()))   
+                    await f.write(json.dumps(todo.to_dict(),ensure_ascii=False))   
                 logger.info("create_todos at %s OK!",todo_path)     
                 step_order += 1
         except Exception as e:
@@ -121,7 +121,7 @@ class LocalAgentTaskManger(AgentTaskManager):
                 logs = []
             logs.append(log.to_dict())
             json_obj["logs"] = logs
-            await f.write(json.dumps(json_obj))
+            await f.write(json.dumps(json_obj,ensure_ascii=False))
 
 
     async def get_worklog(self,obj_id:str)->List[AgentWorkLog]:
@@ -263,7 +263,7 @@ class LocalAgentTaskManger(AgentTaskManager):
         detail_path = f"{self.root_path}/{task.task_path}/detail"
         try:
             async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
-                await f.write(json.dumps(task.to_dict()))
+                await f.write(json.dumps(task.to_dict(),ensure_ascii=False))
         except Exception as e:
             logger.error("update_task failed:%s",e)
             return str(e)
@@ -277,7 +277,7 @@ class LocalAgentTaskManger(AgentTaskManager):
         
         try:
             async with aiofiles.open(todo_path, mode='w', encoding="utf-8") as f:
-                await f.write(json.dumps(todo.to_dict()))
+                await f.write(json.dumps(todo.to_dict(),ensure_ascii=False))
         except Exception as e:
             logger.error("update_todo failed:%s",e)
             return str(e)
@@ -311,18 +311,20 @@ class LocalAgentTaskManger(AgentTaskManager):
 
 
 class AgentWorkspace:
-    def __init__(self,owner_agent_id:str) -> None:
-        self.agent_id : str = owner_agent_id
-        self.task_mgr : AgentTaskManager = LocalAgentTaskManger(owner_agent_id)
+    def __init__(self,owner_id:str) -> None:
+        self.owner_id : str = owner_id
+        self.task_mgr : AgentTaskManager = LocalAgentTaskManger(owner_id)
 
 
     @staticmethod
     def register_ai_functions():
         async def create_task(params):  
             _workspace = params.get("_workspace")
+            _agent_id = params.get("_agentid")
             if _workspace is None:
                 return "_workspace not found"
-            
+            if params.get("creator") is None:
+                params["creator"] = _agent_id
             taskObj = AgentTask.create_by_dict(params)
             parent_id = params.get("parent")
             return await _workspace.task_mgr.create_task(taskObj,parent_id)
@@ -371,7 +373,7 @@ class AgentWorkspace:
                 return "_workspace not found"
             all_task = await _workspace.task_mgr.list_task(None)
             if all_task:
-                return json.dumps([task.to_dict() for task in all_task])
+                return json.dumps([task.to_dict() for task in all_task],ensure_ascii=False)
             else :
                 return "no task"
         list_task_ai_function = SimpleAIFunction("agent.workspace.list_task",

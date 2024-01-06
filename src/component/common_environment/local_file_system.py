@@ -55,7 +55,7 @@ class FilesystemEnvironment(SimpleEnvironment):
                 item_type = "directory" if is_dir else "file"
                 items.append({"name": entry.name, "type": item_type})
 
-        return json.dumps(items)
+        return json.dumps(items,ensure_ascii=False)
     
     # inner_function
     async def read(self,path:str) -> str:
@@ -120,7 +120,7 @@ class FilesystemEnvironment(SimpleEnvironment):
         try:
             file_path = self.root_path + path
             stat = os.stat(file_path)
-            return json.dumps(stat)
+            return json.dumps(stat,ensure_ascii=False)
         except Exception as e:
             return str(e)
 

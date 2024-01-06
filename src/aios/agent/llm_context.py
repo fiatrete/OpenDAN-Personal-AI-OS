@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Optional,Set,List,Dict,Callable
 
-from ..proto.ai_function import AIFunction,AIAction,SimpleAIAction
+from ..proto.ai_function import AIFunction,AIAction, AIFunction2Action,SimpleAIAction
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +15,7 @@ class LLMProcessContext:
     
     @staticmethod
     def function2action(ai_func:AIFunction) -> AIAction:
-        async def exec_func(params:Dict) -> str:
-            return await ai_func.execute(params)
-        return SimpleAIAction(ai_func.get_id(),ai_func.get_detail_description(),exec_func)
-    
+        return AIFunction2Action(ai_func)
 
     @staticmethod
     def aifunctions_to_inner_functions(all_inner_function:List[AIFunction]) -> List[Dict]:
@@ -30,7 +27,7 @@ class LLMProcessContext:
             this_func["name"] = func_name
             this_func["description"] = inner_func.get_description()
             this_func["parameters"] = inner_func.get_openai_parameters()
-            result_len += len(json.dumps(this_func)) / 4
+            result_len += len(json.dumps(this_func,ensure_ascii=False)) / 4
             result_func.append(this_func)
         return result_func
     
@@ -117,7 +114,7 @@ class SimpleLLMContext(LLMProcessContext):
         self.actions: Dict[str,AIAction] = {}
         self.action_sets : Dict[str,Dict[str,AIAction]] = {}
 
-    def load_action_set_from_config(self,preset,config:Dict[str,str]) -> bool:
+    def load_action_set_from_config(self,preset,config:Dict[str,str]) -> Dict:
         if preset is None:
             result = {}
         else:
@@ -217,43 +214,42 @@ class SimpleLLMContext(LLMProcessContext):
             self.func_sets = self.parent.func_sets
 
         action_def:Dict= config.get("actions")
-        if action_def is None:
-            logger.error(f"load_from_config failed! actions not found!")
-            return False
-        self.actions = self.load_action_set_from_config(self.actions,action_def)
-        if self.actions is None:
-            logger.error(f"load_from_config failed! load_action_set_from_config failed!")
-            return False
-        
-        for set_name in action_def.keys():
-            if set_name == "enable":
-                continue
-            if set_name == "disable":
-                continue
-
-            sub_set = config.get(set_name)
-            self.action_sets[set_name] = self.load_action_set_from_config(None,sub_set)
-            if self.action_sets[set_name] is None:
+        if action_def:
+            self.actions = self.load_action_set_from_config(self.actions,action_def)
+            if self.actions is None:
                 logger.error(f"load_from_config failed! load_action_set_from_config failed!")
                 return False
         
-        function_def:Dict = config.get("functions")
-        self.functions = self.load_function_set_from_config(self.functions,function_def)
-        if self.functions is None:
-            logger.error(f"load_from_config failed! load_function_set_from_config failed!")
-            return False
-        
-        for set_name in function_def.keys():
-            if set_name == "enable":
-                continue
-            if set_name == "disable":
-                continue
+            for set_name in action_def.keys():
+                if set_name == "enable":
+                    continue
+                if set_name == "disable":
+                    continue
 
-            sub_set = config.get(set_name)
-            self.func_sets[set_name] = self.load_function_set_from_config(None,sub_set)
-            if self.func_sets[set_name] is None:
+                sub_set = config.get(set_name)
+                self.action_sets[set_name] = self.load_action_set_from_config(None,sub_set)
+                if self.action_sets[set_name] is None:
+                    logger.error(f"load_from_config failed! load_action_set_from_config failed!")
+                    return False
+        
+        function_def:Dict = config.get("functions")
+        if function_def:
+            self.functions = self.load_function_set_from_config(self.functions,function_def)
+            if self.functions is None:
                 logger.error(f"load_from_config failed! load_function_set_from_config failed!")
                 return False
+            
+            for set_name in function_def.keys():
+                if set_name == "enable":
+                    continue
+                if set_name == "disable":
+                    continue
+
+                sub_set = config.get(set_name)
+                self.func_sets[set_name] = self.load_function_set_from_config(None,sub_set)
+                if self.func_sets[set_name] is None:
+                    logger.error(f"load_from_config failed! load_function_set_from_config failed!")
+                    return False
 
         #values_def = config.get("values")
         #if values_def:
@@ -280,6 +276,7 @@ class SimpleLLMContext(LLMProcessContext):
         #    func = self.func_sets[set_name].get(func_name)
         #    if func is not None:
         #        return func
+        return None
 
     def get_function_set(self,set_name:str = None) -> List[AIFunction]:
         if set_name is None:
@@ -291,15 +288,12 @@ class SimpleLLMContext(LLMProcessContext):
         return None
 
     
-    # def get_ai_action(self,op_name:str) -> AIOperation:
-    #     op = self.actions.get(op_name)
-    #     if op is not None:
-    #         return op
-    #     for set_name in self.action_sets.keys():
-    #         op = self.action_sets[set_name].get(op_name)
-    #         if op is not None:
-    #             return op
-    #     return None
+    def get_ai_action(self,op_name:str) -> AIAction:
+        for action in self.actions.values():
+            if action.get_name() == op_name:
+                return action
+
+        return None
     
     def get_action_set(self,set_name:str = None) -> List[AIFunction]:
         if set_name is None:

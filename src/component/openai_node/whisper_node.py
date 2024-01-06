@@ -156,11 +156,11 @@ class WhisperComputeNode(ComputeNode):
                 result.result_str = text
                 result.result = text
             elif response_format == "json":
-                result.result_str = json.dumps({"text": text})
+                result.result_str = json.dumps({"text": text},ensure_ascii=False)
                 resp.text = text
                 result.result = resp
             elif response_format == "verbose_json":
-                result.result_str = json.dumps({"text": text, "segments": results})
+                result.result_str = json.dumps({"text": text, "segments": results},ensure_ascii=False)
                 latest_resp.text = text
                 latest_resp.segments = results
                 result.result = latest_resp
@@ -190,9 +190,9 @@ class WhisperComputeNode(ComputeNode):
             result.set_from_task(task)
             result.worker_id = self.node_id
             if response_format == "json":
-                result.result_str = json.dumps({"text": resp.text})
+                result.result_str = json.dumps({"text": resp.text},ensure_ascii=False)
             elif response_format == "verbose_json":
-                result.result_str = json.dumps({"text": resp.text, "segments": resp.segments})
+                result.result_str = json.dumps({"text": resp.text, "segments": resp.segments},ensure_ascii=False)
             elif response_format == "srt" or response_format == "vtt" or response_format == "text":
                 result.result_str = resp
             else:

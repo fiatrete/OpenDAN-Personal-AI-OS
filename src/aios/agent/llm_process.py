@@ -46,9 +46,9 @@ class BaseLLMProcess(ABC):
     async def prepare_prompt(self,input:Dict) -> LLMPrompt:
         pass
 
-    
+    @abstractmethod
     async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
-        return GlobaToolsLibrary.get_instance().get_tool_function(func_name)
+       pass
 
     @abstractmethod
     async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
@@ -89,7 +89,7 @@ class BaseLLMProcess(ABC):
         try:
             func_name = inner_func_call_node.get("name")
             arguments = json.loads(inner_func_call_node.get("arguments"))
-            logger.info(f"LLMProcess execute inner func:{func_name} :\n\t {json.dumps(arguments)}")
+            logger.info(f"LLMProcess execute inner func:{func_name} :\n\t {json.dumps(arguments,ensure_ascii=False)}")
 
             func_node : AIFunction = await self.get_inner_function_for_exec(func_name)
             if func_node is None:
@@ -455,7 +455,7 @@ class LLMAgentMessageProcess(BaseLLMProcess):
             logger.info(f"enable kb")
            
 
-        prompt.append_system_message(json.dumps(system_prompt_dict))
+        prompt.append_system_message(json.dumps(system_prompt_dict,ensure_ascii=False))
         ## 扩展已知信息 (这可能是一个LLM过程)
         prompt.append_system_message(await self.get_extend_known_info(msg,prompt))
 
@@ -555,8 +555,8 @@ class ReviewTaskProcess(BaseLLMProcess):
         system_prompt_dict["role_description"] = self.role_description
         system_prompt_dict["process_rule"] = self.process_description
         system_prompt_dict["reply_format"] = self.reply_format
-        prompt.append_system_message(json.dumps(system_prompt_dict))
-        prompt.append_user_message(json.dumps(agent_task.to_dict()))
+        prompt.append_system_message(json.dumps(system_prompt_dict,ensure_ascii=False))
+        prompt.append_user_message(json.dumps(agent_task.to_dict(),ensure_ascii=False))
         return prompt
         
 

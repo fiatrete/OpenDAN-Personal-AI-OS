@@ -92,7 +92,7 @@ class UserConfig:
                     os.makedirs(directory)
 
                 async with aiofiles.open(self.user_config_path,"w") as f:
-                    toml_str = toml.dumps(will_save_config)
+                    toml_str = toml.dumps(will_save_config,ensure_ascii=False)
                     await f.write(toml_str)
             except Exception as e:
                 logger.error(f"save user config to {self.user_config_path} failed!")

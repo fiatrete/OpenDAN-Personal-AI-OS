@@ -95,11 +95,11 @@ class LLMPrompt:
     def as_str(self)->str:
         result_str = ""
         if self.system_message:
-            result_str = json.dumps(self.system_message)
+            result_str = json.dumps(self.system_message,ensure_ascii=False)
         if self.messages:
-            result_str += json.dumps(self.messages)
+            result_str += json.dumps(self.messages,ensure_ascii=False)
         if self.inner_functions:
-            result_str += json.dumps(self.inner_functions)
+            result_str += json.dumps(self.inner_functions,ensure_ascii=False)
 
         return result_str
 

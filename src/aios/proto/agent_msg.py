@@ -154,7 +154,7 @@ class AgentMsg:
 
     @staticmethod
     def create_image_body(images: [str], prompt: str = None):
-        return json.dumps({"images": images, "prompt": prompt})
+        return json.dumps({"images": images, "prompt": prompt}, ensure_ascii=False)
 
     @staticmethod
     def parse_image_body(image_body: str) -> Tuple[str, List[str]]:
@@ -163,7 +163,7 @@ class AgentMsg:
 
     @staticmethod
     def create_video_body(video: str, prompt: str = None):
-        return json.dumps({"video": video, "prompt": prompt})
+        return json.dumps({"video": video, "prompt": prompt}, ensure_ascii=False)
 
     @staticmethod
     def parse_video_body(video_body: str) -> Tuple[str, str]:
@@ -172,7 +172,7 @@ class AgentMsg:
 
     @staticmethod
     def create_audio_body(audio: str, prompt: str = None):
-        return json.dumps({"audio": audio, "prompt": prompt})
+        return json.dumps({"audio": audio, "prompt": prompt}, ensure_ascii=False)
 
     @staticmethod
     def parse_audio_body(audio_body: str) -> Tuple[str, str]:

@@ -214,7 +214,7 @@ class SimpleKnowledgeDB:
     def query_docs_by_tag(self, tag: str) -> List[str]:
         conn = self._get_conn()
         cursor = conn.cursor()
-        tag_json = json.dumps(tag)  # 将标签转换为 JSON 字符串
+        tag_json = json.dumps(tag,ensure_ascii=False)  # 将标签转换为 JSON 字符串
         cursor.execute('''
             SELECT documents.doc_path
             FROM documents

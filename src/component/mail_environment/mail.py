@@ -32,7 +32,7 @@ class Mail:
             "date": self.date, 
             "content": self.content 
         }
-        return json.dumps(prompt)
+        return json.dumps(prompt,ensure_ascii=False)
     
     @classmethod
     def prompt_desc(cls) -> dict:

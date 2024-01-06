@@ -132,7 +132,7 @@ class MetaDatabase:
 
         create_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         summary = metadata.get("summary", "")
-        catalogs = json.dumps(metadata.get("catalogs", {}))
+        catalogs = json.dumps(metadata.get("catalogs", {}),ensure_ascii=False)
         title = metadata.get("title","")
         tags = ','.join(metadata.get("tags", []))
 
@@ -151,7 +151,7 @@ class MetaDatabase:
 
         title = meta.get("title", "")
         summary = meta.get("summary", "")
-        catalogs = json.dumps(meta.get("catalogs", {}))
+        catalogs = json.dumps(meta.get("catalogs", {}),ensure_ascii=False)
         tags = ','.join(meta.get("tags", []))
 
         cursor.execute('''
@@ -224,7 +224,7 @@ class MetaDatabase:
     def query_docs_by_tag(self, tag: str) -> List[str]:
         conn = self._get_conn()
         cursor = conn.cursor()
-        tag_json = json.dumps(tag)  # 将标签转换为 JSON 字符串
+        tag_json = json.dumps(tag,ensure_ascii=False)  # 将标签转换为 JSON 字符串
         cursor.execute('''
             SELECT documents.doc_path
             FROM documents
@@ -450,7 +450,7 @@ class ParseLocalDocument:
 
         org_path = meta.get("original_path")
         known_obj["original_path"] = org_path
-        return f"# Known information:\n## Current directory structure:\n{kb_tree}\n## Knowlege Metadata:\n{json.dumps(known_obj)}\n"
+        return f"# Known information:\n## Current directory structure:\n{kb_tree}\n## Knowlege Metadata:\n{json.dumps(known_obj,ensure_ascii=False)}\n"
 
     def _token_len(self, text: str) -> int:
         return CustomAIAgent("", "gpt-4-1106-preview", self.token_limit).token_len(text=text)
@@ -563,7 +563,7 @@ class ParseLocalDocument:
                 if bookmarks:
                     catalogs = []
                     self._parse_pdf_bookmarks(bookmarks,catalogs)
-                    metadata["catalogs"] = json.dumps(catalogs)
+                    metadata["catalogs"] = json.dumps(catalogs,ensure_ascii=False)
             except Exception as e:
                 logger.warn("parse pdf bookmarks failed:%s",e)
 

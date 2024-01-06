@@ -106,7 +106,7 @@ class Issue:
             child = desc_list.pop()
             root["child"] = child
             root = child
-        return json.dumps(root)
+        return json.dumps(root,ensure_ascii=False)
 
 
     @classmethod

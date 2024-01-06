@@ -205,7 +205,7 @@ class TodoListEnvironment(SimpleEnvironment):
             self._save_todo_path(todo.todo_id,todo_path)
             logger.info("create_todo %s",detail_path)
             async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
-                await f.write(json.dumps(todo.to_dict()))
+                await f.write(json.dumps(todo.to_dict(),ensure_ascii=False))
         except Exception as e:
             logger.error("create_todo failed:%s",e)
             return str(e)
@@ -221,7 +221,7 @@ class TodoListEnvironment(SimpleEnvironment):
                 todo.state = new_stat
                 detail_path =  f"{full_path}/detail"
                 async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
-                    await f.write(json.dumps(todo.to_dict()))
+                    await f.write(json.dumps(todo.to_dict()),ensure_ascii=False)
                     return None
             else:
                 return "todo not found."
@@ -270,7 +270,7 @@ class TodoListEnvironment(SimpleEnvironment):
                 logs = []
             logs.append(result.to_dict())
             json_obj["logs"] = logs
-            await f.write(json.dumps(json_obj))
+            await f.write(json.dumps(json_obj),ensure_ascii=False)
 
 
 class WorkspaceEnvironment(CompositeEnvironment):

@@ -115,22 +115,22 @@ class ChatSessionDB:
             action_result = None
             mentions = None
             if msg.mentions:
-                mentions = json.dumps(msg.mentions)
+                mentions = json.dumps(msg.mentions,ensure_ascii=False)
 
             match msg.msg_type:
                 case AgentMsgType.TYPE_MSG:
                     pass
                 case AgentMsgType.TYPE_ACTION:# THIS Action is not AIAction
                     action_name = msg.func_name
-                    action_params = json.dumps(msg.args)
+                    action_params = json.dumps(msg.args,ensure_ascii=False)
                     action_result = msg.result_str
                 case AgentMsgType.TYPE_INTERNAL_CALL:
                     action_name = msg.func_name
-                    action_params = json.dumps(msg.args)
+                    action_params = json.dumps(msg.args,ensure_ascii=False)
                     action_result = msg.result_str
                 case AgentMsgType.TYPE_EVENT:
                     action_name = msg.event_name
-                    action_params = json.dumps(msg.event_args)
+                    action_params = json.dumps(msg.event_args,ensure_ascii=False)
             if tags is None:
                 tags = []
 

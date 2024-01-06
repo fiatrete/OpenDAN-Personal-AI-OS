@@ -223,7 +223,7 @@ class OpenAI_ComputeNode(ComputeNode):
                                                         max_tokens=result_token,
                                                         )
                     else:
-                        logger.info(f"call openai {mode_name} prompts: \n\t {prompts} \nfunctions: \n\t{json.dumps(llm_inner_functions)}")
+                        logger.info(f"call openai {mode_name} prompts: \n\t {prompts} \nfunctions: \n\t{json.dumps(llm_inner_functions,ensure_ascii=False)}")
                         resp = await client.chat.completions.create(model=mode_name,
                                                             messages=prompts,
                                                             response_format = response_format,

@@ -44,7 +44,7 @@ class DuckDuckGoTextSearchFunction(AIFunction):
                 max_results=self.max_results
             )]
 
-            return json.dumps(results)
+            return json.dumps(results,,ensure_ascii=False)
 
     def is_local(self) -> bool:
         return True

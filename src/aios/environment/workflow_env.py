@@ -126,7 +126,7 @@ class CalenderEnvironment(SimpleEnvironment):
                 _event["location"] = row[5]
                 _event["details"] = row[6]
                 result[row[0]] = _event
-            return json.dumps(result, indent=4, sort_keys=True)
+            return json.dumps(result, indent=4, sort_keys=True,ensure_ascii=False)
 
     async def _get_events_by_time_range(self,start_time, end_time):
         async with aiosqlite.connect(self.db_file) as db:
@@ -152,7 +152,7 @@ class CalenderEnvironment(SimpleEnvironment):
             if not have_result:
                 return "No event."
 
-            return json.dumps(result, indent=4, sort_keys=True)
+            return json.dumps(result, indent=4, sort_keys=True,ensure_ascii=False)
 
     async def _update_event(self,event_id, new_title=None, new_participants=None, new_location=None, new_details=None ,start_time=None, end_time=None):
         fields_to_update = []
@@ -214,7 +214,7 @@ class CalenderEnvironment(SimpleEnvironment):
         cm = ContactManager.get_instance()
         contact : Contact = cm.find_contact_by_name(name)
         if contact:
-            s = json.dumps(contact.to_dict())
+            s = json.dumps(contact.to_dict(),ensure_ascii=False)
             return f"Execute get_contact OK , contact {name} is {s}"
         else:
             return f"Execute get_contact OK , contact {name} not found!"

@@ -63,6 +63,7 @@ class KnowledgeObject(ABC):
         # Convert the object_type and desc to string and compute the SHA256 hash
         data = json.dumps(
             {"object_type": self.object_type, "desc": self.desc},
+            ensure_ascii=False,
             cls=ObjectEnhancedJSONEncoder,
         )
         sha256 = hashlib.sha256()

@@ -87,7 +87,7 @@ class SimpleEnvironment(BaseEnvironment):
         return func_list
     
     def add_ai_operation(self,op:AIAction) -> None:
-        self.operations[op.get_name()] = op
+        self.operations[op.get_id()] = op
     
     def get_ai_operation(self,op_name:str) -> AIAction:
         op = self.operations.get(op_name)
@@ -114,7 +114,7 @@ class CompositeEnvironment(SimpleEnvironment):
             self.functions[func.get_id()] = func
         operations = env.get_all_ai_operations()
         for op in operations:
-            self.operations[op.get_name()] = op
+            self.operations[op.get_id()] = op
 
     def get_value(self,key:str) -> Optional[str]:
         for env in self.envs:

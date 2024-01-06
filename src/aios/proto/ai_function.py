@@ -60,7 +60,7 @@ class AIFunction:
                     else:
                         parameters_str += f"{k} (Optional): {v.description},"
         if len(parameters_str) > 0:
-           return f"{self.get_description} Parameters: {parameters_str}"
+           return f"{self.get_description()} Parameters: {parameters_str}"
         return f"f{self.get_description()}, no parameters"
 
     @abstractmethod
@@ -246,11 +246,15 @@ class SimpleAIFunction(AIFunction):
 
 class AIAction:
     @abstractmethod
-    def get_name(self) -> str:
+    def get_id(self) -> str:
         """
         return the name of the operation (should be snake case)
         """
         pass
+
+    def get_name(self)->str:
+        return self.get_id().split('.')[-1].strip()
+        
 
     @abstractmethod
     def get_description(self) -> str:
@@ -274,7 +278,7 @@ class SimpleAIAction(AIAction):
         self.description = description
         self.func_handler = func_handler
 
-    def get_name(self) -> str: 
+    def get_id(self) -> str: 
         return self.op
 
     def get_description(self) -> str:
@@ -289,17 +293,14 @@ class SimpleAIAction(AIAction):
 
 class AIFunction2Action(AIAction):
     def __init__(self, func: AIFunction) -> None:
-        self.func = func
         super().__init__()
+        self.ai_func = func
 
-    @abstractmethod
-    def get_name(self) -> str:
-        return self.func.get_id()
+    def get_id(self) -> str:
+        return self.ai_func.get_id()
 
-    @abstractmethod
     def get_description(self) -> str:
-        return self.func.get_detail_description()
+        return self.ai_func.get_detail_description()
 
-    @abstractmethod
     async def execute(self, params: dict) -> str:
-       self.func.execute(**params)
+        return await self.ai_func.execute(params)
