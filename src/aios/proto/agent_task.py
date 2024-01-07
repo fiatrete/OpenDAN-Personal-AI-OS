@@ -254,7 +254,7 @@ class AgentTask:
         # 确定的执行时间（执行条件）
         self.next_do_time = None
         # 如果next check time设置，说明任务适合在该时间点可能具备执行调教，尝试检查并执行
-        self.next_check_time = None
+        #self.next_check_time = None
 
         self.depend_task_ids = []
         #self.step_todo_ids = []
@@ -279,6 +279,12 @@ class AgentTask:
         
         if self.state == AgentTaskState.TASK_STATE_FAILED:
             return True
+        
+        if self.due_date:
+            if self.due_date < time.time():
+                self.state = AgentTaskState.TASK_STATE_EXPIRED
+                return True
+        
         return False
 
     def to_dict(self) -> dict:
@@ -295,8 +301,8 @@ class AgentTask:
             result["due_date"] = datetime.fromtimestamp(self.due_date).isoformat()
         if self.next_do_time:
             result["next_do_time"] = datetime.fromtimestamp(self.next_do_time).isoformat()
-        if self.next_check_time:
-            result["next_check_time"] = datetime.fromtimestamp(self.next_check_time).isoformat()
+        #if self.next_check_time:
+        #    result["next_check_time"] = datetime.fromtimestamp(self.next_check_time).isoformat()
         result["depend_task_ids"] = self.depend_task_ids
         #result["step_todo_ids"] = self.step_todo_ids
         result["create_time"] = datetime.fromtimestamp(self.create_time).isoformat()
@@ -327,9 +333,9 @@ class AgentTask:
         next_do_time = json_obj.get("next_do_time")
         if next_do_time:
             result.next_do_time = datetime.fromisoformat(next_do_time).timestamp()
-        next_check_time = json_obj.get("next_check_time")
-        if next_check_time:
-            result.next_check_time = datetime.fromisoformat(next_check_time).timestamp()
+        #next_check_time = json_obj.get("next_check_time")
+        #if next_check_time:
+        #    result.next_check_time = datetime.fromisoformat(next_check_time).timestamp()
         result.depend_task_ids = json_obj.get("depend_task_ids")
         #result.step_todo_ids = json_obj.get("step_todo_ids")
         create_time = json_obj.get("create_time")

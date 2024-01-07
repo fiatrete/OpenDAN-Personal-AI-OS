@@ -25,8 +25,6 @@ logger = logging.getLogger(__name__)
 
 MIN_PREDICT_TOKEN_LEN = 32
 
-
-
 class BaseLLMProcess(ABC):
     def __init__(self) -> None:
         self.behavior:str = None #行为名字
@@ -42,6 +40,8 @@ class BaseLLMProcess(ABC):
         self.max_prompt_token = 1000 # not include input prompt
         self.timeout = 1800 # 30 min
 
+        self.llm_context:LLMProcessContext = None
+
     @abstractmethod
     async def prepare_prompt(self,input:Dict) -> LLMPrompt:
         pass
@@ -50,6 +50,10 @@ class BaseLLMProcess(ABC):
     async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
        pass
 
+    @abstractmethod
+    def prepare_inner_function_context_for_exec(self,inner_func_name:str,parameters:Dict):
+        return 
+    
     @abstractmethod
     async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
         pass
@@ -80,8 +84,6 @@ class BaseLLMProcess(ABC):
     def _format_content_by_env_value(self,content:str,env)->str:
         return content.format_map(env)
 
-    def prepare_inner_function_context_for_exec(self,inner_func_name:str,parameters:Dict):
-        return 
 
     async def _execute_inner_func(self,inner_func_call_node:Dict,prompt: LLMPrompt,stack_limit = 1) -> ComputeTaskResult:
         arguments = None
@@ -205,67 +207,11 @@ class LLMAgentBaseProcess(BaseLLMProcess):
         self.process_description:str = None
         self.reply_format:str = None
         self.context : str = None
-
-        self.known_info_tips :str = None
-        self.tools_tips:str = None
-
+        
         self.workspace : AgentWorkspace = None # If Workspace is not none , enable Agent Tasklist
         self.memory : AgentMemory = None
+        self.enable_kb : bool = False
         self.kb = None    
-
-    async def load_default_config(self) -> bool:
-        return True
-        
-        
-    async def load_from_config(self, config: dict,is_load_default=True) -> Coroutine[Any, Any, bool]:
-        if is_load_default:
-            await self.load_default_config()
-
-        if await super().load_from_config(config) is False:
-            return False
-        
-        self.role_description = config.get("role_desc")
-        if self.role_description is None:
-            logger.error(f"role_description not found in config")
-            return False
-        
-        if config.get("process_description"):
-            self.process_description = config.get("process_description")
-        
-        if config.get("reply_format"):
-            self.reply_format = config.get("reply_format")
-
-        if config.get("context"):
-            self.context = config.get("context")
-
-        if config.get("known_info_tips"):
-            self.known_info_tips = config.get("known_info_tips")
-
-        if config.get("tools_tips"):
-            self.tools_tips = config.get("tools_tips")  
-
-        if config.get("knowledge_base"):
-            self.kb = config.get("knowledge_base")
-        
-
-class LLMAgentMessageProcess(BaseLLMProcess):
-    def __init__(self) -> None:
-        super().__init__()
-
-        self.role_description:str = None
-        self.process_description:str = None
-        self.reply_format:str = None
-        self.context : str = None
-
-        self.known_info_tips :str = None
-        self.tools_tips:str = None
-
-        self.workspace : AgentWorkspace = None # If Workspace is not none , enable Agent Tasklist
-        self.memory : AgentMemory = None
-        self.enable_kb = False
-        self.kb = None
-
-        self.llm_context : LLMProcessContext = None
 
     async def initial(self,params:Dict = None) -> bool:
         self.memory = params.get("memory")
@@ -274,9 +220,7 @@ class LLMAgentMessageProcess(BaseLLMProcess):
             return False
         self.workspace = params.get("workspace")
 
-
         return True
-
     async def load_default_config(self) -> bool:
         return True
         
@@ -302,27 +246,86 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         if config.get("context"):
             self.context = config.get("context")
 
-        if config.get("known_info_tips"):
-            self.known_info_tips = config.get("known_info_tips")
-
-        if config.get("tools_tips"):
-            self.tools_tips = config.get("tools_tips")  
-
-        if config.get("enable_kb"):
-            self.enable_kb = config.get("enable_kb") == "true"
-    
         self.llm_context = SimpleLLMContext()
         if config.get("llm_context"):
             self.llm_context.load_from_config(config.get("llm_context"))
 
-   
+        if config.get("enable_kb"):
+            self.enable_kb = config.get("enable_kb") == "true"
+
+    def prepare_role_system_prompt(self,context_info:Dict) -> Dict:
+        system_prompt_dict = {}
+        # System Prompt
+        ## LLM的身份说明
+        system_prompt_dict["role_description"] = self.role_description
+        #prompt.append_system_message(self.role_description)
+
+        ## 处理信息的流程说明
+        system_prompt_dict["process_rule"] = self.process_description
+        #prompt.append_system_message(self.process_description)
+        ### 回复的格式
+        system_prompt_dict["reply_format"] = self.reply_format
+        #prompt.append_system_message(self.reply_format)
+
+        ## Context
+        context = self._format_content_by_env_value(self.context,context_info)
+        system_prompt_dict["context"] = context
+        #prompt.append_system_message(context)
+
+        system_prompt_dict["support_actions"] = self.get_action_desc()
+
+        return system_prompt_dict
+
+    def prepare_inner_function_context_for_exec(self,inner_func_name:str,parameters:Dict):
+        parameters["_workspace"] = self.workspace  
+
+    def get_action_desc(self) -> Dict:
+        result = {}
+        actions_list = self.llm_context.get_all_ai_action()
+        for action in actions_list:
+            result[action.get_name()] = action.get_description()
+        return result
+    
+    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
+        return self.llm_context.get_ai_function(func_name)
+    
+    async def _execute_actions(self,actions:List[ActionNode],action_params:Dict):
+        for action_item in actions:
+            op : AIAction = self.llm_context.get_ai_action(action_item.name)
+            if op:
+                if action_item.parms is None:
+                    action_item.parms = {}
+                
+                real_parms = {**action_params,**action_item.parms}
+
+                action_item.parms["_result"] = await op.execute(real_parms)
+                action_item.parms["_end_at"] = datetime.now()
+            else:
+                logger.warn(f"action {action_item.name} not found")
+                return False
+
+    
+class AgentMessageProcess(LLMAgentBaseProcess):
+    def __init__(self) -> None:
+        super().__init__()
+
+    async def load_default_config(self) -> bool:
+        return True
+        
+    async def load_from_config(self, config: dict,is_load_default=True) -> Coroutine[Any, Any, bool]:
+        if is_load_default:
+            await self.load_default_config()
+
+        if await super().load_from_config(config) is False:
+            return False
+         
+
     def check_and_to_base64(self, image_path: str) -> str:
         if image_utils.is_file(image_path):
             return image_utils.to_base64(image_path, (1024, 1024))
         else:
             return image_path
              
-
     async def get_prompt_from_msg(self,msg:AgentMsg) -> LLMPrompt:
         msg_prompt = LLMPrompt()
         if msg.is_image_msg():
@@ -356,13 +359,6 @@ class LLMAgentMessageProcess(BaseLLMProcess):
 
         return msg_prompt
     
-    async def get_action_desc(self) -> Dict:
-        result = {}
-        actions_list = self.llm_context.get_all_ai_action()
-        for action in actions_list:
-            result[action.get_name()] = action.get_description()
-        return result
-
     async def sender_info(self,msg:AgentMsg)->str:
         sender_id = msg.sender
         #TODO Is sender an agent?
@@ -386,6 +382,7 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         # User Prompt 
         ## Input Msg
         msg : AgentMsg = input.get("msg")
+        context_info = input.get("context_info")
         if msg is None:
             logger.error(f"LLMAgeMessageProcess prepare_prompt failed! input msg not found")
             return None
@@ -395,31 +392,8 @@ class LLMAgentMessageProcess(BaseLLMProcess):
             return None
         prompt.append(msg_prompt)
 
-        system_prompt_dict = {}
-
-        # System Prompt
-        ## LLM的身份说明
-        system_prompt_dict["role_description"] = self.role_description
-        #prompt.append_system_message(self.role_description)
-
-        ## 处理信息的流程说明
-        system_prompt_dict["process_rule"] = self.process_description
-        #prompt.append_system_message(self.process_description)
-        ### 回复的格式
-        system_prompt_dict["reply_format"] = self.reply_format
-        #prompt.append_system_message(self.reply_format)
-        ### 修改chatlog的action
-        ### 修改todo/task的action
-        ### workspace提供的额外的action
-        system_prompt_dict["support_actions"] = await self.get_action_desc()
-
-
-        #prompt.append_system_message(await self.get_action_desc())
-
-        ## Context （文本替换）,是否应该覆盖全部消息
-        context = self._format_content_by_env_value(self.context,msg.context_info)
-        system_prompt_dict["context"] = context
-        #prompt.append_system_message(context)
+        ## 通用的角色相关的系统提示词
+        system_prompt_dict = self.prepare_role_system_prompt(context_info)
                
         ## 已知信息  
         known_info = {}
@@ -441,10 +415,6 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         #prompt.append_system_message(await self.get_log_summary(self,msg))
         system_prompt_dict["known_info"] = known_info
         
-        ## 可以使用的tools(inner function)的解释，注意不定义该tips,则不会导入任何workspace中的tools
-        if self.tools_tips:
-            system_prompt_dict["tools_tips"] = self.tools_tips
-
         prompt.inner_functions =LLMProcessContext.aifunctions_to_inner_functions(self.llm_context.get_all_ai_functions())
         if self.workspace:
             #TODO eanble workspace functions?
@@ -461,11 +431,6 @@ class LLMAgentMessageProcess(BaseLLMProcess):
 
         return prompt
     
-    def prepare_inner_function_context_for_exec(self,inner_func_name:str,parameters:Dict):
-        parameters["_workspace"] = self.workspace
-
-    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
-        return self.llm_context.get_ai_function(func_name)
 
     async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
         msg:AgentMsg = input.get("msg")
@@ -476,137 +441,24 @@ class LLMAgentMessageProcess(BaseLLMProcess):
         
         llm_result.raw_result["_resp_msg"] = resp_msg
 
-        for action_item in actions:
-            op : AIAction = self.llm_context.get_ai_action(action_item.name)
-            if op:
-                if action_item.parms is None:
-                    action_item.parms = {}
+        action_params = {}
+        action_params["_input"] = input
+        action_params["_memory"] = self.memory
+        action_params["_workspace"] = self.workspace
+        action_params["_resp_msg"] = resp_msg  
+        action_params["_llm_result"] = llm_result
+        action_params["_agentid"] = self.memory.agent_id
+        action_params["_start_at"] = datetime.now()
 
-                action_item.parms["_input"] = input
-                action_item.parms["_memory"] = self.memory
-                action_item.parms["_workspace"] = self.workspace
-                action_item.parms["_resp_msg"] = resp_msg  
-                action_item.parms["_llm_result"] = llm_result
-                action_item.parms["_start_at"] = datetime.now()
-                action_item.parms["_agentid"] = self.memory.agent_id
-
-                action_item.parms["_result"] = await op.execute(action_item.parms)
-                action_item.parms["_end_at"] = datetime.now()
-            else:
-                logger.warn(f"action {action_item.name} not found")
-                return False
+        await self._execute_actions(actions,action_params)
 
         chatsession = self.memory.get_session_from_msg(msg)
         chatsession.append(msg)
         chatsession.append(resp_msg)  
-        return True
-
-        
-
-class ReviewTaskProcess(BaseLLMProcess):
-    def __init__(self) -> None:
-        super().__init__()
-
-        self.role_description:str = None
-        self.process_description:str = None
-        self.reply_format = None
-
-        # 虽然在架构上LLM Process可以很容易的去Call另一个Process，但实际应用中还是应该慎重的保持LLM Process的简单性
-        #self.do_task_llm_process : BaseLLMProcess = None
-
-    async def initial(self,params:Dict = None) -> bool:
-        self.memory = params.get("memory")
-        if self.memory is None:
-            logger.error(f"LLMAgeMessageProcess initial failed! memory not found")
-            return False
-        self.workspace = params.get("workspace")
-
 
         return True
-    
-    async def load_from_config(self, config: dict,is_load_default=True) -> Coroutine[Any, Any, bool]:
 
-
-        if await super().load_from_config(config) is False:
-            return False
-        
-        self.role_description = config.get("role_desc")
-        if self.role_description is None:
-            logger.error(f"role_description not found in config")
-            return False
-        
-        if config.get("process_description"):
-            self.process_description = config.get("process_description")
-        
-        if config.get("reply_format"):
-            self.reply_format = config.get("reply_format")
-
-        if config.get("context"):
-            self.context = config.get("context")
-    
-        self.llm_context = SimpleLLMContext()
-        if config.get("llm_context"):
-            self.llm_context.load_from_config(config.get("llm_context"))
-
-    async def prepare_prompt(self,input:Dict) -> LLMPrompt:
-        agent_task = input.get("task")
-        prompt = LLMPrompt()
-        system_prompt_dict = {}
-        system_prompt_dict["role_description"] = self.role_description
-        system_prompt_dict["process_rule"] = self.process_description
-        system_prompt_dict["reply_format"] = self.reply_format
-        prompt.append_system_message(json.dumps(system_prompt_dict,ensure_ascii=False))
-        prompt.append_user_message(json.dumps(agent_task.to_dict(),ensure_ascii=False))
-        return prompt
-        
-
-    async def get_review_task_actions(self) -> Dict[str,Dict]:
-        pass
-
-    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
-        pass
-
-    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
-        pass
-
-class QuickReviewTaskProcess(BaseLLMProcess):
-    def __init__(self) -> None:
-        super().__init__()
-
-    async def load_from_config(self, config: dict):
-        if await super().load_from_config(config) is False:
-            return False
-
-    async def prepare_prompt(self) -> LLMPrompt:
-        prompt = LLMPrompt()
-        pass  
-
-    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
-        pass
-
-    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
-        pass
-
-class DoTodoProcess(BaseLLMProcess):
-    def __init__(self) -> None:
-        super().__init__()
-
-    async def load_from_config(self, config: dict):
-        if await super().load_from_config(config) is False:
-            return False
-
-    async def prepare_prompt(self) -> LLMPrompt:
-        prompt = LLMPrompt()
-        pass  
-
-    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
-        pass
-
-    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
-        pass
-
-
-class CheckTodoProcess(BaseLLMProcess):
+class AgentSelfLearning(BaseLLMProcess):
     def __init__(self) -> None:
         super().__init__()
 
@@ -624,25 +476,7 @@ class CheckTodoProcess(BaseLLMProcess):
     async def post_llm_process(self,actions:List[ActionNode]) -> bool:
         pass
 
-class SelfLearningProcess(BaseLLMProcess):
-    def __init__(self) -> None:
-        super().__init__()
-
-    async def load_from_config(self, config: dict) -> Coroutine[Any, Any, bool]:
-        if await super().load_from_config(config) is False:
-            return False
-
-    async def prepare_prompt(self) -> LLMPrompt:
-        prompt = LLMPrompt()
-        pass  
-
-    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
-        pass
-
-    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
-        pass
-
-class SelfThinkingProcess(BaseLLMProcess):
+class AgentSelfThinking(BaseLLMProcess):
     def __init__(self) -> None:
         super().__init__()
 
@@ -727,43 +561,10 @@ class SelfThinkingProcess(BaseLLMProcess):
 
     async def post_llm_process(self,actions:List[ActionNode]) -> bool:
         pass
-    
-class LLMProcessLoader:
+
+class AgentSelfImprove(BaseLLMProcess):
     def __init__(self) -> None:
-        self.loaders : Dict[str,Callable[[dict],Awaitable[BaseLLMProcess]]] = {}
-        return
-    
-    @classmethod
-    def get_instance(cls)->"LLMProcessLoader":
-        if not hasattr(cls,"_instance"):
-            cls._instance = LLMProcessLoader()
-        return cls._instance
-    
-    def register_loader(self, typename:str,loader:Callable[[dict],Awaitable[BaseLLMProcess]]):
-        self.loaders[typename] = loader
-    
-    async def load_from_config(self,config:dict) -> BaseLLMProcess:
-        llm_type_name = config.get("type")
-        if llm_type_name:
-            loader = self.loaders.get(llm_type_name)
-            if loader:
-                return await loader(config)
-
-            selected_type = globals().get(llm_type_name)   
-            if selected_type:
-                result : BaseLLMProcess = selected_type()
-                load_result = await result.load_from_config(config)
-                if load_result is False:
-                    logger.warn(f"load LLMProcess {llm_type_name} from config failed! load_from_config return False")
-                    return None
-                else:
-                    return result
-
-
-        logger.warn(f"load LLMProcess {llm_type_name} from config failed! type not found")
-        return None
-
-
+        super().__init__()    
 
 
 

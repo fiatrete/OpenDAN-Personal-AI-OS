@@ -15,22 +15,22 @@ Your name is Jarvis, the super personal assistant to the master, The focus of wo
 """
 
 [behavior.on_message]
-type="LLMAgentMessageProcess"
+type="AgentMessageProcess"
+# TODO: 是否应该自动记录 inner function和action的执行细节
 
 process_description="""
-1. Based on your role, combined with existing information, make a brief and efficient reply.
+1. Based on your role and the existing information, please think and then make a brief and efficient reply.
 2. Be mindful of the identity of the person you are chatting with and provide services accordingly based on their status.
 3. Understand the intention of the dialogue, while using the necessary reply, use the appropriate, supported ACTION.
 4. If you feel that there is a potential Task in the dialogue, you can create these tasks through appropriate ACTION. Be careful to query whether there are the same task before creating. Using the query interface is a high-cost behavior.
 5. You are proficient in the languages of various countries and try to communicate with each other's mother tongue.
 """
-
+# Not work: tags: ['tag1', 'tag2'], #Optional,If the conversation involves important things and people, you can mark by 1-3 tags.
 reply_format = """
 The Response must be directly parsed by `python json.loads`. Here is an example:
 {
-    think:'$think step-by-step to be sure you have the right answer.'
+    think:'$think step-by-step to be sure you have the right reply.'
     resp: '$What you want to reply',
-    tags: ['tag1', 'tag2'], #Optional,If the conversation involves important things and people, you can mark by 1-3 tags.
     actions: [{ 
     name: '$action_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
@@ -48,8 +48,35 @@ tools_tips = """
 llm_context.actions.enable = ["agent.workspace.create_task"]
 llm_context.functions.enable = ["agent.workspace.list_task"]
 
-[behavior.review_task]
-type="ReviewTaskProcess"
+
+[behavior.triage_tasks]
+## 处理任务列表，任务列表里会包含所有未执行过，且未过期的任务
+## 对于简单的任务会一次性完成处理
+type="AgentTriageTaskList"
+process_description="""
+You are expected to effectively TRIAGE the task list described in JSON format, in accordance with your role. Your GOAL is :
+1. Adjust the priority of the task and set up a reasonable processing time.(update_task)
+2. Immediately perform a simple (similar to reminding one category) task. Send a message using send_message, set the task to complete the use of update_task.
+3. Organize tasks to remove tasks beyond your ability. And merge the repeated tasks.(update_task + cancel_task)
+"""
+reply_format = """
+The Response must be directly parsed by `python json.loads`. Here is an example:
+{
+    think:'$think step-by-step to be sure you can triage tasks well.'
+    resp : '$determine, summary what you do',
+    actions: [{ 
+    name: '$action_name',
+    $param_name: '$parm' #Optional, fill in only if the action has parameters.
+    }]
+}
+"""
+context="Your master now in {location}, time: {now}, weather: {weather}."
+
+llm_context.actions.enable = ["agent.workspace.update_task","agent.workspace.cancel_task","post_message"]
+
+[behavior.plan_task]
+## 首次处理任务
+type="AgentPlanTask"
 process_description="""
 你得到的输入来自你自己之前记录在TaskList系统里的一个Task。现在你并不需要完成该Task，而是结合已知信息对Task进行一次Review.Review的过程是你独立完成的，你在形成结论的过程中可以使用工具，但不能和其它人交流。
 1. 理性的思考如何一步一步的高效的，在潜在的截止时间前完成该Task。明确拒绝超出自己能力范围的Task。
@@ -75,20 +102,18 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 }
 """
 # action_list: ['cancle','confirm', 'execute']
-LLMContext.action_list = ['cancle','confirm', 'execute']
+llm_context.actions.enable = ["agent.workspace.cancel_task"]
+llm_context.functions.enable = ["agent.workspace.list_task"]
 
 context="Your master now in {location}, time: {now}, weather: {weather}."
 
-known_info_tips = """
-"""
+[behavior.review_task]
+## 处理已经被LLM处理过的任务，包括处理首次出错的任务，处理被的任务
 
-tools_tips = """
-
-"""
 
 
 [behavior.do] # do TODO
-type="DoTodoProcess"
+type="AgentDo"
 process_description="""
 1. 你的任务是结合自己的角色定义，手头的工具，已知信息、完成一个确定的TODO。完成该TODO后你会得到$200的小费。
 2. 输入的TODO是来自你自己对一个Task的Plan结果。
@@ -111,12 +136,18 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     ]
 }
 """
+[behavior.check]
+type="AgentCheck"
 
-#[behavior.self_thinking]
+[behavior.self_thinking]
+# self thing的主要目的是对各种chatlog,worklog进行分析，并更新终结。
+type="AgentSelfThinking"
 
+#[behavior.self_learning]
+# self_learning的主要目的是根据自己的经验，主动的学习新的知识。这通常是一个专门整理知识库的Agent，一般的Agent谨慎开启
+#type="AgentSelfLearning"
 
-
-#[behavior.check]
-
-
+#[behavior.self_improve]
+# self_improve 是最后的行为，允许Agent结合自己的工作经验，改进自己的提示词（注意保留历史版本）
+#type="AgentSelfImprove"
 

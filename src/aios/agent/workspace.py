@@ -3,16 +3,18 @@ from ast import Dict
 import json
 import sqlite3
 import os
-import logging
+import time
 from typing import List, Optional
-
 import aiofiles
 
+from  ..proto.agent_msg import AgentMsg
 from ..proto.ai_function import AIFunction, ParameterDefine,SimpleAIFunction,ActionNode,SimpleAIAction
-from ..proto.agent_task import AgentTask,AgentTodoTask,AgentWorkLog,AgentTaskManager
+from ..proto.agent_task import AgentTask, AgentTaskState,AgentTodoTask,AgentWorkLog,AgentTaskManager
 from ..storage.storage import AIStorage
+from ..frame.bus import AIBus
 from .llm_context import GlobaToolsLibrary
 
+import logging
 logger = logging.getLogger(__name__)
 
 class LocalAgentTaskManger(AgentTaskManager):
@@ -262,8 +264,9 @@ class LocalAgentTaskManger(AgentTaskManager):
     async def update_task(self,task:AgentTask):
         detail_path = f"{self.root_path}/{task.task_path}/detail"
         try:
+            new_task_content = json.dumps(task.to_dict(),ensure_ascii=False)
             async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
-                await f.write(json.dumps(task.to_dict(),ensure_ascii=False))
+                await f.write(new_task_content))
         except Exception as e:
             logger.error("update_task failed:%s",e)
             return str(e)
@@ -276,8 +279,9 @@ class LocalAgentTaskManger(AgentTaskManager):
             return f"todo {todo.todo_id} not found"
         
         try:
+            new_todo_content = json.dumps(todo.to_dict(),ensure_ascii=False)
             async with aiofiles.open(todo_path, mode='w', encoding="utf-8") as f:
-                await f.write(json.dumps(todo.to_dict(),ensure_ascii=False))
+                await f.write(new_todo_content)
         except Exception as e:
             logger.error("update_todo failed:%s",e)
             return str(e)
@@ -315,9 +319,86 @@ class AgentWorkspace:
         self.owner_id : str = owner_id
         self.task_mgr : AgentTaskManager = LocalAgentTaskManger(owner_id)
 
-
     @staticmethod
     def register_ai_functions():
+        async def post_message(parameters):
+            _agent_id = parameters.get("_agentid")
+            if _agent_id is None:
+                return "_agentid not found"
+
+            target = parameters.get("target")
+            if target is None:
+                return "target not found"
+            message = parameters.get("message")
+            if message is None:
+                return "message not found"
+            topic = parameters.get("topic")
+
+            msg = AgentMsg()
+            msg.sender = _agent_id
+            msg.body = message
+            msg.topic = topic
+            msg.target = target
+            msg.create_time = time.time()   
+            
+            is_post_ok = await AIBus.get_default_bus().post_message(msg)
+            if is_post_ok:
+                return "post message ok!"
+            else:
+                return f"post message to {target} failed!"
+        
+        parameters = ParameterDefine.create_parameters({
+            "target": {"type": "string", "description": "target agent/contact id"},
+            "topic": {"type": "string", "description": "optional, message topic"},
+            "message": {"type": "string", "description": "message content"},
+        })
+        post_message_action = SimpleAIFunction(
+            "post_message",
+            "Post a message to target agent/contact",
+            post_message,
+            parameters,
+        )
+        GlobaToolsLibrary.get_instance().register_tool_function(post_message_action)
+
+        async def send_message(parameters):
+            _agent_id = parameters.get("_agentid")
+            if _agent_id is None:
+                return "_agentid not found"
+
+            target = parameters.get("target")
+            if target is None:
+                return "target not found"
+            message = parameters.get("message")
+            if message is None:
+                return "message not found"
+            topic = parameters.get("topic")
+
+            msg = AgentMsg()
+            msg.sender = _agent_id
+            msg.body = message
+            msg.topic = topic
+            msg.target = target
+            msg.create_time = time.time()   
+            
+            resp = await AIBus.get_default_bus().send_message(msg)
+            if resp:
+                return f"resp is :  {resp.body}"
+            else:
+                return f"send message to {target} failed!"
+        
+        parameters = ParameterDefine.create_parameters({
+            "target": {"type": "string", "description": "target agent/contact id"},
+            "topic": {"type": "string", "description": "optional, message topic"},
+            "message": {"type": "string", "description": "message content"},
+        })
+        send_message_action = SimpleAIFunction(
+            "send_message",
+            "send a message to target agent/contact, and wait for reply",
+            send_message,
+            parameters,
+        )
+        GlobaToolsLibrary.get_instance().register_tool_function(send_message_action)
+
         async def create_task(params):  
             _workspace = params.get("_workspace")
             _agent_id = params.get("_agentid")
@@ -348,7 +429,7 @@ class AgentWorkspace:
             if _workspace is None:
                 return "_workspace not found"
             task_id = parameters.get("task_id")
-            task = await _workspace.task_mgr.get_task(task_id)
+            task : AgentTask = await _workspace.task_mgr.get_task(task_id)
             if task is None:
                 return f"task {task_id} not found"
             task.state = "cancel"
@@ -381,3 +462,39 @@ class AgentWorkspace:
                                                list_task,{})
         GlobaToolsLibrary.get_instance().register_tool_function(list_task_ai_function)
         
+        async def update_task(parameters):
+            _workspace : AgentWorkspace= parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            task_id = parameters.get("task_id")
+            task:AgentTask = await _workspace.task_mgr.get_task(task_id)
+            if task is None:
+                return f"task {task_id} not found"
+            if parameters.get("title"):
+                task.title = parameters.get("title")
+            if parameters.get("detail"):
+                task.detail = parameters.get("detail")
+            if parameters.get("priority"):
+                task.priority = parameters.get("priority")
+            if parameters.get("new_state"):
+                task.state = AgentTaskState.from_str(parameters.get("new_state"))
+            if parameters.get("next_do_date"):
+                task.next_do_date = parameters.get("next_do_date")
+            if parameters.get("due_date"):
+                task.due_date = parameters.get("due_date")
+            await _workspace.task_mgr.update_task(task)
+            return "update task ok"
+        parameters = ParameterDefine.create_parameters({
+            "task_id": {"type": "string", "description": "task id which want to update"},
+            "new_state": {"type": "string", "description": "optional,new task state: cancel or done"},
+            "next_do_date": {"type": "string", "description": "optional,confirm task next do date"},
+            "priority": {"type": "int", "description": "optional,task priority from 1-10"},
+            "title": {"type": "string", "description": "optional, new task title"},
+            "detail": {"type": "string", "description": "optional, new task detail(simple task can not be filled)"},
+            "due_date": {"type": "string", "description": "optional,new task due date"},
+        })
+        update_task_ai_function = SimpleAIFunction("agent.workspace.update_task",
+                                              "update task to new state",
+                                               update_task,parameters)
+        GlobaToolsLibrary.get_instance().register_tool_function(update_task_ai_function)
+

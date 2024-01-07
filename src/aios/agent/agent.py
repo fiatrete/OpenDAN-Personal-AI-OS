@@ -12,6 +12,8 @@ import datetime
 import copy
 import sys
 
+
+
 from ..proto.agent_msg import AgentMsg
 from ..proto.ai_function import *
 from ..proto.agent_task import AgentTaskState,AgentTask,AgentTodo,AgentTodoResult
@@ -19,22 +21,22 @@ from ..proto.compute_task import *
 
 from .agent_base import *
 from .llm_process import *
+from .llm_process_loader import *
+from .llm_do_task import *
 from .chatsession import *
-from ..environment.workspace_env import WorkspaceEnvironment, TodoListType
 
+from ..environment.workspace_env import WorkspaceEnvironment, TodoListType
 from ..frame.contact_manager import ContactManager,Contact,FamilyMember
 from ..frame.compute_kernel import ComputeKernel
 from ..frame.bus import AIBus
 from ..environment.environment import *
 from ..environment.workspace_env import WorkspaceEnvironment
 from ..storage.storage import AIStorage
-
 from ..knowledge import *
 from ..utils import video_utils, image_utils
 from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode,LLMPrompt,LLMResult
 
 logger = logging.getLogger(__name__)
-
 
 class AIAgentTemplete:
     def __init__(self) -> None:
@@ -200,7 +202,15 @@ class AIAgent(BaseAIAgent):
         return self.agent_prompt
 
 
+    async def _get_context_info(self) -> Dict:
+        context_info = {}
 
+        context_info["location"] = "SanJose"
+        context_info["now"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        context_info["weather"] = "Partly Cloudy, 60°F"
+
+        return context_info
+    
     async def llm_process_msg(self,msg:AgentMsg) -> AgentMsg:
         need_process:bool = True
         if msg.msg_type == AgentMsgType.TYPE_GROUPMSG:
@@ -218,8 +228,10 @@ class AIAgent(BaseAIAgent):
                 resp_msg = msg.create_group_resp_msg(self.agent_id,"")
                 return resp_msg
         
+        context_info = await self._get_context_info()
         input_parms = {
-            "msg":msg
+            "msg":msg,
+            "context_info":context_info
         }
         msg_process = self.behaviors.get("on_message")
         llm_result : LLMResult = await msg_process.process(input_parms)
@@ -233,38 +245,47 @@ class AIAgent(BaseAIAgent):
             return resp_msg
 
     async def _process_msg(self,msg:AgentMsg,workspace = None) -> AgentMsg:
-        msg.context_info = {}
-        msg.context_info["location"] = "SanJose"
-        msg.context_info["now"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        msg.context_info["weather"] = "Partly Cloudy, 60°F"
         return await self.llm_process_msg(msg)
 
 
-    async def  llm_review_tasklist(self):
-        llm_process : BaseLLMProcess = self.behaviors.get("review_task")
+    async def llm_triage_tasklist(self):
+        llm_process : BaseLLMProcess = self.behaviors.get("triage_tasks")
         if llm_process:
             if self.prviate_workspace:
                 tasklist = await self.prviate_workspace.task_mgr.list_task()
                 if tasklist:
-                    for agent_task in tasklist:
-                        if self.agent_energy <= 0:
-                            break
+                    input_parms = {
+                        "tasklist":tasklist,
+                        "context_info": await self._get_context_info()
+                    }
+                    llm_result : LLMResult = await llm_process.process(input_parms)
+                    if llm_result.state == LLMResultStates.ERROR:
+                        logger.error(f"llm process triage_tasks error:{llm_result.compute_error_str}")
+                    elif llm_result.state == LLMResultStates.IGNORE:
+                        logger.info(f"llm process triage_tasks ignore!")
+                    else:
+                        logger.info(f"llm process triage_tasks ok!,think is:{llm_result.resp}")
+                    self.agent_energy -= 5  
 
-                        if agent_task.state == AgentTaskState.TASK_STATE_WAIT:
-                            input_parms = {
-                                "task":agent_task
-                            }
-                            llm_result : LLMResult = await llm_process.process(input_parms)
-                            if llm_result.state == LLMResultStates.ERROR:
-                                logger.error(f"llm process review_task error:{llm_result.error_str}")
-                                continue
-                            elif llm_result.state == LLMResultStates.IGNORE:
-                                logger.info(f"llm process review_task ignore!")
-                                continue
-                            else:
-                                determine = llm_result.raw_result.get("determine")
-                                logger.info(f"llm process review_task ok!,think is:{determine}")
-                            self.agent_energy -= 1  
+                    # for agent_task in tasklist:
+                    #     if self.agent_energy <= 0:
+                    #         break
+
+                    #     if agent_task.state == AgentTaskState.TASK_STATE_WAIT:
+                    #         input_parms = {
+                    #             "task":agent_task
+                    #         }
+                    #         llm_result : LLMResult = await llm_process.process(input_parms)
+                    #         if llm_result.state == LLMResultStates.ERROR:
+                    #             logger.error(f"llm process review_task error:{llm_result.error_str}")
+                    #             continue
+                    #         elif llm_result.state == LLMResultStates.IGNORE:
+                    #             logger.info(f"llm process review_task ignore!")
+                    #             continue
+                    #         else:
+                    #             determine = llm_result.raw_result.get("determine")
+                    #             logger.info(f"llm process review_task ok!,think is:{determine}")
+                    #         self.agent_energy -= 1  
 
 
 
@@ -543,7 +564,7 @@ class AIAgent(BaseAIAgent):
                 if self.agent_energy <= 1:
                     continue
 
-                await self.llm_review_tasklist()
+                await self.llm_triage_tasklist()
 
                 # complete & check todo
                 #await self._llm_run_todo_list(TodoListType.TO_WORK)
