@@ -94,6 +94,14 @@ _self = parameters.get("_workspace")
 
 ##### Send Msg (系统原生能力)
 
+##### Workspace File System
+
+agent.workspace.write_file
+agent.workspace.read_file
+agent.workspace.delte_file
+agent.workspace.append_file
+agent.workspace.list_file
+
 ## Knowledge Base
 
 Knowledge Base对大部分Agent来说，是一个获得私有信息,并让LLM处理结果更好的基础设施(RAG支持）。少部分Agent会使用相关API,结合Knowledge Base所服务的目标来整理Knowledge Base.

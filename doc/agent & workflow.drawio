@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2023-12-16T07:48:34.853Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/114.0.5735.289 Electron/25.9.4 Safari/537.36" etag="Jb4FnfYeMwslMLOmSp3i" version="22.1.2" type="device" pages="6">
+<mxfile host="Electron" modified="2024-01-16T00:20:07.564Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/114.0.5735.289 Electron/25.9.4 Safari/537.36" etag="jyERynbK7iycb6DJu6UL" version="22.1.2" type="device" pages="7">
   <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
-    <mxGraphModel dx="780" dy="596" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2046" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-0" />
         <mxCell id="WIyWlLk6GJQsqaUBKTNV-1" parent="WIyWlLk6GJQsqaUBKTNV-0" />
@@ -514,7 +514,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="CqH4P1G_RAjWfIoYkaMU" name="Task/Todo">
-    <mxGraphModel dx="2060" dy="1183" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2046" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -637,19 +637,241 @@
         <mxCell id="JyX1mhbkDWa9bGLsmIIT-1" value="创建" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="500" y="170" width="60" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="dTeZOjKiqq0ditQk53ut-1" value="&lt;h1&gt;防止无限拆分&lt;/h1&gt;&lt;p&gt;大部分情况下，我们都鼓励使用&lt;/p&gt;&lt;p&gt;Task-Todo-Action这种3层结构来完成任务。或则再多一层Task-SubTask-Todo-Action. 今天LLM能面对的复杂度应该就是最多这4层了&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+        <mxCell id="dTeZOjKiqq0ditQk53ut-1" value="&lt;h1&gt;防止无限拆分&lt;/h1&gt;&lt;p&gt;大部分情况下，我们都鼓励使用&lt;/p&gt;&lt;p&gt;Task-Todo-Action这种3层结构来完成任务。或则再多一层Task-SubTask-Todo-Action. 今天LLM能面对的复杂度应该就是最多这4层了&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="190" y="470" width="190" height="240" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="1AT3sDmhgRXqQU36RNgs" name="New Workflow">
-    <mxGraphModel dx="650" dy="497" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2046" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="h0utY9AjMI-hVYMkH-L3-1" value="&lt;h1&gt;Workflow的核心设计&lt;/h1&gt;&lt;p&gt;1.工作流定义，工作流指导了workflow中特定的task是如何交给不同的agent完成的&lt;/p&gt;&lt;p&gt;2.agent在workflow中工作时，自己的llm_process会受到影响，有时可以使用workflow中的一些额定义的llm_process&lt;/p&gt;&lt;p&gt;3.workflow的状态是独立的，主要是指&lt;/p&gt;&lt;p&gt;1.独立的workspace&lt;/p&gt;&lt;p&gt;该workspace里支持公共的log保存&lt;/p&gt;&lt;p&gt;2.独立的env&lt;/p&gt;&lt;p&gt;3.独立的kb&lt;/p&gt;&lt;p&gt;4.Agent依旧使用自己的memory+&lt;/p&gt;&lt;p&gt;&lt;br&gt;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+        <mxCell id="h0utY9AjMI-hVYMkH-L3-1" value="&lt;h1&gt;Workflow的核心设计&lt;/h1&gt;&lt;p&gt;1.工作流定义，工作流指导了workflow中特定的task是如何交给不同的agent完成的&lt;/p&gt;&lt;p&gt;2.agent在workflow中工作时，自己的llm_process会受到影响，有时可以使用workflow中的一些额定义的llm_process&lt;/p&gt;&lt;p&gt;3.workflow的状态是独立的，主要是指&lt;/p&gt;&lt;p&gt;1.独立的workspace&lt;/p&gt;&lt;p&gt;该workspace里支持公共的log保存&lt;/p&gt;&lt;p&gt;2.独立的env&lt;/p&gt;&lt;p&gt;3.独立的kb&lt;/p&gt;&lt;p&gt;4.Agent依旧使用自己的memory+&lt;/p&gt;&lt;p&gt;&lt;br&gt;&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="70" y="50" width="300" height="330" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="EohhKbyxIwDpnJuhpjKB" name="Page-7">
+    <mxGraphModel dx="2896" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-50" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-1" target="9UtHOai_7pWWWwvgcpnR-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-1" value="TaskList" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="210" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-2" value="Triage&lt;br&gt;统一的处理最近刚创建的任务" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="235" y="210" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-3" value="简单任务直接完成" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="475" y="100" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-70" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-5" target="9UtHOai_7pWWWwvgcpnR-6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="580" y="405" />
+              <mxPoint x="-100" y="405" />
+              <mxPoint x="-100" y="555" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-5" value="确认任务：下一次检查时间，调整优先级" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="445" y="310" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-51" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-6" target="9UtHOai_7pWWWwvgcpnR-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-6" value="Task" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="540" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-7" value="Plan" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="540" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-66" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-8" target="9UtHOai_7pWWWwvgcpnR-27">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="555" y="430" />
+              <mxPoint x="-40" y="430" />
+              <mxPoint x="-40" y="1420" />
+              <mxPoint x="129" y="1420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-8" value="简单任务直接完成" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="450" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-9" value="直接拒绝任务" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="540" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-10" value="直接拒绝任务" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="475" y="200" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-11" target="9UtHOai_7pWWWwvgcpnR-15">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="535" y="750" />
+              <mxPoint x="50" y="750" />
+              <mxPoint x="50" y="920" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-11" value="拆解子任务 or 拆解TODO" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="650" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-13" value="Task Logs&lt;br&gt;父任务,兄弟任务，Todos" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="450" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-52" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-15" target="9UtHOai_7pWWWwvgcpnR-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-15" value="Todo" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="890" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-55" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-16" target="9UtHOai_7pWWWwvgcpnR-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-16" value="DO" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="890" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-19" target="9UtHOai_7pWWWwvgcpnR-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-19" value="执行成功" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="430" y="960" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-20" target="9UtHOai_7pWWWwvgcpnR-15">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="535" y="790" />
+              <mxPoint x="130" y="790" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-20" value="执行失败" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="840" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-53" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-21" target="9UtHOai_7pWWWwvgcpnR-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-21" value="Todo" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1120" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-59" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-22" target="9UtHOai_7pWWWwvgcpnR-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-60" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-22" target="9UtHOai_7pWWWwvgcpnR-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-22" value="Check&lt;br&gt;（解决幻视）" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="1120" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-25" value="检查失败" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="430" y="1090" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-26" target="9UtHOai_7pWWWwvgcpnR-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-26" value="检查成功" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="425" y="1180" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-54" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-27" target="9UtHOai_7pWWWwvgcpnR-29">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-27" value="有TODOS或有SubTask的Task。注意Review是顺序的" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="69" y="1340" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-67" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-29" target="9UtHOai_7pWWWwvgcpnR-30">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-29" value="Review" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="1340" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-30" value="Task 完成" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="425" y="1320" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-31" target="9UtHOai_7pWWWwvgcpnR-6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-100" y="1530" />
+              <mxPoint x="-100" y="570" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-31" value="Task未完成" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="425" y="1500" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-33" value="所有确认了但未完成的任务都有可能被Plan" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="69" y="480" width="120" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-36" value="Task 最终失败" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+          <mxGeometry x="425" y="1410" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-37" value="Task Logs&lt;br&gt;父任务,兄弟TODOs" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="810" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-38" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.422;entryY=0.972;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-11" target="9UtHOai_7pWWWwvgcpnR-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-39" value="未定义依赖关系的subtask可以并行执行" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="185" y="650" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-40" value="TODO按顺序执行" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-46" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0.035;entryY=0.361;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-2" target="9UtHOai_7pWWWwvgcpnR-3">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="385" y="220" as="sourcePoint" />
+            <mxPoint x="435" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-47" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-2" target="9UtHOai_7pWWWwvgcpnR-10">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="375" y="270" as="sourcePoint" />
+            <mxPoint x="472" y="210" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-49" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-2" target="9UtHOai_7pWWWwvgcpnR-5">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="325" y="370" as="sourcePoint" />
+            <mxPoint x="375" y="320" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-58" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-16" target="9UtHOai_7pWWWwvgcpnR-19">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="1050" as="sourcePoint" />
+            <mxPoint x="350" y="1000" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-61" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=0;exitDx=0;exitDy=0;entryX=0.428;entryY=1.061;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-25" target="9UtHOai_7pWWWwvgcpnR-15">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="478" y="1050" />
+              <mxPoint x="121" y="1050" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-62" value="满足Review条件后" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="55" y="1290" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-65" value="刚刚创建的任务通常保持其原始文本描述" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="235" y="280" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-68" value="" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.617;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-29" target="9UtHOai_7pWWWwvgcpnR-36">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="1490" as="sourcePoint" />
+            <mxPoint x="350" y="1440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-69" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-29" target="9UtHOai_7pWWWwvgcpnR-31">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="330" y="1490" as="sourcePoint" />
+            <mxPoint x="380" y="1440" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

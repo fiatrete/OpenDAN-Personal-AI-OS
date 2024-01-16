@@ -3,13 +3,14 @@ from ast import Dict
 import json
 import sqlite3
 import os
+import glob
 import time
 from typing import List, Optional
 import aiofiles
 
 from  ..proto.agent_msg import AgentMsg
 from ..proto.ai_function import AIFunction, ParameterDefine,SimpleAIFunction,ActionNode,SimpleAIAction
-from ..proto.agent_task import AgentTask, AgentTaskState,AgentTodoTask,AgentWorkLog,AgentTaskManager
+from ..proto.agent_task import AgentTask, AgentTaskState,AgentTodo,AgentWorkLog,AgentTaskManager
 from ..storage.storage import AIStorage
 from ..frame.bus import AIBus
 from .llm_context import GlobaToolsLibrary
@@ -86,11 +87,23 @@ class LocalAgentTaskManger(AgentTaskManager):
         
 
 
-    async def create_todos(self,owner_task_id:str,todos:List[AgentTodoTask]):
+    async def set_todos(self,owner_task_id:str,todos:List[AgentTodo]):
         owner_task_path = self._get_obj_path(owner_task_id)
         if owner_task_path is None:
             return f"owner task {owner_task_id} not found"
         
+        try:
+            directory = f"{self.root_path}/{owner_task_path}"
+            file_extension = "*.todo"
+            pattern = os.path.join(directory, file_extension)
+            files = glob.glob(pattern)
+
+            for file in files:
+                os.remove(file)
+                logger.info(f"Deleted {file}")
+        except Exception as e:
+            logger.error("set_todos deleted todos failed:%s",e)
+
         try:
             step_order = 0
             for todo in todos:
@@ -176,7 +189,7 @@ class LocalAgentTaskManger(AgentTaskManager):
         full_path = f"{self.root_path}/{task_path}"
         return await self._get_task_by_fullpath(full_path)
  
-    async def get_todo(self,todo_id:str) -> AgentTodoTask:
+    async def get_todo(self,todo_id:str) -> AgentTodo:
         todo_path = self._get_obj_path(todo_id)
         if todo_path is None:
             logger.error("get_todo:%s,not found!",todo_id)
@@ -185,7 +198,7 @@ class LocalAgentTaskManger(AgentTaskManager):
         try:
             with open(todo_path, mode='r', encoding="utf-8") as f:
                 todo_dict = json.load(f)
-                result_todo:AgentTodoTask =  AgentTodoTask.from_dict(todo_dict)
+                result_todo:AgentTodo =  AgentTodo.from_dict(todo_dict)
                 if result_todo:
                     result_todo.todo_path = todo_path
                 else:
@@ -214,10 +227,11 @@ class LocalAgentTaskManger(AgentTaskManager):
                 sub_task = await self.get_task_by_path(f"{task_path}/{sub_item}")
                 if sub_task:
                     sub_tasks.append(sub_task)
-        pass
+        
+        return sub_tasks
 
 
-    async def get_sub_todos(self,task_id:str) -> List[AgentTodoTask]:
+    async def get_sub_todos(self,task_id:str) -> List[AgentTodo]:
         task_path = self._get_obj_path(task_id)
         if task_path is None:
             return []
@@ -266,14 +280,14 @@ class LocalAgentTaskManger(AgentTaskManager):
         try:
             new_task_content = json.dumps(task.to_dict(),ensure_ascii=False)
             async with aiofiles.open(detail_path, mode='w', encoding="utf-8") as f:
-                await f.write(new_task_content))
+                await f.write(new_task_content)
         except Exception as e:
             logger.error("update_task failed:%s",e)
             return str(e)
         
         return None
 
-    async def update_todo(self,todo:AgentTodoTask):
+    async def update_todo(self,todo:AgentTodo):
         todo_path = self._get_obj_path(todo.todo_id)
         if todo_path is None:
             return f"todo {todo.todo_id} not found"
@@ -424,6 +438,8 @@ class AgentWorkspace:
         )
         GlobaToolsLibrary.get_instance().register_tool_function(create_task_action)
 
+        
+
         async def cancel_task(parameters):
             _workspace = parameters.get("_workspace")
             if _workspace is None:
@@ -498,3 +514,54 @@ class AgentWorkspace:
                                                update_task,parameters)
         GlobaToolsLibrary.get_instance().register_tool_function(update_task_ai_function)
 
+        async def set_todos(parameters):
+            _workspace : AgentWorkspace= parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            task_id = parameters.get("task_id")
+            task:AgentTask = await _workspace.task_mgr.get_task(task_id)
+            if task is None:
+                return f"task {task_id} not found"
+            todos = parameters.get("todos")
+            if todos is None:
+                return "todos not found"
+            await _workspace.task_mgr.set_todos(task_id,todos)
+            return "set todos ok"
+        
+        todo_demo = """
+        [
+            {
+                "title": "todo1",
+                "detail": "todo1 detail",
+                "tags": "tag1,tag2",
+                "due_date": "2021-01-01",
+                "priority": 1
+            },
+        ]
+        """
+        parameters = ParameterDefine.create_parameters({
+            "task_id": {"type": "string", "description": "task id which want to set todos"},
+            "todos": {"type": "list", "description": f"List of todo, todo is a dict like {todo_demo}"},
+        })
+        set_todos_ai_function = SimpleAIFunction("agent.workspace.set_todos",
+                                              "set todos for task",
+                                               set_todos,parameters)
+        GlobaToolsLibrary.get_instance().register_tool_function(set_todos_ai_function)
+
+        async def update_todo(parameters):
+            _workspace : AgentWorkspace= parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            todo_id = parameters.get("todo_id")
+            todo : AgentTodo = await _workspace.task_mgr.get_todo(todo_id)
+            if todo is None:
+                return f"todo {todo_id} not found"
+            
+        parameters = ParameterDefine.create_parameters({
+            "todo_id": {"type": "string", "description": "todo id which want to update"},
+            "new_state": {"type": "string", "description": "optional,new todo state: execute_ok , execute_failed, done or check_failed"},
+        })    
+        update_todo_ai_function = SimpleAIFunction("agent.workspace.update_todo",
+                                              "update todo to new state",
+                                               update_todo,parameters)
+        GlobaToolsLibrary.get_instance().register_tool_function(update_todo_ai_function)

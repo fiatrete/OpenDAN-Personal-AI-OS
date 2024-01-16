@@ -1,5 +1,6 @@
 # pylint:disable=E0402
 from abc import ABC, abstractmethod
+import json
 from typing import List, Optional
 import datetime
 import time
@@ -30,9 +31,6 @@ class AgentTodoResult:
         result["error_str"] = self.error_str
         result["op_list"] = self.op_list
         return result
-
-
-
 
 class AgentTodo:
     TODO_STATE_WAIT_ASSIGN = "wait_assign"
@@ -220,7 +218,7 @@ class AgentTodoState(Enum):
     def from_str(value):
         return next((s for s in AgentTodoState.__members__.values() if s.value == value), None)
 
-class AgentTodoTask:
+class AgentTodo:
     def __init__(self) -> None:
         self.todo_id = "todo#" + uuid.uuid4().hex
         self.todo_path : str = None
@@ -385,20 +383,30 @@ class AgentTask:
         
         return result
 
+# 谁在什么时间做了什么
 class AgentWorkLog:
+    # work type : [triage,plan,do,check]
     def __init__(self) -> None:
         self.logid = "worklog#" + uuid.uuid4().hex
-        self.owner_taskid:str = None
-        self.owner_todoid:str = None
-        self.type:str = "" # 默认为普通类型的log,特殊类型的Log一般伴随着重要的状态改变
+        self.owner_id:str = None # taskid or todoid
+        self.work_type:str = "" # 默认为普通类型的log,特殊类型的Log一般伴随着重要的状态改变
         self.timestamp = time.time()
         self.content:str = None
         self.result:str = None
         self.meta : dict = None
         self.operator = None
+
+    @classmethod
+    def create_by_content(cls,owner_id:str,work_type:str,content:str,operator:str) -> 'AgentWorkLog':
+        log = AgentWorkLog()
+        log.owner_id = owner_id
+        log.work_type = work_type
+        log.content = content
+        log.operator = operator
+        log.result = "OK"
+        return log
         
-    def to_dict(self) -> dict:
-        pass
+
 
 class AgentTaskManager(ABC):
     def __init__(self) -> None:
@@ -409,7 +417,7 @@ class AgentTaskManager(ABC):
         pass
 
     @abstractmethod
-    async def create_todos(self,owner_task_id:str,todos:List[AgentTodoTask]):
+    async def set_todos(self,owner_task_id:str,todos:List[AgentTodo]):
         # return todo_id
         pass
 
@@ -430,7 +438,7 @@ class AgentTaskManager(ABC):
     #    pass
 
     @abstractmethod   
-    async def get_todo(self,todo_id:str) -> AgentTodoTask:
+    async def get_todo(self,todo_id:str) -> AgentTodo:
         pass
 
     @abstractmethod    
@@ -438,7 +446,7 @@ class AgentTaskManager(ABC):
         pass
 
     @abstractmethod    
-    async def get_sub_todos(self,task_id:str) -> List[AgentTodoTask]:
+    async def get_sub_todos(self,task_id:str) -> List[AgentTodo]:
         pass
 
     #@abstractmethod    
@@ -454,7 +462,7 @@ class AgentTaskManager(ABC):
         pass
 
     @abstractmethod
-    async def update_todo(self,todo:AgentTodoTask):
+    async def update_todo(self,todo:AgentTodo):
         pass
 
     #@abstractmethod    

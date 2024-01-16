@@ -160,8 +160,8 @@ class BaseLLMProcess(ABC):
         # Action define in prompt, will be execute after llm compute
         prompt = await self.prepare_prompt(input)
         max_result_token = self.max_token - ComputeKernel.llm_num_tokens(prompt,self.model_name)
-        if max_result_token < MIN_PREDICT_TOKEN_LEN:
-            return LLMResult.from_error_str(f"prompt too long,can not predict")
+        #if max_result_token < MIN_PREDICT_TOKEN_LEN:
+        #    return LLMResult.from_error_str(f"prompt too long,can not predict")
         
         task_result: ComputeTaskResult = await (ComputeKernel.get_instance().do_llm_completion(
                 prompt,
