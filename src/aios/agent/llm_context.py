@@ -19,6 +19,9 @@ class LLMProcessContext:
 
     @staticmethod
     def aifunctions_to_inner_functions(all_inner_function:List[AIFunction]) -> List[Dict]:
+        if all_inner_function is None:
+            return []
+        
         result_func = []
         result_len = 0
         for inner_func in all_inner_function:
@@ -279,6 +282,9 @@ class SimpleLLMContext(LLMProcessContext):
         return None
 
     def get_function_set(self,set_name:str = None) -> List[AIFunction]:
+        if self.functions is None:
+            return None
+        
         if set_name is None:
             return self.functions.values()
         else:
@@ -296,6 +302,9 @@ class SimpleLLMContext(LLMProcessContext):
         return None
     
     def get_action_set(self,set_name:str = None) -> List[AIFunction]:
+        if self.actions is None:
+            return None
+        
         if set_name is None:
             return self.actions.values()
         else:

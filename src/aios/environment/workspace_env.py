@@ -228,7 +228,7 @@ class TodoListEnvironment(SimpleEnvironment):
         except Exception as e:
             return str(e)
     
-    async def wait_todo_done(self,todo_id:str,state=AgentTodo.TODO_STATE_WAITING_CHECK) -> AgentTodo:
+    async def wait_todo_done(self,todo_id:str,state=AgentTodoState.TODO_STATE_EXEC_OK) -> AgentTodo:
         todo_path = self._get_todo_path(todo_id)
         full_path = f"{self.root_path}/{todo_path}"
         async def check_done():
@@ -256,21 +256,21 @@ class TodoListEnvironment(SimpleEnvironment):
         return await self.get_todo_by_fullpath(full_path)
         
     
-    async def append_worklog(self, todo:AgentTodo, result:AgentTodoResult):
-        worklog = f"{self.root_path}/{todo.todo_path}/.worklog"
+    # async def append_worklog(self, todo:AgentTodo, result:AgentTodoResult):
+    #     worklog = f"{self.root_path}/{todo.todo_path}/.worklog"
 
-        async with aiofiles.open(worklog, mode='w+', encoding="utf-8") as f:
-            content = await f.read()
-            if len(content) > 0:
-                json_obj = json.loads(content)
-            else:
-                json_obj = {}
-            logs = json_obj.get("logs")
-            if logs is None:
-                logs = []
-            logs.append(result.to_dict())
-            json_obj["logs"] = logs
-            await f.write(json.dumps(json_obj),ensure_ascii=False)
+    #     async with aiofiles.open(worklog, mode='w+', encoding="utf-8") as f:
+    #         content = await f.read()
+    #         if len(content) > 0:
+    #             json_obj = json.loads(content)
+    #         else:
+    #             json_obj = {}
+    #         logs = json_obj.get("logs")
+    #         if logs is None:
+    #             logs = []
+    #         logs.append(result.to_dict())
+    #         json_obj["logs"] = logs
+    #         await f.write(json.dumps(json_obj),ensure_ascii=False)
 
 
 class WorkspaceEnvironment(CompositeEnvironment):

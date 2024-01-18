@@ -135,7 +135,7 @@ class AgentMemory:
 
         c.execute(query, tuple(params))
         rows = c.fetchall()
-        conn.close()
+
 
         return [self.from_db_row(row) for row in rows]
 
@@ -154,7 +154,7 @@ class AgentMemory:
             )
         ''')
         conn.commit()
-        conn.close()
+        #conn.close()
 
     @classmethod
     def from_db_row(self,row):
@@ -174,7 +174,7 @@ class AgentMemory:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (log.logid, log.owner_id, log.work_type, log.timestamp, log.content, log.result, meta_str, log.operator))
         conn.commit()
-        conn.close()
+        #conn.close()
 
     async def get_contact_summary(self,contact_id:str) -> str:
         if contact_id is None:

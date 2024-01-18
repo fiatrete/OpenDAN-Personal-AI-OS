@@ -72,7 +72,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 """
 context="Your master now in {location}, time: {now}, weather: {weather}."
 
-llm_context.actions.enable = ["agent.workspace.update_task","agent.workspace.cancel_task","post_message"]
+llm_context.actions.enable = ["agent.workspace.confirm_task","agent.workspace.cancel_task","post_message"]
 
 [behavior.plan_task]
 ## 首次处理任务
@@ -152,7 +152,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 
 # 对于DO操作来说，让Agent查询自己的能力集合是否更合适？
 llm_context.actions.enable = ["agent.workspace.update_todo","post_message","agent.workspace.write_file","agent.workspace.append_file"]
-llm_context.functions.enable = ["agent.workspace.read_file","agent.workspace.list_dir","system.shell.exec","system.shell.run_code","aigc.text_2_image","aigc.text_2_voice","web.search.duckduckgo"]
+llm_context.functions.enable = ["agent.workspace.read_file","agent.workspace.list_dir","system.shell.exec","aigc.text_2_image","aigc.text_2_voice","web.search.duckduckgo"]
 
 [behavior.check]
 # check TODO result
@@ -178,9 +178,9 @@ llm_context.actions.enable = ["agent.workspace.update_todo"]
 llm_context.functions.enable =  ["agent.workspace.read_file","agent.workspace.list_dir","system.shell.exec","system.shell.run_code","aigc.image_2_text","aigc.voice_2_text","web.search.duckduckgo"]
 
 
-[behavior.self_thinking]
+#[behavior.self_thinking]
 # self thing的主要目的是对各种chatlog,worklog进行分析，并更新面向人和事的summary。
-type="AgentSelfThinking"
+#type="AgentSelfThinking"
 
 #[behavior.self_improve]
 # self_improve 是最后的行为，允许Agent结合自己的工作经验，改进自己的提示词（注意保留历史版本）

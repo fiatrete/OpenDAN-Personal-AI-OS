@@ -268,9 +268,10 @@ class LLMAgentBaseProcess(BaseLLMProcess):
         #prompt.append_system_message(self.reply_format)
 
         ## Context
-        context = self._format_content_by_env_value(self.context,context_info)
-        system_prompt_dict["context"] = context
-        #prompt.append_system_message(context)
+        if self.context:
+            context = self._format_content_by_env_value(self.context,context_info)
+            system_prompt_dict["context"] = context
+            #prompt.append_system_message(context)
 
         system_prompt_dict["support_actions"] = self.get_action_desc()
 
@@ -371,7 +372,7 @@ class AgentMessageProcess(LLMAgentBaseProcess):
         return await self.memory.load_chatlogs(msg)
 
     async def get_log_summary(self,msg:AgentMsg)->str:
-        return await self.memory.get_log_summary(msg)
+        return None
         
 
     async def get_extend_known_info(self,msg:AgentMsg,prompt:LLMPrompt)->str:

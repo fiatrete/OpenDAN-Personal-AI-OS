@@ -148,6 +148,7 @@ class AIOS_Shell:
         #AgentManager.get_instance().register_environment("fs", FilesystemEnvironment)
         #AgentManager.get_instance().register_environment("knowledge", LocalKnowledgeBase)
         AgentWorkspace.register_ai_functions()
+        ShellEnvironment.register_ai_functions()
 
         if await AgentManager.get_instance().initial() is not True:
             logger.error("agent manager initial failed!")

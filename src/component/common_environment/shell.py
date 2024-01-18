@@ -9,7 +9,7 @@ class ShellEnvironment(SimpleEnvironment):
         super().__init__("shell")
 
     @classmethod
-    def register_global_functions(cls):
+    def register_ai_functions(cls):
         operator_param = ParameterDefine.create_parameters({"command":"command will execute"})
         GlobaToolsLibrary.get_instance().register_tool_function(SimpleAIFunction("system.shell.exec",
                                         "execute shell command in linux bash",

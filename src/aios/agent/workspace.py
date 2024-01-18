@@ -87,7 +87,7 @@ class LocalAgentTaskManger(AgentTaskManager):
         
 
 
-    async def set_todos(self,owner_task_id:str,todos:List[AgentTodo]):
+    async def set_todos(self,owner_task_id:str,todos:List[Dict]):
         owner_task_path = self._get_obj_path(owner_task_id)
         if owner_task_path is None:
             return f"owner task {owner_task_id} not found"
@@ -107,12 +107,13 @@ class LocalAgentTaskManger(AgentTaskManager):
         try:
             step_order = 0
             for todo in todos:
-                todo.step_order = step_order
-                todo.owner_taskid = owner_task_id
-                todo_path = f"{self.root_path}/{owner_task_path}/#{step_order} {todo.title}.todo"
-                self._save_obj_path(todo.todo_id,todo_path)
+                todo_obj = AgentTodo.from_dict(todo)
+                todo_obj.step_order = step_order
+                todo_obj.owner_taskid = owner_task_id
+                todo_path = f"{self.root_path}/{owner_task_path}/#{step_order} {todo_obj.title}.todo"
+                self._save_obj_path(todo_obj.todo_id,todo_path)
                 async with aiofiles.open(todo_path, mode='w', encoding="utf-8") as f:
-                    await f.write(json.dumps(todo.to_dict(),ensure_ascii=False))   
+                    await f.write(json.dumps(todo_obj.to_dict(),ensure_ascii=False))   
                 logger.info("create_todos at %s OK!",todo_path)     
                 step_order += 1
         except Exception as e:
@@ -212,9 +213,10 @@ class LocalAgentTaskManger(AgentTaskManager):
 
     async def get_sub_tasks(self,task_id:str) -> List[AgentTask]:
         task_path = self._get_obj_path(task_id)
+        
         if task_path is None:
             return []
-        
+        task_path = f"{self.root_path}/{task_path}"
         sub_tasks = []
         for sub_item in os.listdir(task_path):
             if sub_item.startswith("."):
@@ -235,23 +237,36 @@ class LocalAgentTaskManger(AgentTaskManager):
         task_path = self._get_obj_path(task_id)
         if task_path is None:
             return []
-        
+        task_path = f"{self.root_path}/{task_path}"
         sub_todos = []
         for sub_item in os.listdir(task_path):
             if sub_item.startswith("."):
                 continue
             if sub_item == "workspace":
                 continue
+            if sub_item == "details":
+                continue
 
             full_path = os.path.join(task_path, sub_item)
             if os.path.isfile(full_path) and sub_item.endswith(".todo"):
-                sub_todo = await self.get_todo_by_path(f"{task_path}/{sub_item}")
+                sub_todo = await self.get_todo_by_path(full_path)
                 if sub_todo:
                     sub_todos.append(sub_todo)
         
         return sub_todos
 
- 
+    async def get_todo_by_path(self,todo_path:str) -> AgentTodo:
+        async with aiofiles.open(todo_path, mode='r', encoding="utf-8") as f:
+            s = await f.read()
+            todo_dict = json.loads(s)
+            result_todo:AgentTodo =  AgentTodo.from_dict(todo_dict)
+            if result_todo:
+                result_todo.todo_path = todo_path
+            else:
+                logger.error("get_todo_by_path:%s,parse failed!",todo_path)
+            
+            return result_todo
+
     #async def get_task_depends(self,task_id:str) -> List[AgentTask]:
     #    pass
 
@@ -259,6 +274,10 @@ class LocalAgentTaskManger(AgentTaskManager):
     async def list_task(self,filter:Optional[dict] = None ) -> List[AgentTask]:
         directory_path = self.root_path
         result_list:List[AgentTask] = []
+        special_state = None
+        if filter:
+            special_state = filter.get("state")
+            #agent_id = filter.get("agent_id")
 
         for entry in os.scandir(directory_path):
             if not entry.is_dir():
@@ -269,8 +288,15 @@ class LocalAgentTaskManger(AgentTaskManager):
                 continue
             task_item = await self._get_task_by_fullpath(entry.path)
             if task_item:
-                if not task_item.is_finish():
-                    result_list.append(task_item)
+                if task_item.is_finish():
+                   continue
+                
+                if special_state:
+                    if task_item.state != special_state:
+                        continue
+
+                
+                result_list.append(task_item)
         
         return result_list
         
@@ -309,22 +335,85 @@ class LocalAgentTaskManger(AgentTaskManager):
     #    pass
     
     #todo共享其所在task的文件夹
+    # if task_id is none, means root folder in workspace
+    def _get_taskfile_path(self,task_id:str,path:str)->str:
+        root_path = self.root_path
+        if task_id is None:
+            root_path = f"{root_path}/workspace"
+        else:
+            task_path = self._get_obj_path(task_id)
+            if task_path is None:
+                return None
+            root_path = f"{task_path}/wrorkspace"
+        
+        file_path = f"{root_path}/{path}"
+        return file_path
 
-    async def get_task_file(self,task_id:str,path:str)->str:
-        #return fileid
-        pass
+    async def read_task_file(self,task_id:str,path:str)->str:
+        file_path = self._get_taskfile_path(task_id,path)
+        if not os.path.exists(file_path):
+            return None
+        
+        try:
+            async with aiofiles.open(file_path, mode='r', encoding="utf-8") as f:
+                content = await f.read()
+                return content
+        except Exception as e:
+            logger.error("read_task_file failed:%s",e)
+            return None    
+        
+    
+    async def write_task_file(self,task_id:str,path:str,content:str):
+        file_path = self._get_taskfile_path(task_id,path)
+        # write file
+        try:
+            dir_name = os.path.dirname(file_path)
+            os.makedirs(dir_name)
+            async with aiofiles.open(file_path, mode='w', encoding="utf-8") as f:
+                await f.write(content)
+        except Exception as e:
+            logger.error("write_task_file failed:%s",e)
+            return str(e)
+        
+    async def append_task_file(self,task_id:str,path:str,content:str):
+        file_path = self._get_taskfile_path(task_id,path)
+        # append file
+        try:
+            async with aiofiles.open(file_path, mode='a', encoding="utf-8") as f:
+                await f.write(content)
+        except Exception as e:
+            logger.error("append_task_file failed:%s",e)
+            return str(e)
+
+
+    async def list_task_dir(self,task_id:str,path:str) -> List[str]:
+        dir_path = self._get_taskfile_path(task_id,path)
+        if not os.path.exists(dir_path):
+            return None
+        
+        try:
+            result_node = os.listdir(dir_path)
+            result = []
+            for name in result_node:
+                if name.startswith("."):
+                    continue
+
+                result.append(name)
+            return result
+        except Exception as e:
+            logger.error("list_task_dir failed:%s",e)
+            return None
     
 
-    async def set_task_file(self,task_id:str,path:str,fileid:str):
-        pass
-
-
-    async def list_task_file(self,task_id:str,path:str):
-        pass
-
-
     async def remove_task_file(self,task_id:str,path:str):
-        pass
+        file_path = self._get_taskfile_path(task_id,path)
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            logger.error("remove_task_file failed:%s",e)
+            return str(e)
+        
+        return None
 
 
 
@@ -448,7 +537,7 @@ class AgentWorkspace:
             task : AgentTask = await _workspace.task_mgr.get_task(task_id)
             if task is None:
                 return f"task {task_id} not found"
-            task.state = "cancel"
+            task.state = AgentTaskState.TASK_STATE_CANCEL
             await _workspace.task_mgr.update_task(task)
             return "canncel task ok"
         
@@ -463,6 +552,34 @@ class AgentWorkspace:
         )
         GlobaToolsLibrary.get_instance().register_tool_function(cancel_task_action)
 
+
+        async def confirm_task(parameters):
+            _workspace = parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            task_id = parameters.get("task_id")
+            task : AgentTask = await _workspace.task_mgr.get_task(task_id)
+            if task is None:
+                return f"task {task_id} not found"
+            if parameters.get("priority"):
+                task.priority = parameters.get("priority")
+            if parameters.get("next_do_date"):
+                task.next_do_date = parameters.get("next_do_date")
+            task.state = AgentTaskState.TASK_STATE_CONFIRMED
+            await _workspace.task_mgr.update_task(task)
+            return "confirm task ok"
+        parameters = ParameterDefine.create_parameters({
+            "task_id": {"type": "string", "description": "task id which want to confirm"},
+            "next_do_date": {"type": "string", "description": "optional,confirm task next do date"},
+            "priority": {"type": "int", "description": "optional,task priority from 1-10"},
+        })
+        confirm_task_action = SimpleAIFunction(
+            "agent.workspace.confirm_task",
+            "Confirm this task",
+            confirm_task,
+            parameters
+        )
+        GlobaToolsLibrary.get_instance().register_tool_function(confirm_task_action)
 
         async def list_task(parameters):
             _workspace = parameters.get("_workspace")
@@ -565,3 +682,96 @@ class AgentWorkspace:
                                               "update todo to new state",
                                                update_todo,parameters)
         GlobaToolsLibrary.get_instance().register_tool_function(update_todo_ai_function)
+
+
+        # write file
+        async def write_task_file(parameters):
+            _workspace : AgentWorkspace= parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            task_id = parameters.get("task_id")
+            path = parameters.get("filename")
+            content = parameters.get("content")
+            await _workspace.task_mgr.write_task_file(task_id,path,content)
+            return "write task file ok"
+        parameters = ParameterDefine.create_parameters({
+            "filename": {"type": "string", "description": "filename"},
+            "content": {"type": "string", "description": "file content"},
+        })
+        write_task_file_ai_function = SimpleAIFunction("agent.workspace.write_file",
+                                              "write file for task",
+                                               write_task_file,parameters)
+        GlobaToolsLibrary.get_instance().register_tool_function(write_task_file_ai_function)
+
+        # append file
+        async def append_task_file(parameters):
+            _workspace : AgentWorkspace= parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            task_id = parameters.get("task_id")
+            path = parameters.get("filename")
+            content = parameters.get("content")
+            await _workspace.task_mgr.append_task_file(task_id,path,content)
+            return "append task file ok"
+        parameters = ParameterDefine.create_parameters({
+            "filename": {"type": "string", "description": "filename"},
+            "content": {"type": "string", "description": "file content"},
+        })
+        append_task_file_ai_function = SimpleAIFunction("agent.workspace.append_file",
+                                              "append file for task",
+                                               append_task_file,parameters)
+        GlobaToolsLibrary.get_instance().register_tool_function(append_task_file_ai_function)
+
+        # read file
+        async def read_task_file(parameters):
+            _workspace : AgentWorkspace= parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            task_id = parameters.get("task_id")
+            path = parameters.get("filename")
+            content = await _workspace.task_mgr.read_task_file(task_id,path)
+            return content
+        parameters = ParameterDefine.create_parameters({
+            "filename": {"type": "string", "description": "filename"},
+        })
+        read_task_file_ai_function = SimpleAIFunction("agent.workspace.read_file",
+                                              "read file for task",
+                                               read_task_file,parameters)
+        GlobaToolsLibrary.get_instance().register_tool_function(read_task_file_ai_function)
+
+        # list dir
+        async def list_task_dir(parameters):
+            _workspace : AgentWorkspace= parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            task_id = parameters.get("task_id")
+            path = parameters.get("path")
+            content = await _workspace.task_mgr.list_task_dir(task_id,path)
+            return content
+        parameters = ParameterDefine.create_parameters({
+            "path": {"type": "string", "description": "The relative path of the dir"},
+        })
+        list_task_dir_ai_function = SimpleAIFunction("agent.workspace.list_dir",
+                                              "list dir in task workspace",
+                                               list_task_dir,parameters)
+        GlobaToolsLibrary.get_instance().register_tool_function(list_task_dir_ai_function)
+
+        # remove file
+        async def remove_task_file(parameters):
+            _workspace : AgentWorkspace= parameters.get("_workspace")
+            if _workspace is None:
+                return "_workspace not found"
+            task_id = parameters.get("task_id")
+            path = parameters.get("filename")
+            content = await _workspace.task_mgr.remove_task_file(task_id,path)
+            return content
+        parameters = ParameterDefine.create_parameters({
+            "filename": {"type": "string", "description": "filename"},
+        })
+        remove_task_file_ai_function = SimpleAIFunction("agent.workspace.remove_file",
+                                              "remove file for task",
+                                               remove_task_file,parameters)
+        GlobaToolsLibrary.get_instance().register_tool_function(remove_task_file_ai_function)
+
+
+        

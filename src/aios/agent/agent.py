@@ -12,11 +12,9 @@ import datetime
 import copy
 import sys
 
-
-
 from ..proto.agent_msg import AgentMsg
 from ..proto.ai_function import *
-from ..proto.agent_task import AgentTaskState,AgentTask,AgentTodo,AgentTodoResult
+from ..proto.agent_task import AgentTaskState,AgentTask,AgentTodo, AgentTodoState
 from ..proto.compute_task import *
 
 from .agent_base import *
@@ -110,8 +108,6 @@ class AIAgent(BaseAIAgent):
 
         self.behaviors:Dict[str,BaseLLMProcess] = {}
         
-        
-
     async def initial(self,params:Dict = None):
         self.memory = AgentMemory(self.agent_id,self.chat_db)
         self.prviate_workspace = AgentWorkspace(self.agent_id) 
@@ -172,9 +168,6 @@ class AIAgent(BaseAIAgent):
             else:
                 logger.error(f"load LLMProcess {process_config_name} failed!")
                 return False
-
-       
-
         return True
 
     def get_id(self) -> str:
@@ -200,7 +193,6 @@ class AIAgent(BaseAIAgent):
 
     def get_agent_prompt(self) -> LLMPrompt:
         return self.agent_prompt
-
 
     async def _get_context_info(self) -> Dict:
         context_info = {}
@@ -252,7 +244,10 @@ class AIAgent(BaseAIAgent):
         llm_process : BaseLLMProcess = self.behaviors.get("triage_tasks")
         if llm_process:
             if self.prviate_workspace:
-                tasklist = await self.prviate_workspace.task_mgr.list_task()
+                filter = {}
+                filter["state"] = AgentTaskState.TASK_STATE_WAIT
+            
+                tasklist = await self.prviate_workspace.task_mgr.list_task(filter)
                 if tasklist:
                     input_parms = {
                         "tasklist":tasklist,
@@ -265,7 +260,7 @@ class AIAgent(BaseAIAgent):
                         logger.info(f"llm process triage_tasks ignore!")
                     else:
                         logger.info(f"llm process triage_tasks ok!,think is:{llm_result.resp}")
-                    self.agent_energy -= 5  
+                    self.agent_energy -= 3  
 
                     # for agent_task in tasklist:
                     #     if self.agent_energy <= 0:
@@ -287,235 +282,76 @@ class AIAgent(BaseAIAgent):
                     #             logger.info(f"llm process review_task ok!,think is:{determine}")
                     #         self.agent_energy -= 1  
 
-
-
-    async def _llm_run_todo_list(self, todo_list_type: TodoListType):
-        workspace : WorkspaceEnvironment = self.get_workspace_by_msg(None)
-        logger.info(f"agent {self.agent_id} do my work start!")
-
-        # review todolist
-        #if await self.need_review_todolist():
-        #    await self._llm_review_todolist(workspace)
-
-        todo_list = workspace.todo_list[todo_list_type]
-        need_todo = await todo_list.get_todo_list(self.agent_id)
-        
-        check_count = 0
-        do_count = 0
-        review_count = 0
-
-        for todo in need_todo:
-            if self.agent_energy <= 0:
-                break
-            
-            do_prompts = self._can_do_todo(todo_list_type, todo)
-            if do_prompts:
-                prompt : LLMPrompt = LLMPrompt()
-                prompt.append(self.agent_prompt)
-                prompt.append(workspace.get_role_prompt(self.agent_id))
-                prompt.append(do_prompts)
-                prompt.append(todo.to_prompt())
-                
-                do_result : AgentTodoResult = await self._llm_do_todo(todo, prompt, workspace)
-                todo.last_do_time = datetime.datetime.now().timestamp()
-                todo.retry_count += 1
-               
-                match do_result.result_code:
-                    case AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR:
-                        continue
-                    case AgentTodoResult.TODO_RESULT_CODE_OK:
-                        todo.result = do_result
-                        await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_WAITING_CHECK)
-                    case AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR:
-                        await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_EXEC_FAILED)
-
-                await todo_list.append_worklog(todo,do_result)
-                self.agent_energy -= 2
-                do_count += 1
-                
-                # review_result = await self._llm_review_todo(todo,workspace)
-                # todo.last_review_time = datetime.datetime.now().timestamp()
-                continue
-
-            check_prompts = self._can_check_todo(todo_list_type, todo)
-            if check_prompts:
-                prompt : LLMPrompt = LLMPrompt()
-                prompt.append(self.agent_prompt)
-                prompt.append(workspace.get_role_prompt(self.agent_id))
-                prompt.append(check_prompts)
-
-                if todo.last_check_result:
-                    prompt.append(LLMPrompt(todo.last_check_result))
-
-                prompt.append(todo.detail)
-                prompt.append(todo.result)
-
-                check_result: AgentTodoResult = await self._llm_check_todo(todo, prompt, workspace)
-                todo.last_check_time = datetime.datetime.now().timestamp()
-
-                match check_result.result_code:
-                    case AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR:
-                        continue
-                    case AgentTodoResult.TODO_RESULT_CODE_OK:
-                        await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_DONE)
-                    case AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR:
-                        await todo_list.update_todo(todo.todo_id,AgentTodo.TDDO_STATE_CHECKFAILED)
-
-                await todo_list.append_worklog(todo, check_result)
-                self.agent_energy -= 1
-                check_count += 1
-                continue
-            
-            review_prompts = self._can_review_todo(todo_list_type, todo)
-            if review_prompts:
-                prompt.append(workspace.get_prompt())
-                prompt.append(workspace.get_role_prompt(self.agent_id))
-                prompt.append(review_prompts)
-
-                todo_tree = todo_list.get_todo_tree("/")
-                prompt.append(LLMPrompt(todo_tree))
-
-                do_result : AgentTodoResult = await self._llm_review_todo(todo, prompt, workspace)
-                todo.last_review_time = datetime.datetime.now().timestamp()
-
-                match do_result.result_code:
-                    case AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR:
-                        continue
-                    case AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR:
-                        continue
-                    case AgentTodoResult.TODO_RESULT_CODE_OK:
-                        await todo_list.update_todo(todo.todo_id,AgentTodo.TODO_STATE_REVIEWED)
-
-                await todo_list.append_worklog(todo,do_result)
-                self.agent_energy -= 1
-                review_count += 1
-                continue
-
-        logger.info(f"agent {self.agent_id} ,check:{check_count} todo,do:{do_count} todo.")
-    
-   
-    def _can_review_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> LLMPrompt:
-        do_prompts = self.todo_prompts[todo_list_type].get("review")
-        if not do_prompts:
-            return None
-
-        if todo.can_review() is False:
-            return None
-
-        return do_prompts
-        
-
-    def _can_check_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> LLMPrompt:
-        do_prompts = self.todo_prompts[todo_list_type].get("check")
-        if not do_prompts:
-            return None
-
-        if todo.can_check() is False:
-            return None
-
-        if todo.checker is not None:
-            if todo.checker != self.agent_id:
-                return None
-        else:
-            if self.can_do_unassigned_task is False:
-                return None
+    async def llm_do_todo(self, todo: AgentTodo):
+        llm_process : BaseLLMProcess = self.behaviors.get("do")
+        logger.info(f"agent {self.agent_id} DO todo {todo.todo_path} start!")
+        if llm_process:
+            input_parms = {
+                "todo":todo,
+                "context_info": await self._get_context_info()
+            }
+            llm_result : LLMResult = await llm_process.process(input_parms)
+            if llm_result.state == LLMResultStates.ERROR:
+                logger.error(f"llm process do_todo error:{llm_result.compute_error_str}")
+            elif llm_result.state == LLMResultStates.IGNORE:
+                logger.info(f"llm process do_todo ignore!")
             else:
-                todo.checker = self.agent_id
+                logger.info(f"llm process do_todo ok!,think is:{llm_result.resp}")
+            self.agent_energy -= 1
 
-        return do_prompts
-
-    def _can_do_todo(self, todo_list_type: TodoListType, todo:AgentTodo) -> LLMPrompt:
-        do_prompts = self.todo_prompts[todo_list_type].get("do")
-        if not do_prompts:
-            return None
-        
-        if todo.can_do() is False:
-            return None
-
-        if todo.worker is not None:
-            if todo.worker != self.agent_id:
-                return None
-        else:
-            if self.can_do_unassigned_task is False:
-                return None
+    async def llm_check_todo(self, todo: AgentTodo):
+        llm_process : BaseLLMProcess = self.behaviors.get("check")
+        logger.info(f"agent {self.agent_id} CHECK todo {todo.todo_path} start!")
+        if llm_process:
+            input_parms = {
+                "todo":todo,
+                "context_info": await self._get_context_info()
+            }
+            llm_result : LLMResult = await llm_process.process(input_parms)
+            if llm_result.state == LLMResultStates.ERROR:
+                logger.error(f"llm process check_todo error:{llm_result.compute_error_str}")
+            elif llm_result.state == LLMResultStates.IGNORE:
+                logger.info(f"llm process check_todo ignore!")
             else:
-                todo.worker = self.agent_id
+                logger.info(f"llm process check_todo ok!,think is:{llm_result.resp}")
+            self.agent_energy -= 1
 
-        return do_prompts
+            return 
 
-    async def _llm_do_todo(self, todo: AgentTodo, prompt: LLMPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
-        result = AgentTodoResult()
-        
-        task_result:ComputeTaskResult = await self.do_llm_complection(prompt, is_json_resp=True)
-        if task_result.error_str is not None:
-            logger.error(f"_llm_do compute error:{task_result.error_str}")
-            result.result_code = AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR
-            result.error_str = task_result.error_str
-            return result
+    async def llm_plan_task(self,task:AgentTask):
+        llm_process : BaseLLMProcess = self.behaviors.get("plan_task")
+        logger.info(f"agent {self.agent_id} PLAN task {task.task_path} start!")
+        if llm_process:
+            input_parms = {
+                "task":task,
+                "context_info": await self._get_context_info()
+            }
+            llm_result : LLMResult = await llm_process.process(input_parms)
+            if llm_result.state == LLMResultStates.ERROR:
+                logger.error(f"llm process plan_task error:{llm_result.compute_error_str}")
+            elif llm_result.state == LLMResultStates.IGNORE:
+                logger.info(f"llm process plan_task ignore!")
+            else:
+                logger.info(f"llm process plan_task ok!,think is:{llm_result.resp}")
+            self.agent_energy -= 1
 
-        llm_result = LLMResult.from_str(task_result.result_str)
-        # result_str is the explain of how to do this todo
-        result.result_str = llm_result.resp
-        result.op_list = llm_result.op_list
-        if llm_result.post_msgs is not None:
-            for msg in llm_result.post_msgs:
-                msg.sender = self.agent_id
-                msg.topic = f"{todo.title}##{todo.todo_id}"
-                #msg.prev_msg_id = todo.todo_id
-                chatsession = AIChatSession.get_session(self.agent_id,f"{msg.target}#{msg.topic}",self.chat_db)
-                chatsession.append(msg)
-                resp = await AIBus.get_default_bus().post_message(msg)
-                logging.info(f"agent {self.agent_id} send msg to {msg.target} result:{resp}")
+    async def llm_review_task(self,task:AgentTask):
+        llm_process : BaseLLMProcess = self.behaviors.get("review_task")
+        logger.info(f"agent {self.agent_id} REVIEW task {task.task_path} start!")
+        if llm_process:
+            input_parms = {
+                "task":task,
+                "context_info": await self._get_context_info()
+            }
+            llm_result : LLMResult = await llm_process.process(input_parms)
+            if llm_result.state == LLMResultStates.ERROR:
+                logger.error(f"llm process review_task error:{llm_result.compute_error_str}")
+            elif llm_result.state == LLMResultStates.IGNORE:
+                logger.info(f"llm process review_task ignore!")
+            else:
+                logger.info(f"llm process review_task ok!,think is:{llm_result.resp}")
+            self.agent_energy -= 1
 
-        result_str, have_error = await workspace.exec_op_list(llm_result.action_list, self.agent_id)
-        if have_error:
-            result.result_code = AgentTodoResult.TODO_RESULT_CODE_EXEC_OP_ERROR
-            #result.error_str = error_str
-            return result
-        result.result_str = result_str
-        return result
-
-    async def _llm_check_todo(self, todo: AgentTodo, prompt: LLMPrompt, workspace: WorkspaceEnvironment) -> AgentTodoResult:
-        result = AgentTodoResult()
-        
-        inner_functions,_ = BaseAIAgent.get_inner_functions(workspace)
-        task_result:ComputeTaskResult = await self.do_llm_complection(prompt,inner_functions=inner_functions,is_json_resp=True)
-
-        if task_result.error_str is not None:
-            logger.error(f"_llm_do compute error:{task_result.error_str}")
-            result.result_code = AgentTodoResult.TODO_RESULT_CODE_LLM_ERROR
-            result.error_str = task_result.error_str
-            return result
-        result.result_str = task_result.result_str
-        todo.last_check_result = task_result.result_str
-        return result
-    
-    async def _llm_review_todo(self, todo:AgentTodo, prompt: LLMPrompt, workspace: WorkspaceEnvironment):
-        inner_functions,_ = BaseAIAgent.get_inner_functions(workspace)
-
-        task_result:ComputeTaskResult = await self.do_llm_complection(prompt,inner_functions=inner_functions)
-        if task_result.result_code != ComputeTaskResultCode.OK:
-            logger.error(f"_llm_review_todos compute error:{task_result.error_str}")
-            return
-
-        return
-
-    # async def do_blance_knowledge_base(selft):
-    #     # 整理自己的知识库(让分类更平衡，更由于自己以后的工作)，并尝试更新学习目标
-    #     current_path = "/"
-    #     current_list = kb.get_list(current_path)
-    #     self_assessment_with_goal = self.get_self_assessment_with_goal()
-    #     learn_goal = {}
-
-
-    #     llm_blance_knowledge_base(current_path,current_list,self_assessment_with_goal,learn_goal,learn_power)
-
-    #     # 主动学习
-    #     # 方法目前只有使用搜索引擎一种？
-    #     for goal in learn_goal.items():
-    #         self.llm_learn_with_search_engine(kb,goal,learn_power)
-    #         if learn_power <= 0:
-    #             break
 
     async def do_self_think(self):
         session_id_list = AIChatSession.list_session(self.agent_id,self.chat_db)
@@ -524,23 +360,14 @@ class AIAgent(BaseAIAgent):
                 break
             used_energy = await self.think_chatsession(session_id)
             self.agent_energy -= used_energy
-
-        # todo_logs = await self.get_todo_logs()
-        # for todo_log in todo_logs:
-        #     if self.agent_energy <= 0:
-        #         break
-        #     used_energy = await self.think_todo_log(todo_log)
-        #     self.agent_energy -= used_energy
-
         return
-
-    #async def think_todo_log(self,todo_log:AgentWorkLog):
-    #    pass
-
-
 
     def need_self_think(self) -> bool:
         return False
+
+    async def _self_imporve(self):
+        if self.need_self_think():
+            await self.do_self_think()
 
     def wake_up(self) -> None:
         if self.agent_task is None:
@@ -548,10 +375,9 @@ class AIAgent(BaseAIAgent):
         else:
             logger.warning(f"agent {self.agent_id} is already wake up!")
 
-    # agent loop
     async def _on_timer(self):
         while True:
-            await asyncio.sleep(15)
+            await asyncio.sleep(5)
             try:
                 now = time.time()
                 if self.last_recover_time is None:
@@ -565,17 +391,36 @@ class AIAgent(BaseAIAgent):
                     continue
 
                 await self.llm_triage_tasklist()
-
-                # complete & check todo
-                #await self._llm_run_todo_list(TodoListType.TO_WORK)
-
-                ##await self._llm_run_todo_list(TodoListType.TO_LEARN)
-               
-                if self.need_self_think():
-                    await self.do_self_think()
+                task_list:List[AgentTask] = await self.prviate_workspace.task_mgr.list_task()
                 
-                # review other's todo
-                # self.review_other_works()
+                for task in task_list:
+                    if self.agent_energy <= 0:
+                        break
+
+                    if task.can_plan():
+                        # PLAN Task
+                        await self.llm_plan_task(task)
+
+                    if task.state == AgentTaskState.TASK_STATE_DOING:
+                        # DO or Check Todo
+                        can_review = False
+                        todolist = await self.prviate_workspace.task_mgr.get_sub_todos(task.task_id)
+                        for todo in todolist:
+                            if self.agent_energy <= 0:
+                                break
+                            if todo.state == AgentTodoState.TODO_STATE_WAITING or todo.state == AgentTodoState.TODO_STATE_EXEC_FAILED:
+                                await self.llm_do_todo(todo)
+                            if todo.state == AgentTodoState.TODO_STATE_EXEC_OK:
+                                await self.llm_check_todo(todo)
+
+                        if can_review:
+                            task.state = AgentTaskState.TASK_STATE_WAITING_REVIEW
+
+                    if task.state == AgentTaskState.TASK_STATE_WAITING_REVIEW:
+                        await self.llm_review_task(task)
+                    
+                await self._self_imporve()
+                
             except Exception as e:
                 tb_str = traceback.format_exc()
                 logger.error(f"agent {self.agent_id} on timer error:{e},{tb_str}")

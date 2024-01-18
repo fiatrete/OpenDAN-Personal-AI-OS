@@ -237,7 +237,7 @@ class OpenAI_ComputeNode(ComputeNode):
                     result.error_str = str(e)
                     return result
 
-                logger.info(f"openai response: {resp}")
+                #logger.info(f"openai response: {resp}")
                 #TODO: gpt-4v api is image_2_text ?
                 if mode_name == "gpt-4-vision-preview": 
                     status_code = resp.choices[0].finish_reason
