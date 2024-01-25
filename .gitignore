@@ -9,6 +9,7 @@ history.txt
 aios_shell_history.txt
 math_school_env.db
 workflows.db
-
+venv-linux
+venv_test
 
 rootfs/test_doc/
