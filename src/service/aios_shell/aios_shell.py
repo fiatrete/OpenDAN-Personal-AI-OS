@@ -19,6 +19,7 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
+from slack_tunnel import SlackTunnel
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
@@ -236,6 +237,7 @@ class AIOS_Shell:
         TelegramTunnel.register_to_loader()
         EmailTunnel.register_to_loader()
         DiscordTunnel.register_to_loader()
+        SlackTunnel.register_to_loader()
         user_data_dir = str(AIStorage.get_instance().get_myai_dir())
         tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
         tunnel_config = None
@@ -294,6 +296,10 @@ class AIOS_Shell:
             case "discord":
                 tunnel_config["type"] = "DiscordTunnel"
                 input_table["token"] = UserConfigItem("discord bot token\n You can get it from https://discord.com/developers/applications ,read https://discordpy.readthedocs.io/en/stable/discord.html for more details")
+            case "slack":
+                tunnel_config["type"] = "SlackTunnel"
+                input_table["token"] = UserConfigItem("slack bot token\n You can get it from https://api.slack.com/apps")
+                input_table["app_token"] = UserConfigItem("slack app token\n You can get it from https://api.slack.com/apps")
             case _:
                 error_text = FormattedText([("class:error", f"tunnel type {tunnel_type}not support!")])
                 print_formatted_text(error_text,style=shell_style)
