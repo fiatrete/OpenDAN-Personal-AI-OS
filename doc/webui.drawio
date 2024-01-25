@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2023-12-13T22:01:24.775Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/114.0.5735.289 Electron/25.9.4 Safari/537.36" etag="E51kKpuxtuq7HP7WJjo-" version="22.1.2" type="device" pages="8">
+<mxfile host="Electron" modified="2024-01-24T06:01:58.929Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/114.0.5735.289 Electron/25.9.4 Safari/537.36" etag="cbG4SBY5ZvEAgmpD3cJB" version="22.1.2" type="device" pages="8">
   <diagram name="Init" id="eZ0Fsh2vPRb0vo3J8o-a">
-    <mxGraphModel dx="2046" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2046" dy="2268" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -79,11 +79,14 @@
         <mxCell id="KPRGaicIhTDQW55mVU-i-10" value="（Optional）" style="strokeWidth=1;shadow=0;dashed=0;align=center;html=1;shape=mxgraph.mockup.text.textBox;fontColor=#666666;align=left;fontSize=17;spacingLeft=4;spacingTop=-3;whiteSpace=wrap;strokeColor=#666666;mainText=" parent="1" vertex="1">
           <mxGeometry x="320" y="400" width="280" height="20" as="geometry" />
         </mxCell>
+        <mxCell id="QJbo11wnmIjzMhqgkEGm-1" value="txid是鼠标移动上去才显示&lt;br&gt;如果链接了钱包，自己的发言可的底色要有所不同" style="strokeWidth=1;shadow=0;dashed=0;align=left;html=1;shape=mxgraph.mockup.text.stickyNote2;fontColor=#666666;mainText=;fontSize=14;whiteSpace=wrap;fillColor=#ffffcc;strokeColor=#F62E00;" parent="1" vertex="1">
+          <mxGeometry x="340" y="-109.99999999999989" width="200" height="150" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
   <diagram id="BYP5jSDgWWDytgGHs8je" name="Page-7">
-    <mxGraphModel dx="2046" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2044" dy="1167" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -91,7 +94,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="EX4l-TP_pYMqB1o-9Pjg" name="MainPage">
-    <mxGraphModel dx="1410" dy="805" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2044" dy="1167" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -152,7 +155,7 @@
         <mxCell id="38aqMLvnZxr78S6UhFXi-6" value="Logs/Command Line" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="117.5" y="570" width="122.5" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="0Z58B_YgUAABuKnZxCUR-1" value="考虑手机上也能很好的排版" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+        <mxCell id="0Z58B_YgUAABuKnZxCUR-1" value="考虑手机上也能很好的排版" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
           <mxGeometry x="120" y="10" width="170" height="30" as="geometry" />
         </mxCell>
       </root>

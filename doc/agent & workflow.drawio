@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2024-01-17T20:16:17.211Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/114.0.5735.289 Electron/25.9.4 Safari/537.36" etag="NXhZzj5MAs4M279q433U" version="22.1.2" type="device" pages="7">
+<mxfile host="Electron" modified="2024-01-23T00:56:42.520Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/114.0.5735.289 Electron/25.9.4 Safari/537.36" etag="_H5QlGdjy2LQwCLx646U" version="22.1.2" type="device" pages="7">
   <diagram id="C5RBs43oDa-KdzZeNtuy" name="Page-1">
     <mxGraphModel dx="2046" dy="1168" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -655,7 +655,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="EohhKbyxIwDpnJuhpjKB" name="Page-7">
-    <mxGraphModel dx="1886" dy="767" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2910" dy="1183" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -680,7 +680,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="9UtHOai_7pWWWwvgcpnR-5" value="确认任务：下一次检查时间，调整优先级" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-5" value="确认任务：下一次检查时间，调整优先级&lt;br&gt;CONFIROM" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
           <mxGeometry x="445" y="310" width="260" height="60" as="geometry" />
         </mxCell>
         <mxCell id="9UtHOai_7pWWWwvgcpnR-51" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9UtHOai_7pWWWwvgcpnR-6" target="9UtHOai_7pWWWwvgcpnR-7">
@@ -723,7 +723,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="9UtHOai_7pWWWwvgcpnR-11" value="拆解子任务 or 拆解TODO" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
+        <mxCell id="9UtHOai_7pWWWwvgcpnR-11" value="DOING&lt;br&gt;拆解子任务 or 拆解TODO" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="1">
           <mxGeometry x="440" y="650" width="190" height="60" as="geometry" />
         </mxCell>
         <mxCell id="9UtHOai_7pWWWwvgcpnR-13" value="Task Logs&lt;br&gt;父任务,兄弟任务，Todos" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">

@@ -42,6 +42,8 @@ class AgentManager:
         self.agent_env.parent_envs.append(sys_agent_env)
 
         self.db_path = f"{user_data_dir}/messages.db"
+        self.agent_memory_base_dir = f"{user_data_dir}/memory"
+        self.workspace_base_dir = f"{user_data_dir}/workspace"
         self.loaded_agent_instance = {}
 
         return True
@@ -70,7 +72,8 @@ class AgentManager:
             logger.warn(f"load agent {agent_id} from media failed!")
             return None
         
-        the_agent.chat_db = self.db_path
+        the_agent.memory_db = f"{self.agent_memory_base_dir}/{agent_id}/{agent_id}_memory.db"
+        os.makedirs(os.path.dirname(the_agent.memory_db),exist_ok=True)
         if await the_agent.initial():
             return the_agent
         else:

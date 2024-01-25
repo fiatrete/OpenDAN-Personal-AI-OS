@@ -180,6 +180,7 @@ class AgentMemory:
         if contact_id is None:
             return None
         
+        # TODO : fix this by system config.
         if contact_id == "lzc":
             return "lzc is your master. Male, 40 years old, Mother tongue is Chinese, senior software engineer."
         return None

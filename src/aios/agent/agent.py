@@ -99,7 +99,7 @@ class AIAgent(BaseAIAgent):
         }
         self.todo_prompts = todo_prompts
 
-        self.chat_db = None
+        self.memory_db = None
         self.unread_msg = Queue() # msg from other agent
         self.owenr_bus = None
 
@@ -109,7 +109,7 @@ class AIAgent(BaseAIAgent):
         self.behaviors:Dict[str,BaseLLMProcess] = {}
         
     async def initial(self,params:Dict = None):
-        self.memory = AgentMemory(self.agent_id,self.chat_db)
+        self.memory = AgentMemory(self.agent_id,self.memory_db)
         self.prviate_workspace = AgentWorkspace(self.agent_id) 
         init_params = {}
         init_params["memory"] = self.memory
@@ -200,6 +200,7 @@ class AIAgent(BaseAIAgent):
         context_info["location"] = "SanJose"
         context_info["now"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         context_info["weather"] = "Partly Cloudy, 60°F"
+        context_info["owner"] = AIStorage.get_instance().get_user_config().get_value("username")
 
         return context_info
     
@@ -209,7 +210,7 @@ class AIAgent(BaseAIAgent):
             need_process = False
            
             session_topic = msg.target + "#" + msg.topic
-            chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.chat_db)
+            chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.memory_db)
             if msg.mentions is not None:
                 if self.agent_id in msg.mentions:
                     need_process = True
@@ -247,20 +248,27 @@ class AIAgent(BaseAIAgent):
                 filter = {}
                 filter["state"] = AgentTaskState.TASK_STATE_WAIT
             
-                tasklist = await self.prviate_workspace.task_mgr.list_task(filter)
+                tasklist:List[AgentTask]= await self.prviate_workspace.task_mgr.list_task(filter)
+
+
                 if tasklist:
-                    input_parms = {
-                        "tasklist":tasklist,
-                        "context_info": await self._get_context_info()
-                    }
-                    llm_result : LLMResult = await llm_process.process(input_parms)
-                    if llm_result.state == LLMResultStates.ERROR:
-                        logger.error(f"llm process triage_tasks error:{llm_result.compute_error_str}")
-                    elif llm_result.state == LLMResultStates.IGNORE:
-                        logger.info(f"llm process triage_tasks ignore!")
-                    else:
-                        logger.info(f"llm process triage_tasks ok!,think is:{llm_result.resp}")
-                    self.agent_energy -= 3  
+                    if len(tasklist) > 0:
+                        simple_list:List[Dict] = []
+                        for task in tasklist:
+                            simple_list.append(task.to_simple_dict()) 
+                            
+                        input_parms = {
+                            "tasklist":simple_list,
+                            "context_info": await self._get_context_info()
+                        }
+                        llm_result : LLMResult = await llm_process.process(input_parms)
+                        if llm_result.state == LLMResultStates.ERROR:
+                            logger.error(f"llm process triage_tasks error:{llm_result.compute_error_str}")
+                        elif llm_result.state == LLMResultStates.IGNORE:
+                            logger.info(f"llm process triage_tasks ignore!")
+                        else:
+                            logger.info(f"llm process triage_tasks ok!,think is:{llm_result.resp}")
+                        self.agent_energy -= 3  
 
                     # for agent_task in tasklist:
                     #     if self.agent_energy <= 0:
@@ -354,7 +362,7 @@ class AIAgent(BaseAIAgent):
 
 
     async def do_self_think(self):
-        session_id_list = AIChatSession.list_session(self.agent_id,self.chat_db)
+        session_id_list = AIChatSession.list_session(self.agent_id,self.memory_db)
         for session_id in session_id_list:
             if self.agent_energy <= 0:
                 break
@@ -396,10 +404,12 @@ class AIAgent(BaseAIAgent):
                 for task in task_list:
                     if self.agent_energy <= 0:
                         break
-
+                    
+                    task = await self.prviate_workspace.task_mgr.get_task(task.task_id)
                     if task.can_plan():
                         # PLAN Task
                         await self.llm_plan_task(task)
+                        task = await self.prviate_workspace.task_mgr.get_task(task.task_id)
 
                     if task.state == AgentTaskState.TASK_STATE_DOING:
                         # DO or Check Todo
@@ -408,14 +418,23 @@ class AIAgent(BaseAIAgent):
                         for todo in todolist:
                             if self.agent_energy <= 0:
                                 break
+                            task = await self.prviate_workspace.task_mgr.get_task(task.task_id)
+                            todo = await self.prviate_workspace.task_mgr.get_todo_by_id(todo.todo_id)
+                            if task.state != AgentTaskState.TASK_STATE_DOING:
+                                break
                             if todo.state == AgentTodoState.TODO_STATE_WAITING or todo.state == AgentTodoState.TODO_STATE_EXEC_FAILED:
                                 await self.llm_do_todo(todo)
+                                task = await self.prviate_workspace.task_mgr.get_task(task.task_id)
+                                todo = await self.prviate_workspace.task_mgr.get_todo_by_id(todo.todo_id)
+                                if task.state != AgentTaskState.TASK_STATE_DOING:
+                                    break
                             if todo.state == AgentTodoState.TODO_STATE_EXEC_OK:
                                 await self.llm_check_todo(todo)
 
                         if can_review:
                             task.state = AgentTaskState.TASK_STATE_WAITING_REVIEW
 
+                    task = await self.prviate_workspace.task_mgr.get_task(task.task_id)
                     if task.state == AgentTaskState.TASK_STATE_WAITING_REVIEW:
                         await self.llm_review_task(task)
                     

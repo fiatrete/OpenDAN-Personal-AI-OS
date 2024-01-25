@@ -7,9 +7,6 @@ model_name = "gpt-4-1106-preview"
 enable_timestamp = "true"
 enable_json_resp = "true"
 
-owner_prompt = "I am your master{name}"
-contact_prompt = "I am your master's friend{name}"
-
 role_desc = """
 Your name is Jarvis, the super personal assistant to the master, The focus of work is the support of the schedule management and schedule affairs.
 """
@@ -45,7 +42,7 @@ known_info_tips = """
 
 tools_tips = """
 """
-llm_context.actions.enable = ["agent.workspace.create_task"]
+llm_context.actions.enable = ["agent.workspace.create_task","agent.workspace.cancel_task"]
 llm_context.functions.enable = ["agent.workspace.list_task"]
 
 
@@ -55,7 +52,7 @@ llm_context.functions.enable = ["agent.workspace.list_task"]
 type="AgentTriageTaskList"
 process_description="""
 You are expected to effectively TRIAGE the task list described in JSON format, in accordance with your role. Your GOAL is :
-1. Adjust the priority of the task and set up a reasonable processing time.(update_task)
+1. Adjust the priority of the task and set up a reasonable processing time.(confirm_task)
 2. Immediately perform a simple (similar to reminding one category) task. Send a message using post_message, then set the task to complete.(use update_task).
 3. Organize tasks to remove tasks beyond your ability. And merge the repeated tasks.(update_task + cancel_task)
 """
@@ -70,9 +67,9 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     }]
 }
 """
-context="Your master now in {location}, time: {now}, weather: {weather}."
+context="Your master is {owner}, now in {location}, time: {now}, weather: {weather}."
 
-llm_context.actions.enable = ["agent.workspace.confirm_task","agent.workspace.cancel_task","post_message"]
+llm_context.actions.enable = ["agent.workspace.confirm_task","agent.workspace.update_task","agent.workspace.cancel_task","post_message"]
 
 [behavior.plan_task]
 ## 首次处理任务
@@ -100,7 +97,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 
 llm_context.actions.enable = ["agent.workspace.create_task","agent.workspace.update_task","agent.workspace.set_todos","agent.workspace.cancel_task","post_message"]
 #llm_context.functions.enable = ["agent.workspace.list_task"]
-context="Your master now in {location}, time: {now}, weather: {weather}."
+context="Your master is {owner}, now in {location}, time: {now}, weather: {weather}."
 
 [behavior.review_task]
 ## 当task的所有todo/subtask都完成后（不敢成功或是失败），进行一次review
@@ -122,6 +119,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     }]
 }
 """
+
 llm_context.actions.enable = ["agent.workspace.cancel_task","agent.workspace.update_task"]
 
 context="Your master now in {location}, time: {now}, weather: {weather}."
@@ -149,7 +147,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     ]
 }
 """
-
+context="Your master is {owner}, now in {location}, time: {now}, weather: {weather}."
 # 对于DO操作来说，让Agent查询自己的能力集合是否更合适？
 llm_context.actions.enable = ["agent.workspace.update_todo","post_message","agent.workspace.write_file","agent.workspace.append_file"]
 llm_context.functions.enable = ["agent.workspace.read_file","agent.workspace.list_dir","system.shell.exec","aigc.text_2_image","aigc.text_2_voice","web.search.duckduckgo"]
@@ -173,7 +171,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     ]
 }
 """
-
+context="Your master is {owner}, now in {location}, time: {now}, weather: {weather}."
 llm_context.actions.enable = ["agent.workspace.update_todo"]
 llm_context.functions.enable =  ["agent.workspace.read_file","agent.workspace.list_dir","system.shell.exec","system.shell.run_code","aigc.image_2_text","aigc.voice_2_text","web.search.duckduckgo"]
 

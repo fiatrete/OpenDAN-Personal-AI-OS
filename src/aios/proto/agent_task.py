@@ -235,7 +235,6 @@ class AgentTodo:
     def to_dict(self) -> dict:
         result = {}
         result["todo_id"] = self.todo_id
-        result["todo_path"] = self.todo_path
         result["owner_taskid"] = self.owner_taskid
         result["title"] = self.title
         result["detail"] = self.detail
@@ -251,9 +250,6 @@ class AgentTodo:
         #todo_id
         if json_obj.get("todo_id") is not None:
             result_obj.todo_id = json_obj.get("todo_id")
-        #todo_path
-        if json_obj.get("todo_path") is not None:
-            result_obj.todo_path = json_obj.get("todo_path")
         #owner_taskid
         if json_obj.get("owner_taskid") is not None:
             result_obj.owner_taskid = json_obj.get("owner_taskid")
@@ -288,23 +284,21 @@ class AgentTask:
         self.worker = None
         self.createor = None
 
-        # if due_date is none ,means no due date
-        self.due_date = time.time() + 3600 * 24 * 2
-        # 确定的执行时间（执行条件）
-        self.next_do_time = None
-        # 如果next check time设置，说明任务适合在该时间点可能具备执行调教，尝试检查并执行
-        #self.next_check_time = None
+        now = time.time()
+        self.create_time = datetime.fromtimestamp(now).isoformat()
+        # dead line,set by llm
+        self.due_date = None
+        # set by llm
+        self.next_attention_time = None
+        # set by llm
+        self.expiration_time = None 
 
         self.depend_task_ids = []
         #self.step_todo_ids = []
-
-        self.create_time = time.time()
         self.done_time = None
 
-        self.last_do_time = None
         self.last_plan_time = None
-        self.last_check_time = None
-        #self.last_review_time = None
+        self.last_review_time = None
 
     def is_finish(self) -> bool:
         if self.state == AgentTaskState.TASK_STATE_DONE:
@@ -319,10 +313,14 @@ class AgentTask:
         if self.state == AgentTaskState.TASK_STATE_FAILED:
             return True
         
-        if self.due_date:
-            if self.due_date < time.time():
-                self.state = AgentTaskState.TASK_STATE_EXPIRED
-                return True
+        if self.expiration_time:
+            try:
+                expiration_time = datetime.fromisoformat(self.expiration_time).timestamp()
+                if expiration_time < time.time():
+                    self.state = AgentTaskState.TASK_STATE_EXPIRED
+                    return True
+            except Exception as e:
+                logger.warning(f"invalid expiration_time {self.expiration_time}")
         
         return False
     
@@ -331,8 +329,26 @@ class AgentTask:
             return True
         if self.state == AgentTaskState.TASK_STATE_CHECKFAILED:
             return True
+        if self.next_attention_time:
+            try:
+                next_attention_time = datetime.fromisoformat(self.next_attention_time).timestamp()
+                if next_attention_time >= time.time():
+                    return True
+            except Exception as e:
+                logger.warning(f"invalid next_attention_time {self.next_attention_time}")
         
         return False
+    
+    def to_simple_dict(self) -> dict:
+        result = {}
+        result["task_id"] = self.task_id
+        result["title"] = self.title
+        result["priority"] = self.priority
+        result["create_time"] = self.create_time
+        if self.due_date:
+            result["due_date"] = self.due_date
+        return result
+        
 
     def to_dict(self) -> dict:
         result = {}
@@ -341,26 +357,35 @@ class AgentTask:
         result["detail"] = self.detail 
         result["state"] = self.state.value
         result["priority"] = self.priority
-        result["tags"] = self.tags
-        result["worker"] = self.worker
-        result["createor"] = self.createor
+
+        if self.tags:
+            result["tags"] = self.tags
+
+        if self.worker:
+            result["worker"] = self.worker
+
+        if self.createor:
+            result["createor"] = self.createor
+        result["create_time"] = self.create_time
         if self.due_date:
-            result["due_date"] = datetime.fromtimestamp(self.due_date).isoformat()
-        if self.next_do_time:
-            result["next_do_time"] = datetime.fromtimestamp(self.next_do_time).isoformat()
+            result["due_date"] = self.due_date
+        if self.expiration_time:
+            result["expiration_time"] = self.expiration_time
+        
+        if self.next_attention_time:
+            result["next_attention_time"] = self.next_attention_time
         #if self.next_check_time:
         #    result["next_check_time"] = datetime.fromtimestamp(self.next_check_time).isoformat()
-        result["depend_task_ids"] = self.depend_task_ids
-        #result["step_todo_ids"] = self.step_todo_ids
-        result["create_time"] = datetime.fromtimestamp(self.create_time).isoformat()
+        if self.depend_task_ids:
+            if len(self.depend_task_ids) > 0:
+                result["depend_task_ids"] = self.depend_task_ids
+
         if self.done_time:
-            result["done_time"] = datetime.fromtimestamp(self.done_time).isoformat()
-        if self.last_do_time:
-            result["last_do_time"] = datetime.fromtimestamp(self.last_do_time).isoformat() 
+            result["done_time"] = self.done_time
         if self.last_plan_time:
-            result["last_plan_time"] = datetime.fromtimestamp(self.last_plan_time).isoformat()
-        if self.last_check_time:
-            result["last_check_time"] = datetime.fromtimestamp(self.last_check_time).isoformat()
+            result["last_plan_time"] = self.last_plan_time
+        if self.last_review_time:
+            result["last_review_time"] = self.last_review_time
 
         return result
     @classmethod
@@ -374,32 +399,15 @@ class AgentTask:
         result.tags = json_obj.get("tags")
         result.worker = json_obj.get("worker")
         result.createor = json_obj.get("createor")
-        due_date = json_obj.get("due_date")
-        if due_date:
-            result.due_date = datetime.fromisoformat(due_date).timestamp()
-        next_do_time = json_obj.get("next_do_time")
-        if next_do_time:
-            result.next_do_time = datetime.fromisoformat(next_do_time).timestamp()
-        #next_check_time = json_obj.get("next_check_time")
-        #if next_check_time:
-        #    result.next_check_time = datetime.fromisoformat(next_check_time).timestamp()
+        result.due_date = json_obj.get("due_date")
+        result.next_attention_time = json_obj.get("next_attention_time")
         result.depend_task_ids = json_obj.get("depend_task_ids")
         #result.step_todo_ids = json_obj.get("step_todo_ids")
-        create_time = json_obj.get("create_time")
-        if create_time:
-            result.create_time = datetime.fromisoformat(create_time).timestamp()
-        done_time = json_obj.get("done_time")
-        if done_time:
-            result.done_time = datetime.fromisoformat(done_time).timestamp()
-        last_do_time = json_obj.get("last_do_time")
-        if last_do_time:
-            result.last_do_time = datetime.fromisoformat(last_do_time).timestamp()
-        last_plan_time = json_obj.get("last_plan_time")
-        if last_plan_time:
-            result.last_plan_time = datetime.fromisoformat(last_plan_time).timestamp()
-        last_check_time = json_obj.get("last_check_time")
-        if last_check_time:
-            result.last_check_time = datetime.fromisoformat(last_check_time).timestamp()  
+        result.expiration_time = json_obj.get("expiration_time")
+        result.create_time = json_obj.get("create_time")
+        result.done_time = json_obj.get("done_time")
+        result.last_plan_time = json_obj.get("last_plan_time")
+        result.last_review_time = json_obj.get("last_review_time")
 
         if result.task_id is None or result.title is None or result.create_time is None or result.create_time is None:
             logger.error(f"invalid task {json_obj}")
@@ -422,14 +430,12 @@ class AgentTask:
         result.priority = json_obj.get("priority")
         if result.priority is None:
             result.priority = 5
-
+        if json_obj.get("due_date"):
+            result.due_date = json_obj.get("due_date")
         result.tags = json_obj.get("tags")
         result.worker = json_obj.get("worker")
         result.createor = creator
-        due_date = json_obj.get("due_date")
-        if due_date:
-            result.due_date = datetime.fromisoformat(due_date).timestamp()
-        
+    
         return result
 
 # 谁在什么时间做了什么

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class LocalAgentTaskManger(AgentTaskManager):
     def __init__(self, owner_id):
         super().__init__() 
-        self.root_path = f"{AIStorage.get_instance().get_myai_dir()}/tasklist/{owner_id}"
+        self.root_path = f"{AIStorage.get_instance().get_myai_dir()}/workspaces/{owner_id}_workspace"
         #self.root_path = os.path.join(workspace, list_type)
         if not os.path.exists(self.root_path):
             os.makedirs(self.root_path)
@@ -451,7 +451,7 @@ class AgentWorkspace:
                 return f"post message to {target} failed!"
         
         parameters = ParameterDefine.create_parameters({
-            "target": {"type": "string", "description": "target agent/contact id"},
+            "target": {"type": "string", "description": "target agent/contact fullname or telephone or email"},
             "topic": {"type": "string", "description": "optional, message topic"},
             "message": {"type": "string", "description": "message content"},
         })
@@ -513,10 +513,10 @@ class AgentWorkspace:
             parent_id = params.get("parent")
             return await _workspace.task_mgr.create_task(taskObj,parent_id)
         parameters = ParameterDefine.create_parameters({
-            "title": {"type": "string", "description": "task title"},
-            "detail": {"type": "string", "description": "task detail(simple task can not be filled)"},
-            "tags": {"type": "string", "description": "optional,task tags"},
-            "due_date": {"type": "string", "description": "optional,task due date"},
+            "title" : {"type": "string", "description": "task title,Simple and clear, try to include the task \ Related personnel \ place \ key conditions \ time element involved in the event"},
+            "detail" : {"type": "string", "description": "task detail(simple task can not be filled)"},
+            "priority" : {"type": "int", "description": "task priority from 1-10"},
+            "due_date" : {"type": "isoformat time string", "description": "task due date"},
             "parent": {"type": "string", "description": "optional,parent task id"},
         })
         create_task_action = SimpleAIFunction(
@@ -528,7 +528,6 @@ class AgentWorkspace:
         GlobaToolsLibrary.get_instance().register_tool_function(create_task_action)
 
         
-
         async def cancel_task(parameters):
             _workspace = parameters.get("_workspace")
             if _workspace is None:
@@ -563,19 +562,25 @@ class AgentWorkspace:
                 return f"task {task_id} not found"
             if parameters.get("priority"):
                 task.priority = parameters.get("priority")
-            if parameters.get("next_do_date"):
-                task.next_do_date = parameters.get("next_do_date")
+            if parameters.get("next_attention_time"):
+                task.next_attention_time = parameters.get("next_attention_time")
+            if parameters.get("expiration_time"):
+                task.expiration_time = parameters.get("expiration_time")
+            if parameters.get("due_date"):
+                task.due_date = parameters.get("due_date")
             task.state = AgentTaskState.TASK_STATE_CONFIRMED
             await _workspace.task_mgr.update_task(task)
             return "confirm task ok"
         parameters = ParameterDefine.create_parameters({
             "task_id": {"type": "string", "description": "task id which want to confirm"},
-            "next_do_date": {"type": "string", "description": "optional,confirm task next do date"},
+            "expiration_time": {"type": "isoformat time string", "description": "optional,confirm task expiration time"},
+            "next_attention_time": {"type": "isoformat time string", "description": "optional,confirm task next attention time"},
+            #"due_date": {"type": "isoformat time string", "description": "optional,confirm task due date"},
             "priority": {"type": "int", "description": "optional,task priority from 1-10"},
         })
         confirm_task_action = SimpleAIFunction(
             "agent.workspace.confirm_task",
-            "Confirm this task",
+            "After understanding the content of the task, the importance of the importance of the task, the priority, the deadline, etc.",
             confirm_task,
             parameters
         )
@@ -611,20 +616,23 @@ class AgentWorkspace:
                 task.priority = parameters.get("priority")
             if parameters.get("new_state"):
                 task.state = AgentTaskState.from_str(parameters.get("new_state"))
-            if parameters.get("next_do_date"):
-                task.next_do_date = parameters.get("next_do_date")
+            if parameters.get("next_attention_time"):
+                task.next_attention_time = parameters.get("next_attention_time")
             if parameters.get("due_date"):
                 task.due_date = parameters.get("due_date")
+            if parameters.get("expiration_time"):
+                task.expiration_time = parameters.get("expiration_time")
             await _workspace.task_mgr.update_task(task)
             return "update task ok"
         parameters = ParameterDefine.create_parameters({
             "task_id": {"type": "string", "description": "task id which want to update"},
             "new_state": {"type": "string", "description": "optional,new task state: cancel or done"},
-            "next_do_date": {"type": "string", "description": "optional,confirm task next do date"},
+            "next_attention_time": {"type": "isoformat time string", "description": "optional,update task next attention time"},
+            "expiration_time": {"type": "isoformat time string", "description": "optional,update task expiration time"},
             "priority": {"type": "int", "description": "optional,task priority from 1-10"},
             "title": {"type": "string", "description": "optional, new task title"},
             "detail": {"type": "string", "description": "optional, new task detail(simple task can not be filled)"},
-            "due_date": {"type": "string", "description": "optional,new task due date"},
+            #"due_date": {"type": "string", "description": "optional,new task due date"},
         })
         update_task_ai_function = SimpleAIFunction("agent.workspace.update_task",
                                               "update task to new state",

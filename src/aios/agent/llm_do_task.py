@@ -38,12 +38,8 @@ class AgentTriageTaskList(LLMAgentBaseProcess):
         if task_list is None:
             logger.error(f"tasklist not found in input")
             return None
-        
-        task_dict_list = []
-        for task in task_list:
-            task_dict_list.append(task.to_dict())
-
-        prompt.append_user_message(json.dumps(task_dict_list,ensure_ascii=False))
+    
+        prompt.append_user_message(json.dumps(task_list,ensure_ascii=False))
 
         system_prompt_dict = self.prepare_role_system_prompt(context_info)
         # May all logs is good for Agent Triage Task List?
@@ -89,7 +85,7 @@ class AgentTriageTaskList(LLMAgentBaseProcess):
             logger.error(f"execute action failed! {e}")
             result_str = "execute action failed!,error:" + str(e)
         
-        worklog = AgentWorkLog.create_by_content(self.memory.agent_id,"triage",llm_result.resp,self.memory.agent_id)
+        worklog = AgentWorkLog.create_by_content("","triage",llm_result.resp,self.memory.agent_id)
         worklog.result = result_str 
         await self.memory.append_worklog(worklog)
 

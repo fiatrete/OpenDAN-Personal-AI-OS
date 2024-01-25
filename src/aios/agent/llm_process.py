@@ -91,7 +91,7 @@ class BaseLLMProcess(ABC):
         try:
             func_name = inner_func_call_node.get("name")
             arguments = json.loads(inner_func_call_node.get("arguments"))
-            logger.info(f"LLMProcess execute inner func:{func_name} :\n\t {json.dumps(arguments,ensure_ascii=False)}")
+            logger.info(f"LLMProcess execute inner func:{func_name} :({json.dumps(arguments,ensure_ascii=False)})")
 
             func_node : AIFunction = await self.get_inner_function_for_exec(func_name)
             if func_node is None:
