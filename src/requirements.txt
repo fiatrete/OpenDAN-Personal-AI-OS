@@ -155,3 +155,4 @@ docx2txt
 opencv-python
 discord.py
 slack_bolt
+wget
