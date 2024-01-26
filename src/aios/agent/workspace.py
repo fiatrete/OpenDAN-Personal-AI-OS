@@ -288,8 +288,9 @@ class LocalAgentTaskManger(AgentTaskManager):
                 continue
             task_item = await self._get_task_by_fullpath(entry.path)
             if task_item:
-                if task_item.is_finish():
-                   continue
+                if filter is None:
+                    if task_item.is_finish():
+                        continue
                 
                 if special_state:
                     if task_item.state != special_state:
@@ -516,7 +517,8 @@ class AgentWorkspace:
             "title" : {"type": "string", "description": "task title,Simple and clear, try to include the task \ Related personnel \ place \ key conditions \ time element involved in the event"},
             "detail" : {"type": "string", "description": "task detail(simple task can not be filled)"},
             "priority" : {"type": "int", "description": "task priority from 1-10"},
-            "due_date" : {"type": "isoformat time string", "description": "task due date"},
+            #"due_date": {"type": "isoformat time string", "description": "optional,confirm task due date"},
+            #"expiration_time": {"type": "isoformat time string", "description": "optional,confirm task expiration time"},
             "parent": {"type": "string", "description": "optional,parent task id"},
         })
         create_task_action = SimpleAIFunction(
@@ -573,8 +575,8 @@ class AgentWorkspace:
             return "confirm task ok"
         parameters = ParameterDefine.create_parameters({
             "task_id": {"type": "string", "description": "task id which want to confirm"},
-            "expiration_time": {"type": "isoformat time string", "description": "optional,confirm task expiration time"},
             "next_attention_time": {"type": "isoformat time string", "description": "optional,confirm task next attention time"},
+            "expiration_time": {"type": "isoformat time string", "description": "optional,confirm task expiration time"},
             #"due_date": {"type": "isoformat time string", "description": "optional,confirm task due date"},
             "priority": {"type": "int", "description": "optional,task priority from 1-10"},
         })

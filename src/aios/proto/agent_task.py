@@ -325,18 +325,17 @@ class AgentTask:
         return False
     
     def can_plan(self) -> bool:
-        if self.state == AgentTaskState.TASK_STATE_CONFIRMED:
-            return True
-        if self.state == AgentTaskState.TASK_STATE_CHECKFAILED:
-            return True
-        if self.next_attention_time:
-            try:
-                next_attention_time = datetime.fromisoformat(self.next_attention_time).timestamp()
-                if next_attention_time >= time.time():
-                    return True
-            except Exception as e:
-                logger.warning(f"invalid next_attention_time {self.next_attention_time}")
-        
+        if self.state == AgentTaskState.TASK_STATE_CONFIRMED or self.state == AgentTaskState.TASK_STATE_CHECKFAILED:
+            if self.next_attention_time:
+                try:
+                    next_attention_time = datetime.fromisoformat(self.next_attention_time).timestamp()
+                    if time.time() >= next_attention_time:
+                        return True
+                except Exception as e:
+                    logger.warning(f"invalid next_attention_time {self.next_attention_time}")
+            else:
+                return True
+            
         return False
     
     def to_simple_dict(self) -> dict:
@@ -344,9 +343,14 @@ class AgentTask:
         result["task_id"] = self.task_id
         result["title"] = self.title
         result["priority"] = self.priority
+        result["detail"] = self.detail
         result["create_time"] = self.create_time
         if self.due_date:
             result["due_date"] = self.due_date
+        if self.expiration_time:
+            result["expiration_time"] = self.expiration_time
+        if self.next_attention_time:
+            result["next_attention_time"] = self.next_attention_time
         return result
         
 

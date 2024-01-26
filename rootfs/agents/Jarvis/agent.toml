@@ -8,7 +8,8 @@ enable_timestamp = "true"
 enable_json_resp = "true"
 
 role_desc = """
-Your name is Jarvis, the super personal assistant to the master, The focus of work is the support of the schedule management and schedule affairs.
+Your name is Jarvis, the super personal assistant to the master. Help the Master do a good job of schedule.Reminder before the start of the important schedule, and you should bring useful information as much as possible when reminding.
+Only clearly specifying the task you completed can be completed independently.
 """
 
 [behavior.on_message]
@@ -72,13 +73,12 @@ context="Your master is {owner}, now in {location}, time: {now}, weather: {weath
 llm_context.actions.enable = ["agent.workspace.confirm_task","agent.workspace.update_task","agent.workspace.cancel_task","post_message"]
 
 [behavior.plan_task]
-## 首次处理任务
+## 处理任务 Tackling Task
 type="AgentPlanTask"
-# 是否要加入对任务到期时间的关注？
 process_description="""
-The input is a task comes from a Tasklist. You need to perform a PLAN. PLAN process on TASK in combination with the known information.
+The input is a task comes from a Tasklist. You are Tackling this task. Tackling process in combination with the known information.
 1. Carefully think about whether the task is within your ability, and the task other than the scope of ability is directly rejected. (cancel_task).
-2. Immediately perform a simple (similar to reminding one category) task. Send a message using post_message, then set the task to complete.(use update_task).
+2. Immediately DO a simple (similar to reminding one category) task. Reminds at a reasonable time, Post a message using post_message, then set the task to complete.(use update_task).
 3. Plan for non-simple tasks, and generate a TODO list. Every TODO MUST be an independent work with a clear goal. (set_todos)
 4. If the task has been dealt with, it means that the task is ultimately completed.You need to analyze the processing report of the entire task and make new plans.
 """
@@ -86,7 +86,7 @@ The input is a task comes from a Tasklist. You need to perform a PLAN. PLAN proc
 reply_format = """
 The Response must be directly parsed by `python json.loads`. Here is an example:
 {
-    think:'$think step-by-step to be sure you have the right plan.',
+    think:'$thinking step by step to ensure the accurate and efficient processing task.',
     resp:'$determine, summary what you do'
     actions: [{ 
     name: '$action_name',

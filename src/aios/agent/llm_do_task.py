@@ -155,7 +155,7 @@ class AgentPlanTask(LLMAgentBaseProcess):
             logger.error(f"execute action failed! {e}")
             result_str = "execute action failed!,error:" + str(e)
         
-        worklog = AgentWorkLog.create_by_content(agent_task.task_id,"plan",llm_result.resp,self.memory.agent_id)
+        worklog = AgentWorkLog.create_by_content(agent_task.task_id,"tackling",llm_result.resp,self.memory.agent_id)
         worklog.result = result_str 
         await self.memory.append_worklog(worklog)
 

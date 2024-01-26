@@ -384,8 +384,8 @@ class AIAgent(BaseAIAgent):
             logger.warning(f"agent {self.agent_id} is already wake up!")
 
     async def _on_timer(self):
-        while True:
-            await asyncio.sleep(5)
+        await asyncio.sleep(5)
+        while True:   
             try:
                 now = time.time()
                 if self.last_recover_time is None:
@@ -394,17 +394,23 @@ class AIAgent(BaseAIAgent):
                     if now - self.last_recover_time > 60:
                         self.agent_energy += (now - self.last_recover_time) / 60
                         self.last_recover_time = now
+                        logger.info(f"agent {self.agent_id} recover energy to {self.agent_energy}")
 
                 if self.agent_energy <= 1:
+                    logger.info(f"agent {self.agent_id} energy is too low!, goto sleep!")
                     continue
 
                 await self.llm_triage_tasklist()
-                task_list:List[AgentTask] = await self.prviate_workspace.task_mgr.list_task()
+                # Get un finished tasks
+                #filter = {}
+                #filter["state"] = AgentTaskState.TASK_STATE_WAIT
+                filter = None
+                task_list:List[AgentTask] = await self.prviate_workspace.task_mgr.list_task(filter)
                 
                 for task in task_list:
                     if self.agent_energy <= 0:
                         break
-                    
+
                     task = await self.prviate_workspace.task_mgr.get_task(task.task_id)
                     if task.can_plan():
                         # PLAN Task
@@ -444,6 +450,9 @@ class AIAgent(BaseAIAgent):
                 tb_str = traceback.format_exc()
                 logger.error(f"agent {self.agent_id} on timer error:{e},{tb_str}")
                 continue
+
+            # Because the LLM itself is very slow, the accuracy of the system processing task is in minutes.
+            await asyncio.sleep(30) 
 
 
 
