@@ -11,7 +11,7 @@ from typing import Optional
 
 from aios import KnowledgeStore, ObjectType
 from aios.frame.tunnel import AgentTunnel
-from aios.proto.agent_msg import AgentMsg
+from aios.proto.agent_msg import AgentMsg, AgentMsgType
 import discord
 
 from aios.storage.storage import AIStorage
@@ -96,10 +96,6 @@ class DiscordTunnel(AgentTunnel):
             if message.author == self.client.user:
                 return
 
-            if len(message.channel.members) > 2:
-                if self.client.user not in message.mentions:
-                    return
-
             content = re.sub("<@.+>", "", message.content).strip()
 
             attach_type = None
@@ -142,6 +138,10 @@ class DiscordTunnel(AgentTunnel):
             agent_msg.sender = message.author.name
             self.ai_bus.register_message_handler(agent_msg.sender, self._process_message)
 
+            if len(message.channel.members) > 2:
+                if self.client.user not in message.mentions:
+                    agent_msg.msg_type = AgentMsgType.TYPE_GROUP_MSG
+
             if attach_type is None:
                 agent_msg.body = content
             elif attach_type == "image":
@@ -163,7 +163,6 @@ class DiscordTunnel(AgentTunnel):
                         return
 
                     if len(resp_msg.body) < 1:
-                        await message.channel.send("")
                         return
 
                     knownledge_object = KnowledgeStore().parse_object_in_message(resp_msg.body)
