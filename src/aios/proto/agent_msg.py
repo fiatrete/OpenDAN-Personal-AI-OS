@@ -136,7 +136,7 @@ class AgentMsg:
         resp_msg.create_time = time.time()
 
         resp_msg.rely_msg_id = self.msg_id
-        resp_msg.target = self.target
+        resp_msg.target = self.sender
         resp_msg.sender = sender_id
         resp_msg.body = resp_body
         resp_msg.topic = self.topic

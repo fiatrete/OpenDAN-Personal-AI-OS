@@ -14,7 +14,7 @@ from slack_bolt.app.async_app import AsyncApp
 
 from aios import KnowledgeStore, ObjectType
 from aios.frame.tunnel import AgentTunnel
-from aios.proto.agent_msg import AgentMsg
+from aios.proto.agent_msg import AgentMsg, AgentMsgType
 from aios.storage.storage import AIStorage
 
 logger = logging.getLogger(__name__)
@@ -162,7 +162,7 @@ class SlackTunnel(AgentTunnel):
                                         break
 
             if not is_metion:
-                return
+                agent_msg.msg_type = AgentMsgType.TYPE_GROUPMSG
 
             if file_type is None:
                 agent_msg.body = content
@@ -186,7 +186,6 @@ class SlackTunnel(AgentTunnel):
                         return
 
                     if len(resp_msg.body) < 1:
-                        await app.client.chat_postMessage(channel=event["channel"], text=f"")
                         return
 
                     knownledge_object = KnowledgeStore().parse_object_in_message(resp_msg.body)
