@@ -15,7 +15,7 @@ class KnowledgeStore:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             
-            knowledge_dir = AIStorage.get_instance().get_myai_dir() / "knowledge" / "objects"
+            knowledge_dir = f"{AIStorage.get_instance().get_myai_dir()}/knowledge/objects"
 
             if not os.path.exists(knowledge_dir):
                 os.makedirs(knowledge_dir)

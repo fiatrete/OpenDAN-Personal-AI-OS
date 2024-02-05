@@ -42,6 +42,9 @@ class BaseLLMProcess(ABC):
 
         self.llm_context:LLMProcessContext = None
 
+    def get_llm_model_name(self) -> str:
+        return self.model_name
+
     @abstractmethod
     async def prepare_prompt(self,input:Dict) -> LLMPrompt:
         pass
@@ -123,10 +126,11 @@ class BaseLLMProcess(ABC):
         else:
             inner_functions = None
        
+
         task_result: ComputeTaskResult = await (ComputeKernel.get_instance().do_llm_completion(
             prompt,
             resp_mode=resp_mode,
-            mode_name=self.model_name,
+            mode_name=self.get_llm_model_name(),
             max_token=max_result_token,
             inner_functions=inner_functions, #NOTICE: inner_function in prompt can be a subset of get_inner_function
             timeout=self.timeout))
@@ -166,7 +170,7 @@ class BaseLLMProcess(ABC):
         task_result: ComputeTaskResult = await (ComputeKernel.get_instance().do_llm_completion(
                 prompt,
                 resp_mode=resp_mode,
-                mode_name=self.model_name,
+                mode_name=self.get_llm_model_name(),
                 max_token=max_result_token,
                 inner_functions=prompt.inner_functions, #NOTICE: inner_function in prompt can be a subset of get_inner_function
                 timeout=self.timeout))
@@ -309,6 +313,9 @@ class LLMAgentBaseProcess(BaseLLMProcess):
 class AgentMessageProcess(LLMAgentBaseProcess):
     def __init__(self) -> None:
         super().__init__()
+        self.mutil_model = None
+        self.enable_media2text = False
+        self.is_mutil_model = False
 
     async def load_default_config(self) -> bool:
         return True
@@ -319,8 +326,18 @@ class AgentMessageProcess(LLMAgentBaseProcess):
 
         if await super().load_from_config(config) is False:
             return False
-         
 
+        self.enable_media2text = config.get('enable_media2text', 'false').lower() in ('true', '1', 't', 'y', 'yes')
+
+        if config.get("mutil_model"):
+            self.mutil_model = config.get("mutil_model")
+         
+    def get_llm_model_name(self) -> str:
+        if self.is_mutil_model:
+            return self.mutil_model
+        else:
+            return self.model_name
+    
     def check_and_to_base64(self, image_path: str) -> str:
         if image_utils.is_file(image_path):
             return image_utils.to_base64(image_path, (1024, 1024))
@@ -329,14 +346,24 @@ class AgentMessageProcess(LLMAgentBaseProcess):
              
     async def get_prompt_from_msg(self,msg:AgentMsg) -> LLMPrompt:
         msg_prompt = LLMPrompt()
-        if msg.is_image_msg():
-            image_prompt, images = msg.get_image_body()
-            if image_prompt is None:
-                msg_prompt.messages = [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images]}]
+        self.is_mutil_model = False
+        if msg.is_image_msg():  
+            if self.enable_media2text:
+                logger.error(f"enable_media2text is not supported yet")
             else:
-                content = [{"type": "text", "text": image_prompt}]
-                content.extend([{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images])
-                msg_prompt.messages = [{"role": "user", "content": content}]
+                image_prompt, images = msg.get_image_body()
+                if image_prompt is None:
+                    msg_prompt.messages = [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images]}]
+                else:
+                    content = [{"type": "text", "text": image_prompt}]
+                    content.extend([{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images])
+                    msg_prompt.messages = [{"role": "user", "content": content}]
+                
+                if self.mutil_model:
+                    self.is_mutil_model = True
+                else:
+                    logger.warning(f"mutil_model is not set!")
+                
         elif msg.is_video_msg():
             video_prompt, video = msg.get_video_body()
             frames = video_utils.extract_frames(video, (1024, 1024))
@@ -459,25 +486,7 @@ class AgentMessageProcess(LLMAgentBaseProcess):
 
         return True
 
-class AgentSelfLearning(BaseLLMProcess):
-    def __init__(self) -> None:
-        super().__init__()
-
-    async def load_from_config(self, config: dict) -> Coroutine[Any, Any, bool]:
-        if await super().load_from_config(config) is False:
-            return False
-
-    async def prepare_prompt(self) -> LLMPrompt:
-        prompt = LLMPrompt()
-        pass  
-
-    async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
-        pass
-
-    async def post_llm_process(self,actions:List[ActionNode]) -> bool:
-        pass
-
-class AgentSelfThinking(BaseLLMProcess):
+class AgentSelfThinking(LLMAgentBaseProcess):
     def __init__(self) -> None:
         super().__init__()
 
@@ -552,6 +561,68 @@ class AgentSelfThinking(BaseLLMProcess):
                 logger.info(f"agent {self.agent_id} think session {session_id} from {cur_pos} to {next_pos} summary:{new_summary}")
                 chatsession.update_think_progress(next_pos,new_summary)
         return
+
+    async def prepare_prompt(self,input:Dict) -> LLMPrompt:
+        prompt = LLMPrompt()
+
+        record_list = input.get("record_list")
+        context_info = input.get("context_info")
+        
+        if record_list is None:
+            logger.error(f"AgentSelfThinking prepare_prompt failed! input  not found")
+            return None
+        
+        prompt.append_user_message(json.dumps(record_list,ensure_ascii=False))
+        system_prompt_dict = self.prepare_role_system_prompt(context_info)
+
+        # Known_info is the SESSION summary of the existence, the current task work record summary,
+        known_info = {}
+        have_known_info = False
+        known_session_list = input.get("known_session_list")
+        known_task_list = input.get("known_task_list")
+        known_contact_list = input.get("known_contact_list")
+        known_experience_list = input.get("known_experience_list")
+        if known_session_list:
+            known_info["known_session_list"] = known_session_list
+            have_known_info = True
+        if known_task_list:
+            known_info["known_task_list"] = known_task_list
+            have_known_info = True
+        if known_contact_list:
+            known_info["known_contact_list"] = known_contact_list
+            have_known_info = True
+        if known_experience_list:
+            known_info["known_experience_list"] = known_experience_list
+            have_known_info = True
+        
+        if have_known_info:
+            system_prompt_dict["known_info"] = known_info
+
+        prompt.inner_functions =LLMProcessContext.aifunctions_to_inner_functions(self.llm_context.get_all_ai_functions())
+        prompt.append_system_message(json.dumps(system_prompt_dict,ensure_ascii=False))
+
+    async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
+        action_params = {}
+        action_params["_input"] = input
+        action_params["_memory"] = self.memory
+        action_params["_workspace"] = self.workspace
+        action_params["_llm_result"] = llm_result
+        action_params["_agentid"] = self.memory.agent_id
+        action_params["_start_at"] = datetime.now()
+        try:
+            if await self._execute_actions(actions,action_params) is False:
+                result_str = "execute action failed!"
+        except Exception as e:
+            logger.error(f"execute action failed! {e}")
+            result_str = "execute action failed!,error:" + str(e)
+
+class AgentSelfLearning(BaseLLMProcess):
+    def __init__(self) -> None:
+        super().__init__()
+
+    async def load_from_config(self, config: dict) -> Coroutine[Any, Any, bool]:
+        if await super().load_from_config(config) is False:
+            return False
 
     async def prepare_prompt(self) -> LLMPrompt:
         prompt = LLMPrompt()

@@ -211,6 +211,23 @@ class ChatSessionDB:
             logging.error("Error occurred while getting messages: %s", e)
             return -1, None  # return -1 and None if an error occurs
         
+    def load_message_by_agentid(self,agent_id,limit,start_time="1970-01-01 00:00:00"):
+        try:
+            conn = self._get_conn()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT MessageID, SessionID, MsgType, PrevMsgID, SenderID, ReceiverID, Timestamp, Topic,Mentions,ContentMIME,Content,ActionName,ActionParams,ActionResult,DoneTime,Status FROM Messages
+                WHERE SenderID = ? or ReceiverID =? AND Timestamp > ?
+                ORDER BY Timestamp 
+                LIMIT ? 
+            """, (agent_id, agent_id, start_time,limit))
+            results = cursor.fetchall()
+            #self.close()
+            return results  # return 0 and the result if successful
+        except Error as e:
+            logging.error("Error occurred while getting messages: %s", e)
+            return -1, None
+        
     # read message from  now->beign    
     def get_messages(self, session_id, limit, offset):
         """ retrieve messages of a session with pagination """
@@ -287,6 +304,38 @@ class AIChatSession:
     #        cls._dbs[db_path] = db
     #    db.get_chatsession_by_id(session_id)
     #    #result = AIChatSession()
+    @classmethod
+    # start_time is a string like "2021-01-01 00:00:00"
+    def load_message_records_by_agentid(cls,agent_id:str,start_time:str,limit:int,db_path:str)->List[AgentMsg]:
+        db = cls._dbs.get(db_path)
+        if db is None:
+            db = ChatSessionDB(db_path)
+            cls._dbs[db_path] = db
+        msgs = db.load_message_by_agentid(agent_id,start_time,limit)
+        result = []
+        for msg in msgs:
+            agent_msg = AgentMsg()
+            agent_msg.msg_id = msg[0]
+            agent_msg.session_id = msg[1]
+            agent_msg.msg_type = AgentMsgType(msg[2])
+            agent_msg.prev_msg_id = msg[3]
+            agent_msg.sender = msg[4]
+            agent_msg.target = msg[5]
+            agent_msg.create_time = msg[6]
+            agent_msg.topic = msg[7]
+            if msg[8] is not None:
+                agent_msg.mentions = json.loads(msg[8])
+            agent_msg.body_mime = msg[9]
+            agent_msg.body = msg[10]
+            agent_msg.func_name = msg[11]
+            if msg[12] is not None:
+                agent_msg.args = json.loads(msg[12])
+            agent_msg.result_str = msg[13]
+            agent_msg.done_time = msg[14]
+            agent_msg.status = AgentMsgStatus(msg[15])
+
+            result.append(agent_msg)
+        return result
 
     @classmethod
     def get_session(cls,owner_id:str,session_topic:str,db_path:str,auto_create = True) -> 'AIChatSession':

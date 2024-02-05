@@ -64,7 +64,7 @@ class DallEComputeNode(ComputeNode):
             self.output_dir = "./"
             self.output_dir = os.path.abspath(self.output_dir)
 
-        self.start()
+        await self.start()
 
         return True
 

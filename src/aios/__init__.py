@@ -19,7 +19,7 @@ from .frame.compute_kernel import ComputeKernel,ComputeTask,ComputeTaskResult,Co
 from .frame.compute_node import ComputeNode,LocalComputeNode
 from .frame.bus import AIBus
 from .frame.tunnel import AgentTunnel
-from .frame.contact_manager import ContactManager,Contact,FamilyMember
+from .frame.contact_manager import ContactManager,Contact
 from .frame.queue_compute_node import Queue_ComputeNode
 
 from .environment.environment import BaseEnvironment,SimpleEnvironment,CompositeEnvironment

@@ -24,21 +24,16 @@ from .llm_do_task import *
 from .chatsession import *
 
 from ..environment.workspace_env import WorkspaceEnvironment, TodoListType
-from ..frame.contact_manager import ContactManager,Contact,FamilyMember
-from ..frame.compute_kernel import ComputeKernel
-from ..frame.bus import AIBus
 from ..environment.environment import *
-from ..environment.workspace_env import WorkspaceEnvironment
 from ..storage.storage import AIStorage
 from ..knowledge import *
-from ..utils import video_utils, image_utils
-from ..proto.compute_task import ComputeTaskResult,ComputeTaskResultCode,LLMPrompt,LLMResult
+from ..proto.compute_task import LLMPrompt,LLMResult
 
 logger = logging.getLogger(__name__)
 
 class AIAgentTemplete:
     def __init__(self) -> None:
-        self.llm_model_name:str = "gpt-4-0613"
+        self.llm_model_name:str = "gpt-4-turbo-preview"
         self.max_token_size:int = 0
         self.template_id:str = None
         self.introduce:str = None
@@ -99,7 +94,8 @@ class AIAgent(BaseAIAgent):
         }
         self.todo_prompts = todo_prompts
 
-        self.memory_db = None
+        self.base_dir = None
+        #self.memory_db = None
         self.unread_msg = Queue() # msg from other agent
         self.owenr_bus = None
 
@@ -109,7 +105,9 @@ class AIAgent(BaseAIAgent):
         self.behaviors:Dict[str,BaseLLMProcess] = {}
         
     async def initial(self,params:Dict = None):
-        self.memory = AgentMemory(self.agent_id,self.memory_db)
+        self.base_dir = f"{AIStorage.get_instance().get_myai_dir()}/agent_data/{self.agent_id}"
+        memory_base_dir = f"{self.base_dir}/memory"
+        self.memory = AgentMemory(self.agent_id,memory_base_dir)
         self.prviate_workspace = AgentWorkspace(self.agent_id) 
         init_params = {}
         init_params["memory"] = self.memory
@@ -241,6 +239,34 @@ class AIAgent(BaseAIAgent):
         return await self.llm_process_msg(msg)
 
 
+    async def llm_self_think(self):
+        llm_process : BaseLLMProcess = self.behaviors.get("self_thinking")
+        if llm_process:
+            logger.info(f"agent {self.agent_id} self thinking start!")
+
+            context_info = await self._get_context_info()
+            known_session_list = AIChatSession.list_session(self.agent_id,self.memory.memory_db)
+            known_experience_list = await self.memory.list_experience()
+            record_list = await self.memory.load_records(await self.memory.get_last_think_time())
+
+            input_parms = {
+                "record_list":record_list,
+                "known_session_list":known_session_list,
+                "known_experience_list":known_experience_list,
+                "context_info":context_info
+            }
+
+            llm_result : LLMResult = await llm_process.process(input_parms)
+            if llm_result.state == LLMResultStates.ERROR:
+                logger.error(f"llm process self thinking error:{llm_result.compute_error_str}")
+            elif llm_result.state == LLMResultStates.IGNORE:
+                logger.info(f"llm process self thinking  ignore!")
+            else:
+                logger.info(f"llm process self thinking  ok!,think is:{llm_result.resp}")
+                self.memory.set_last_think_time(time.time())
+            self.agent_energy -= 2  
+            return
+
     async def llm_triage_tasklist(self):
         llm_process : BaseLLMProcess = self.behaviors.get("triage_tasks")
         if llm_process:
@@ -361,21 +387,8 @@ class AIAgent(BaseAIAgent):
             self.agent_energy -= 1
 
 
-    async def do_self_think(self):
-        session_id_list = AIChatSession.list_session(self.agent_id,self.memory_db)
-        for session_id in session_id_list:
-            if self.agent_energy <= 0:
-                break
-            used_energy = await self.think_chatsession(session_id)
-            self.agent_energy -= used_energy
-        return
-
-    def need_self_think(self) -> bool:
-        return False
-
     async def _self_imporve(self):
-        if self.need_self_think():
-            await self.do_self_think()
+        await self.llm_self_think()
 
     def wake_up(self) -> None:
         if self.agent_task is None:
@@ -446,13 +459,16 @@ class AIAgent(BaseAIAgent):
                     
                 await self._self_imporve()
                 
+               
+                
             except Exception as e:
                 tb_str = traceback.format_exc()
                 logger.error(f"agent {self.agent_id} on timer error:{e},{tb_str}")
-                continue
-
+            
             # Because the LLM itself is very slow, the accuracy of the system processing task is in minutes.
             await asyncio.sleep(30) 
+                
+
 
 
 

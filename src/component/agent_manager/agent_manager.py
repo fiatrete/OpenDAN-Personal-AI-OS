@@ -72,8 +72,6 @@ class AgentManager:
             logger.warn(f"load agent {agent_id} from media failed!")
             return None
         
-        the_agent.memory_db = f"{self.agent_memory_base_dir}/{agent_id}/{agent_id}_memory.db"
-        os.makedirs(os.path.dirname(the_agent.memory_db),exist_ok=True)
         if await the_agent.initial():
             return the_agent
         else:

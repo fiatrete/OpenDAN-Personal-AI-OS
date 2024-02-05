@@ -2,19 +2,20 @@ instance_id = "Jarvis"
 fullname = "Jarvis"
 max_token = 4000
 #timeout = 1800
-model_name = "gpt-4-1106-preview"
+model_name = "gpt-4-turbo-preview"
 #enable_kb = "true"
 enable_timestamp = "true"
 enable_json_resp = "true"
 
 role_desc = """
-Your name is Jarvis, the super personal assistant to the master. Help the Master do a good job of schedule.Reminder before the start of the important schedule, and you should bring useful information as much as possible when reminding.
+Your name is Jarvis, the super personal assistant to the Principal. Help the Principal do a good job of schedule.Reminder before the start of the important schedule, and you should bring useful information as much as possible when reminding.
 Only clearly specifying the task you completed can be completed independently.
 """
 
 [behavior.on_message]
 type="AgentMessageProcess"
 # TODO: 是否应该自动记录 inner function和action的执行细节
+mutil_model="gpt-4-vision-preview"
 
 process_description="""
 1. Based on your role and the existing information, please think and then make a brief and efficient reply.
@@ -68,7 +69,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     }]
 }
 """
-context="Your master is {owner}, now in {location}, time: {now}, weather: {weather}."
+context="Your Principal is {owner}, now in {location}, time: {now}, weather: {weather}."
 
 llm_context.actions.enable = ["agent.workspace.confirm_task","agent.workspace.update_task","agent.workspace.cancel_task","post_message"]
 
@@ -97,7 +98,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 
 llm_context.actions.enable = ["agent.workspace.create_task","agent.workspace.update_task","agent.workspace.set_todos","agent.workspace.cancel_task","post_message"]
 #llm_context.functions.enable = ["agent.workspace.list_task"]
-context="Your master is {owner}, now in {location}, time: {now}, weather: {weather}."
+context="Your Principal is {owner}, now in {location}, time: {now}, weather: {weather}."
 
 [behavior.review_task]
 ## 当task的所有todo/subtask都完成后（不敢成功或是失败），进行一次review
@@ -122,7 +123,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 
 llm_context.actions.enable = ["agent.workspace.cancel_task","agent.workspace.update_task"]
 
-context="Your master now in {location}, time: {now}, weather: {weather}."
+context="Your Principal now in {location}, time: {now}, weather: {weather}."
 [behavior.do] 
 # do TODO
 type="AgentDo"
@@ -147,7 +148,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     ]
 }
 """
-context="Your master is {owner}, now in {location}, time: {now}, weather: {weather}."
+context="Your Principal is {owner}, now in {location}, time: {now}, weather: {weather}."
 # 对于DO操作来说，让Agent查询自己的能力集合是否更合适？
 llm_context.actions.enable = ["agent.workspace.update_todo","post_message","agent.workspace.write_file","agent.workspace.append_file"]
 llm_context.functions.enable = ["agent.workspace.read_file","agent.workspace.list_dir","system.shell.exec","aigc.text_2_image","aigc.text_2_voice","web.search.duckduckgo"]
@@ -171,14 +172,39 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     ]
 }
 """
-context="Your master is {owner}, now in {location}, time: {now}, weather: {weather}."
+context="Your Principal is {owner}, now in {location}, time: {now}, weather: {weather}."
 llm_context.actions.enable = ["agent.workspace.update_todo"]
 llm_context.functions.enable =  ["agent.workspace.read_file","agent.workspace.list_dir","system.shell.exec","system.shell.run_code","aigc.image_2_text","aigc.voice_2_text","web.search.duckduckgo"]
 
 
-#[behavior.self_thinking]
+[behavior.self_thinking2]
 # self thing的主要目的是对各种chatlog,worklog进行分析，并更新面向人和事的summary。
-#type="AgentSelfThinking"
+type="AgentSelfThinking"
+process_description="""
+You are very good at thinking and summarizing what you have already happened。Your input is a chat history and work record,After you think about it, you will follow the requirements below to generate abstract.
+1. Try to understand the theme of each sentence, and call the relevant operation to record the relationship between the dialogue and the theme
+2. Try to analyze the personality of different people involved in information
+3. Try to summarize important events in the information and record it
+4. Try to understand the attitude of different people on different topics or events
+5. Pay attention to the time order when summarizing, and combine the summary you have done to update Summary
+6. The summary of the generation cannot exceed 400 token
+7. 思考的目的是让自己未来的工作更加高效
+8. 总结中只包含有长期价值和未完成的事情，已经完成的事情不需要总结
+"""
+reply_format = """
+The Response must be directly parsed by `python json.loads`. Here is an example:
+{
+    resp:'$Summary in one sentence',
+    name: '$action1_name',
+    $param_name: '$parm' #Optional, fill in only if the action has parameters.
+    }, ... 
+    ]
+}
+"""
+context="Your Principal is {owner}, now in {location}, time: {now}, weather: {weather}."
+llm_context.actions.enable = ["agent.memory.update_summary","agent.memory.update_contact_summary","agent.memory.update_relation_summary","agent.memory.set_experience"]
+llm_context.functions.enable =  ["agent.memory.get_summary","agent.memory.get_contact_summary","agent.memory.list_summary","agent.memory.get_relation_summary","agent.memory.get_experience"]
+
 
 #[behavior.self_improve]
 # self_improve 是最后的行为，允许Agent结合自己的工作经验，改进自己的提示词（注意保留历史版本）

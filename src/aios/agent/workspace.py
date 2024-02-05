@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class LocalAgentTaskManger(AgentTaskManager):
     def __init__(self, owner_id):
         super().__init__() 
-        self.root_path = f"{AIStorage.get_instance().get_myai_dir()}/workspaces/{owner_id}_workspace"
+        self.root_path = f"{AIStorage.get_instance().get_myai_dir()}/agent_data/{owner_id}/workspace/"
         #self.root_path = os.path.join(workspace, list_type)
         if not os.path.exists(self.root_path):
             os.makedirs(self.root_path)

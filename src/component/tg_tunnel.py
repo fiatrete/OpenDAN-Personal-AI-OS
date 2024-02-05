@@ -12,7 +12,7 @@ from telegram import Bot
 from telegram.ext import Updater
 from telegram.error import Forbidden, NetworkError
 
-from aios import ObjectType, KnowledgeStore,AgentTunnel,AIStorage,ContactManager,Contact,FamilyMember,AgentMsg,AgentMsgType
+from aios import ObjectType, KnowledgeStore,AgentTunnel,AIStorage,ContactManager,Contact,AgentMsg,AgentMsgType
 
 logger = logging.getLogger(__name__)
 

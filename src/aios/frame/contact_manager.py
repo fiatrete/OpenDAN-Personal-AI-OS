@@ -8,7 +8,7 @@ from ..proto.agent_msg import AgentMsg
 from ..proto.ai_function import ParameterDefine, SimpleAIFunction
 from ..agent.llm_context import GlobaToolsLibrary
 from .tunnel import AgentTunnel
-from .contact import Contact,FamilyMember
+from .contact import Contact
 
 
 logger = logging.getLogger(__name__)    
@@ -25,11 +25,12 @@ class ContactManager:
     def register_global_functions(self):
         gl = GlobaToolsLibrary.get_instance()
 
-        get_parameters = ParameterDefine.create_parameters({"name":"name"})
+        get_parameters = ParameterDefine.create_parameters({"name":"contact name name"})
         gl.register_tool_function(SimpleAIFunction("system.contacts.get",
                                         "get contact info",
                                         self._get_contact,get_parameters))
 
+        # todo: use json to save contact info
         update_parameters = ParameterDefine.create_parameters({"name":"name","contact_info":"A json to descrpit contact"})
         gl.register_tool_function(SimpleAIFunction("system.contacts.set",
                                         "set contact info",
@@ -42,7 +43,6 @@ class ContactManager:
     def __init__(self, filename="contacts.toml"):
         self.filename = filename
         self.contacts = []
-        self.family_members = []    
 
         self.is_auto_create_contact_from_telegram = True
     
@@ -56,12 +56,10 @@ class ContactManager:
         
     def load_from_config(self,config_data:dict):
         self.contacts = [Contact.from_dict(item) for item in config_data.get("contacts", [])]
-        self.family_members = [FamilyMember.from_dict(item) for item in config_data.get("family_members", [])]
-    
+
     def save_data(self):
         data = {
             "contacts": [contact.to_dict() for contact in self.contacts],
-            "family_members": [member.to_dict() for member in self.family_members]
         }
         with open(self.filename, "w") as f:
             toml.dump(data, f)
@@ -95,54 +93,28 @@ class ContactManager:
             if contact.name == name:
                 return contact
             
-        for member in self.family_members:
-            if member.name == name:
-                return member
         return None
     
     def find_contact_by_telegram(self, telegram:str):
         for contact in self.contacts:
             if contact.telegram == telegram:
                 return contact
-        for member in self.family_members:
-            if member.telegram == telegram:
-                return member            
+         
         return None
 
     def find_contact_by_email(self, email:str):
         for contact in self.contacts:
             if contact.email == email:
                 return contact
-        for member in self.family_members:
-            if member.email == email:
-                return member   
+
         return None
 
     def find_contact_by_phone(self, phone:str):
         for contact in self.contacts:
             if contact.phone == phone:
                 return contact
-        for member in self.family_members:
-            if member.phone == phone:
-                return member   
+
         return None
-
-
-    def add_family_member(self, name, new_member:FamilyMember):
-        assert name == new_member.name
-        self.family_members.append(new_member)
-        self.save_data()
 
     def list_contacts(self):
         return self.contacts
-
-    def list_family_members(self):
-        return self.family_members
-    
-    #def register_to_ai_bus(self, ai_bus:AIBus):
-    #    ai_bus.register_message_handler("contact_manager", self.process_msg)
-    
-
-    #async def process_msg(self,msg:AgentMsg):
-    #    # forword message to contact    
-    #    pass

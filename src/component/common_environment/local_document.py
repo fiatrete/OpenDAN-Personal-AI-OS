@@ -453,7 +453,7 @@ class ParseLocalDocument:
         return f"# Known information:\n## Current directory structure:\n{kb_tree}\n## Knowlege Metadata:\n{json.dumps(known_obj,ensure_ascii=False)}\n"
 
     def _token_len(self, text: str) -> int:
-        return CustomAIAgent("", "gpt-4-1106-preview", self.token_limit).token_len(text=text)
+        return CustomAIAgent("", "gpt-4-turbo-preview", self.token_limit).token_len(text=text)
 
 
     async def _learn_by_agent(self, meta:dict) -> dict:

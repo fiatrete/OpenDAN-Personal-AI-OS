@@ -107,7 +107,7 @@ class ComputeKernel:
     @staticmethod
     def llm_num_tokens_from_text(text:str,model:str) -> int:
         if model is None:
-            model = "gpt4"
+            model = "gpt-4-turbo-preview"
 
         try:
             encoding = tiktoken.encoding_for_model(model)

@@ -76,8 +76,9 @@ class AIOS_Shell:
 
         user_config = AIStorage.get_instance().get_user_config()
         user_config.add_user_config("username","username is your full name when using AIOS",False,None)
-        user_config.add_user_config("telegram","Your telgram username",False,None)
-        user_config.add_user_config("email","Your email",False,None)
+        user_config.add_user_config("user_telegram","Your telgram username",False,None)
+        user_config.add_user_config("user_email","Your email",False,None)
+        user_config.add_user_config("user_notes","Introduce yourself to your Agent!",False,None)
 
         user_config.add_user_config("feature.llama","enable Local-llama feature",True,"False")
         user_config.add_user_config("feature.aigc","enable AIGC feature",True,"False")
@@ -126,15 +127,16 @@ class AIOS_Shell:
 
     async def initial(self) -> bool:
         cm = ContactManager.get_instance()
-        owenr = cm.find_contact_by_name(self.username)
-        if owenr is None:
-            owenr = Contact(self.username)
-            owenr.added_by = self.username
-            owenr.is_family_member = True
-            owenr.email = AIStorage.get_instance().get_user_config().get_value("email")
-            owenr.telegram = AIStorage.get_instance().get_user_config().get_value("telegram")
+        owner = cm.find_contact_by_name(self.username)
+        if owner is None:
+            owner = Contact(self.username)
+            owner.added_by = self.username
+            owner.relationship = "Principal"
+            owner.email = AIStorage.get_instance().get_user_config().get_value("user_email")
+            owner.telegram = AIStorage.get_instance().get_user_config().get_value("user_telegram")
+            owner.notes = AIStorage.get_instance().get_user_config().get_value("user_notes")
 
-            cm.add_family_member(self.username,owenr)
+            cm.add_contact(self.username,owner)
 
         # cal_env = CalenderEnvironment("calender")
         # await cal_env.start()
@@ -247,7 +249,7 @@ class AIOS_Shell:
             if tunnel_config is not None:
                 await AgentTunnel.load_all_tunnels_from_config(tunnel_config)
         except Exception as e:
-            logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
+            logger.warning(f"load tunnels config from {tunnels_config_path} failed! {e}")
 
 
         return True
@@ -385,7 +387,7 @@ class AIOS_Shell:
 
         contact_note = await try_get_input(f"Input {contact_name}'s note (optional):")
         if contact_note is not None:
-            contact.note = contact_note
+            contact.notes = contact_note
 
         contact.added_by = self.username
         if is_update:
@@ -712,9 +714,9 @@ async def get_user_config_from_input(check_result:dict) -> bool:
                 continue
             else:
                 True
-
-        if len(user_input) > 0:
-            AIStorage.get_instance().get_user_config().set_value(key,user_input)
+        if user_input:
+            if len(user_input) > 0:
+                AIStorage.get_instance().get_user_config().set_value(key,user_input)
 
     await AIStorage.get_instance().get_user_config().save_to_user_config()
     return True

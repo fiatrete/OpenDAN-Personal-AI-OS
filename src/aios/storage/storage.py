@@ -40,7 +40,7 @@ class UserConfig:
         self.config_table = {}
         self.user_config_path:str = None
 
-        self._init_default_value("llm_model_name","gpt-4-1106-preview")
+        self._init_default_value("llm_model_name","gpt-4-turbo-preview")
 
     def _init_default_value(self,key:str,value:Any) -> None:
         if self.config_table.get(key) is not None:
@@ -92,7 +92,7 @@ class UserConfig:
                     os.makedirs(directory)
 
                 async with aiofiles.open(self.user_config_path,"w") as f:
-                    toml_str = toml.dumps(will_save_config,ensure_ascii=False)
+                    toml_str = toml.dumps(will_save_config)
                     await f.write(toml_str)
             except Exception as e:
                 logger.error(f"save user config to {self.user_config_path} failed!")
@@ -156,7 +156,7 @@ class AIStorage:
         self.feature_init_results = {}
 
     async def initial(self)->bool:
-        self.user_config.user_config_path = str(self.get_myai_dir() / "etc/system.cfg.toml")
+        self.user_config.user_config_path = str(self.get_myai_dir() + "/etc/system.cfg.toml")
         await self.user_config.load_value_from_file(self.get_system_dir() + "/system.cfg.toml")
         await self.user_config.load_value_from_file(self.user_config.user_config_path,True)
 
@@ -215,7 +215,7 @@ class AIStorage:
         my ai dir is the dir for user to store their ai app and data
         ~/myai/
         """
-        return Path.home() / "myai"
+        return f"{Path.home()}/myai"
     
     def get_download_dir(self) -> str:
         """
@@ -249,3 +249,10 @@ class AIStorage:
 
         except Exception as e:
             logger.error(f"open or create file {path} failed! {str(e)}")
+
+    @staticmethod
+    def ensure_directory_exists(directory_path):
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path)
+            logger.info(f"Directory created: {directory_path}")
+

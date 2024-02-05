@@ -13,7 +13,7 @@ from ..agent.llm_context import GlobaToolsLibrary
 from ..proto.compute_task import *
 from ..proto.ai_function import *
 from ..frame.compute_kernel import ComputeKernel
-from ..frame.contact_manager import ContactManager,Contact,FamilyMember
+from ..frame.contact_manager import ContactManager,Contact
 from ..storage.storage import AIStorage
 
 from .environment import SimpleEnvironment, CompositeEnvironment

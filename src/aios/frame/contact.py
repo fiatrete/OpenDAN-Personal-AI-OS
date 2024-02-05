@@ -18,6 +18,7 @@ class Contact:
         self.notes = notes
         self.is_family_member = False
         self.active_tunnels = {}
+        self.relationship = "friends"
 
     def to_dict(self):
         return {
@@ -25,11 +26,13 @@ class Contact:
             "phone": self.phone,
             "email": self.email,
             "telegram" : self.telegram,
+            "is_family_member": self.is_family_member,
 
             "added_by": self.added_by,
             "tags": self.tags,
             "notes": self.notes,
-            "now" : datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            "now" : datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "relationship" : self.relationship
         }
     
     async def _process_msg(self,msg:AgentMsg):
@@ -55,6 +58,7 @@ class Contact:
         self.active_tunnels[agent_id] = tunnel
     
     async def create_default_tunnel(self,agent_id:str) -> AgentTunnel:
+        #TODO:fix this
         from .email_tunnel import EmailTunnel
 
         result_tunnels = AgentTunnel.get_tunnel_by_agentid(agent_id)
@@ -66,20 +70,7 @@ class Contact:
 
     @classmethod
     def from_dict(cls, data):
-        return Contact(data.get("name"), data.get("phone"), data.get("email"), data.get("telegram"),data.get("added_by"), data.get("tags"), data.get("notes"))
-
-class FamilyMember(Contact):
-    def __init__(self, name, relationship,phone=None, email=None,telegram=None):
-        super().__init__(name, phone, email, telegram)
-        self.name = name
-        self.relationship = relationship  
-        self.is_family_member = True
-
-    def to_dict(self):
-        result = super().to_dict()
-        result["relationship"] = self.relationship
+        result = Contact(data.get("name"), data.get("phone"), data.get("email"), data.get("telegram"),data.get("added_by"), data.get("tags"), data.get("notes"))
+        if data.get("relationship") is not None:
+            result.relationship = data.get("relationship")
         return result
-
-    @classmethod
-    def from_dict(cls, data):
-        return FamilyMember(data.get("name"),data.get("relationship"),data.get("phone"), data.get("email"),data.get("telegram"))

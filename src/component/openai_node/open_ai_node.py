@@ -209,7 +209,7 @@ class OpenAI_ComputeNode(ComputeNode):
                     if max_token_size > 4096:
                         result_token = 4096
                     else:
-                        result_token = max_token_size
+                        result_token = -1
                 else:
                     result_token = NOT_GIVEN
 
