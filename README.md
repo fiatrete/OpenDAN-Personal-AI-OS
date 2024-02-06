@@ -128,7 +128,7 @@ Say Hello to your private AI assistant Jarvis !
 5. **AI Model Solution**: Provide a unified entry point for model search, download, and access control, making it convenient for users to find and use models suitable for their needs.
 6. **Hardware-specific optimization**: Optimize for specific hardware to enable smooth local running of most open-source AI applications.
 7. **Strict Privacy Protection and Management**: Strictly manage personal data, ranging from family albums to chat records and social media records, and provide a unified access control interface for AI applications.
-8. **Personal Knowlege Base**:
+8. **Personal knowledge Base**:
 9. **Integrated AIGC Workflow**: Offer AIGC Agent/Workflow for users to train their own voice models, Lora models, knowledge models, etc., using personal data. Based on these private model data, integrate the most advanced AIGC algorithm to help people release creativity easily and build more COOL and more personalized content.
 10. **Development Framework**: Provide a development framework for customizing AI assistants for specific purposes, making it easy for developers to create unique AI applications / service for their customers.
 
