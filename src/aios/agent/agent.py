@@ -208,7 +208,7 @@ class AIAgent(BaseAIAgent):
             need_process = False
            
             session_topic = msg.target + "#" + msg.topic
-            chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.memory_db)
+            chatsession = AIChatSession.get_session(self.agent_id,session_topic,self.memory.memory_db)
             if msg.mentions is not None:
                 if self.agent_id in msg.mentions:
                     need_process = True
