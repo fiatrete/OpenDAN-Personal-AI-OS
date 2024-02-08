@@ -216,14 +216,16 @@ class OpenAI_ComputeNode(ComputeNode):
                 client = AsyncOpenAI(api_key=self.openai_api_key)
                 try:
                     if llm_inner_functions is None or len(llm_inner_functions) == 0:
-                        logger.info(f"call openai {mode_name} prompts: {prompts}")
+                        if mode_name != "gpt-4-vision-preview":
+                            logger.info(f"call openai {mode_name} prompts: {prompts}")
                         resp = await client.chat.completions.create(model=mode_name,
                                                         messages=prompts,
                                                         response_format = response_format,
                                                         max_tokens=result_token,
                                                         )
                     else:
-                        logger.info(f"call openai {mode_name} prompts: \n\t {prompts} \nfunctions: \n\t{json.dumps(llm_inner_functions,ensure_ascii=False)}")
+                        if mode_name != "gpt-4-vision-preview":
+                            logger.info(f"call openai {mode_name} prompts: \n\t {prompts} \nfunctions: \n\t{json.dumps(llm_inner_functions,ensure_ascii=False)}")
                         resp = await client.chat.completions.create(model=mode_name,
                                                             messages=prompts,
                                                             response_format = response_format,
@@ -239,7 +241,7 @@ class OpenAI_ComputeNode(ComputeNode):
 
                 #logger.info(f"openai response: {resp}")
                 #TODO: gpt-4v api is image_2_text ?
-                if mode_name == "gpt-4-vision-preview": 
+                if mode_name == "gpt-4-vision-preview":
                     status_code = resp.choices[0].finish_reason
                     if status_code is None:
                         status_code = resp.choices[0].finish_details['type']
@@ -267,7 +269,7 @@ class OpenAI_ComputeNode(ComputeNode):
 
                 if token_usage:
                     result.result_refers["token_usage"] = token_usage
-                    
+
                 logger.info(f"openai success response: {result.result_str}")
                 return result
             case _:

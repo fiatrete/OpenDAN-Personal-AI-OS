@@ -1,5 +1,7 @@
 # Old name is behavior, I belive new name "llm_process" is better
 # pylint:disable=E0402
+import os.path
+
 from ..utils import video_utils,image_utils
 
 from ..proto.compute_task import LLMPrompt,LLMResult,ComputeTaskResult,ComputeTaskResultCode
@@ -31,11 +33,11 @@ class BaseLLMProcess(ABC):
         self.goal:str = None #目标
         self.input_example:str= None #输入样例
         self.result_example:str = None #llm_result样例
-        
+
         self.enable_json_resp = False
         #None means system default,
         # TODO: support abcstract model name like: local-hight,local-low,local-medium,remote-hight,remote-low,remote-medium
-        self.model_name = None 
+        self.model_name = None
         self.max_token = 1000 # result_token
         self.max_prompt_token = 1000 # not include input prompt
         self.timeout = 1800 # 30 min
@@ -55,8 +57,8 @@ class BaseLLMProcess(ABC):
 
     @abstractmethod
     def prepare_inner_function_context_for_exec(self,inner_func_name:str,parameters:Dict):
-        return 
-    
+        return
+
     @abstractmethod
     async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
         pass
@@ -76,14 +78,14 @@ class BaseLLMProcess(ABC):
             self.max_token = config.get("max_token")
         if config.get("timeout"):
             self.timeout = config.get("timeout")
-        
+
 
         return True
-    
+
     @abstractmethod
     async def initial(self,params:Dict = None) -> bool:
         pass
-    
+
     def _format_content_by_env_value(self,content:str,env)->str:
         return content.format_map(env)
 
@@ -120,12 +122,12 @@ class BaseLLMProcess(ABC):
             task_result.result_code = ComputeTaskResultCode.ERROR
             task_result.error_str = f"prompt too long,can not predict"
             return task_result
-        
+
         if stack_limit > 0:
             inner_functions=prompt.inner_functions
         else:
             inner_functions = None
-       
+
 
         task_result: ComputeTaskResult = await (ComputeKernel.get_instance().do_llm_completion(
             prompt,
@@ -140,7 +142,7 @@ class BaseLLMProcess(ABC):
             return task_result
 
         inner_func_call_node = None
- 
+
         result_message : dict = task_result.result.get("message")
         if result_message:
             inner_func_call_node = result_message.get("function_call")
@@ -166,7 +168,7 @@ class BaseLLMProcess(ABC):
         max_result_token = self.max_token - ComputeKernel.llm_num_tokens(prompt,self.model_name)
         #if max_result_token < MIN_PREDICT_TOKEN_LEN:
         #    return LLMResult.from_error_str(f"prompt too long,can not predict")
-        
+
         task_result: ComputeTaskResult = await (ComputeKernel.get_instance().do_llm_completion(
                 prompt,
                 resp_mode=resp_mode,
@@ -174,12 +176,12 @@ class BaseLLMProcess(ABC):
                 max_token=max_result_token,
                 inner_functions=prompt.inner_functions, #NOTICE: inner_function in prompt can be a subset of get_inner_function
                 timeout=self.timeout))
-        
+
         if task_result.result_code != ComputeTaskResultCode.OK:
             err_str = f"do_llm_completion error:{task_result.error_str}"
             logger.error(err_str)
             return LLMResult.from_error_str(err_str)
-        
+
         result_message = task_result.result.get("message")
         inner_func_call_node = None
         if result_message:
@@ -202,7 +204,7 @@ class BaseLLMProcess(ABC):
         await self.post_llm_process(llm_result.action_list,input,llm_result)
 
         return llm_result
-    
+
 class LLMAgentBaseProcess(BaseLLMProcess):
     def __init__(self) -> None:
         super().__init__()
@@ -211,11 +213,11 @@ class LLMAgentBaseProcess(BaseLLMProcess):
         self.process_description:str = None
         self.reply_format:str = None
         self.context : str = None
-        
+
         self.workspace : AgentWorkspace = None # If Workspace is not none , enable Agent Tasklist
         self.memory : AgentMemory = None
         self.enable_kb : bool = False
-        self.kb = None    
+        self.kb = None
 
     async def initial(self,params:Dict = None) -> bool:
         self.memory = params.get("memory")
@@ -227,23 +229,23 @@ class LLMAgentBaseProcess(BaseLLMProcess):
         return True
     async def load_default_config(self) -> bool:
         return True
-        
-        
+
+
     async def load_from_config(self, config: dict,is_load_default=True) -> Coroutine[Any, Any, bool]:
         if is_load_default:
             await self.load_default_config()
 
         if await super().load_from_config(config) is False:
             return False
-        
+
         self.role_description = config.get("role_desc")
         if self.role_description is None:
             logger.error(f"role_description not found in config")
             return False
-        
+
         if config.get("process_description"):
             self.process_description = config.get("process_description")
-        
+
         if config.get("reply_format"):
             self.reply_format = config.get("reply_format")
 
@@ -282,7 +284,7 @@ class LLMAgentBaseProcess(BaseLLMProcess):
         return system_prompt_dict
 
     def prepare_inner_function_context_for_exec(self,inner_func_name:str,parameters:Dict):
-        parameters["_workspace"] = self.workspace  
+        parameters["_workspace"] = self.workspace
 
     def get_action_desc(self) -> Dict:
         result = {}
@@ -290,17 +292,17 @@ class LLMAgentBaseProcess(BaseLLMProcess):
         for action in actions_list:
             result[action.get_name()] = action.get_description()
         return result
-    
+
     async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
         return self.llm_context.get_ai_function(func_name)
-    
+
     async def _execute_actions(self,actions:List[ActionNode],action_params:Dict):
         for action_item in actions:
             op : AIAction = self.llm_context.get_ai_action(action_item.name)
             if op:
                 if action_item.parms is None:
                     action_item.parms = {}
-                
+
                 real_parms = {**action_params,**action_item.parms}
 
                 action_item.parms["_result"] = await op.execute(real_parms)
@@ -309,17 +311,19 @@ class LLMAgentBaseProcess(BaseLLMProcess):
                 logger.warn(f"action {action_item.name} not found")
                 return False
 
-    
+
 class AgentMessageProcess(LLMAgentBaseProcess):
     def __init__(self) -> None:
         super().__init__()
         self.mutil_model = None
         self.enable_media2text = False
         self.is_mutil_model = False
+        self.asr_model = None
+        self.tts_model = None
 
     async def load_default_config(self) -> bool:
         return True
-        
+
     async def load_from_config(self, config: dict,is_load_default=True) -> Coroutine[Any, Any, bool]:
         if is_load_default:
             await self.load_default_config()
@@ -331,23 +335,26 @@ class AgentMessageProcess(LLMAgentBaseProcess):
 
         if config.get("mutil_model"):
             self.mutil_model = config.get("mutil_model")
-         
+
+        self.asr_model = config.get("asr_model")
+        self.tts_model = config.get("tts_model")
+
     def get_llm_model_name(self) -> str:
         if self.is_mutil_model:
             return self.mutil_model
         else:
             return self.model_name
-    
+
     def check_and_to_base64(self, image_path: str) -> str:
         if image_utils.is_file(image_path):
             return image_utils.to_base64(image_path, (1024, 1024))
         else:
             return image_path
-             
+
     async def get_prompt_from_msg(self,msg:AgentMsg) -> LLMPrompt:
         msg_prompt = LLMPrompt()
         self.is_mutil_model = False
-        if msg.is_image_msg():  
+        if msg.is_image_msg():
             if self.enable_media2text:
                 logger.error(f"enable_media2text is not supported yet")
             else:
@@ -358,35 +365,56 @@ class AgentMessageProcess(LLMAgentBaseProcess):
                     content = [{"type": "text", "text": image_prompt}]
                     content.extend([{"type": "image_url", "image_url": {"url": self.check_and_to_base64(image)}} for image in images])
                     msg_prompt.messages = [{"role": "user", "content": content}]
-                
+
                 if self.mutil_model:
                     self.is_mutil_model = True
                 else:
                     logger.warning(f"mutil_model is not set!")
-                
+
         elif msg.is_video_msg():
-            video_prompt, video = msg.get_video_body()
-            frames = video_utils.extract_frames(video, (1024, 1024))
-            if video_prompt is None:
-                msg_prompt.messages = [{"role": "user", "content": [{"type": "image_url", "image_url": {"url": frame}} for frame in frames]}]
+            if self.enable_media2text:
+                logger.error(f"enable_media2text is not supported yet")
             else:
-                content = [{"type": "text", "text": video_prompt}]
+                video_prompt, video = msg.get_video_body()
+                frames = video_utils.extract_frames(video, (1024, 1024))
+                audio_file = os.path.splitext(video)[0] + ".mp3"
+                video_utils.extract_audio(video, audio_file)
+
+                voice_content = None
+                if self.asr_model is not None:
+                    resp = await (ComputeKernel.get_instance().do_speech_to_text(audio_file, model=self.asr_model, prompt=None, response_format="text"))
+                    if resp.result_code == ComputeTaskResultCode.OK:
+                        voice_content = resp.result_str
+
+                content = []
+                if video_prompt is not None:
+                    content.append({"type": "text", "text": video_prompt})
+                if voice_content is not None and voice_content != "":
+                    content.append({"type": "text", "text": f"Voice content in video:{voice_content}"})
+
                 content.extend([{"type": "image_url", "image_url": {"url": frame}} for frame in frames])
                 msg_prompt.messages = [{"role": "user", "content": content}]
+                if self.mutil_model:
+                    self.is_mutil_model = True
+                else:
+                    logger.warning(f"mutil_model is not set!")
         elif msg.is_audio_msg():
-            audio_file = msg.body
-            resp = await (ComputeKernel.get_instance().do_speech_to_text(audio_file, None, prompt=None, response_format="text"))
-            if resp.result_code != ComputeTaskResultCode.OK:
-                error_resp = msg.create_error_resp(resp.error_str)
-                return error_resp
+            if self.enable_media2text:
+                logger.error(f"enable_media2text is not supported yet")
             else:
-                msg.body = resp.result_str
-                msg_prompt.messages = [{"role":"user","content":resp.result_str}]
+                audio_file = msg.body
+                resp = await (ComputeKernel.get_instance().do_speech_to_text(audio_file, model=self.asr_model, prompt=None, response_format="text"))
+                if resp.result_code != ComputeTaskResultCode.OK:
+                    error_resp = msg.create_error_resp(resp.error_str)
+                    return error_resp
+                else:
+                    msg.body = resp.result_str
+                    msg_prompt.messages = [{"role":"user","content":resp.result_str}]
         else:
             msg_prompt.messages = [{"role":"user","content":msg.body}]
 
         return msg_prompt
-    
+
     async def sender_info(self,msg:AgentMsg)->str:
         sender_id = msg.sender
         #TODO Is sender an agent?
@@ -400,14 +428,14 @@ class AgentMessageProcess(LLMAgentBaseProcess):
 
     async def get_log_summary(self,msg:AgentMsg)->str:
         return None
-        
+
 
     async def get_extend_known_info(self,msg:AgentMsg,prompt:LLMPrompt)->str:
         return None
 
     async def prepare_prompt(self,input:Dict) -> LLMPrompt:
         prompt = LLMPrompt()
-        # User Prompt 
+        # User Prompt
         ## Input Msg
         msg : AgentMsg = input.get("msg")
         context_info = input.get("context_info")
@@ -422,8 +450,8 @@ class AgentMessageProcess(LLMAgentBaseProcess):
 
         ## 通用的角色相关的系统提示词
         system_prompt_dict = self.prepare_role_system_prompt(context_info)
-               
-        ## 已知信息  
+
+        ## 已知信息
         known_info = {}
         #prompt.append_system_message(self.known_info_tips)
         ### 信息发送者资料
@@ -442,23 +470,23 @@ class AgentMessageProcess(LLMAgentBaseProcess):
                 known_info["summary"] = summary
         #prompt.append_system_message(await self.get_log_summary(self,msg))
         system_prompt_dict["known_info"] = known_info
-        
+
         prompt.inner_functions =LLMProcessContext.aifunctions_to_inner_functions(self.llm_context.get_all_ai_functions())
         if self.workspace:
             #TODO eanble workspace functions?
             logger.info(f"workspace is not none,enable workspace functions")
 
-        ## 给予查询KB的权限    
-        if self.enable_kb:        
+        ## 给予查询KB的权限
+        if self.enable_kb:
             logger.info(f"enable kb")
-           
+
 
         prompt.append_system_message(json.dumps(system_prompt_dict,ensure_ascii=False))
         ## 扩展已知信息 (这可能是一个LLM过程)
         prompt.append_system_message(await self.get_extend_known_info(msg,prompt))
 
         return prompt
-    
+
 
     async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
         msg:AgentMsg = input.get("msg")
@@ -466,14 +494,14 @@ class AgentMessageProcess(LLMAgentBaseProcess):
             resp_msg = msg.create_group_resp_msg(self.memory.agent_id,llm_result.resp)
         else:
             resp_msg = msg.create_resp_msg(llm_result.resp)
-        
+
         llm_result.raw_result["_resp_msg"] = resp_msg
 
         action_params = {}
         action_params["_input"] = input
         action_params["_memory"] = self.memory
         action_params["_workspace"] = self.workspace
-        action_params["_resp_msg"] = resp_msg  
+        action_params["_resp_msg"] = resp_msg
         action_params["_llm_result"] = llm_result
         action_params["_agentid"] = self.memory.agent_id
         action_params["_start_at"] = datetime.now()
@@ -482,7 +510,7 @@ class AgentMessageProcess(LLMAgentBaseProcess):
 
         chatsession = self.memory.get_session_from_msg(msg)
         chatsession.append(msg)
-        chatsession.append(resp_msg)  
+        chatsession.append(resp_msg)
 
         return True
 
@@ -567,11 +595,11 @@ class AgentSelfThinking(LLMAgentBaseProcess):
 
         record_list = input.get("record_list")
         context_info = input.get("context_info")
-        
+
         if record_list is None:
             logger.error(f"AgentSelfThinking prepare_prompt failed! input  not found")
             return None
-        
+
         prompt.append_user_message(json.dumps(record_list,ensure_ascii=False))
         system_prompt_dict = self.prepare_role_system_prompt(context_info)
 
@@ -594,7 +622,7 @@ class AgentSelfThinking(LLMAgentBaseProcess):
         if known_experience_list:
             known_info["known_experience_list"] = known_experience_list
             have_known_info = True
-        
+
         if have_known_info:
             system_prompt_dict["known_info"] = known_info
 
@@ -626,7 +654,7 @@ class AgentSelfLearning(BaseLLMProcess):
 
     async def prepare_prompt(self) -> LLMPrompt:
         prompt = LLMPrompt()
-        pass  
+        pass
 
     async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
         pass
@@ -636,7 +664,7 @@ class AgentSelfLearning(BaseLLMProcess):
 
 class AgentSelfImprove(BaseLLMProcess):
     def __init__(self) -> None:
-        super().__init__()    
+        super().__init__()
 
 
 
