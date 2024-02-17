@@ -210,8 +210,14 @@ class LLMResult:
             r.state = LLMResultStates.IGNORE
             return r
 
-        if llm_result_str[0] == "{":
-            return LLMResult.from_json_str(llm_result_str)
+        try:
+            if llm_result_str[0] == "{":
+                return LLMResult.from_json_str(llm_result_str)
+
+            if llm_result_str.lstrip().rstrip().startswith("```json"):
+                return LLMResult.from_json_str(llm_result_str[7:-3])
+        except:
+            pass
 
         lines = llm_result_str.splitlines()
         is_need_wait = False
@@ -255,6 +261,8 @@ class LLMResult:
                 r.resp += current_action.dumps()
             else:
                 r.action_list.append(current_action)
+
+        r.state = LLMResultStates.OK
         return r
 
 class ComputeTask:

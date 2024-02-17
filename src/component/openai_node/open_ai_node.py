@@ -206,7 +206,7 @@ class OpenAI_ComputeNode(ComputeNode):
                 if mode_name == "gpt-4-vision-preview":
                     response_format = NOT_GIVEN
                     llm_inner_functions = None
-                    if max_token_size > 4096:
+                    if max_token_size > 4096 or max_token_size < 50:
                         result_token = 4096
                     else:
                         result_token = -1

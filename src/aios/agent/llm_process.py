@@ -2,6 +2,7 @@
 # pylint:disable=E0402
 import os.path
 
+from .chatsession import AIChatSession
 from ..utils import video_utils,image_utils
 
 from ..proto.compute_task import LLMPrompt,LLMResult,ComputeTaskResult,ComputeTaskResultCode
@@ -165,7 +166,7 @@ class BaseLLMProcess(ABC):
 
         # Action define in prompt, will be execute after llm compute
         prompt = await self.prepare_prompt(input)
-        max_result_token = self.max_token - ComputeKernel.llm_num_tokens(prompt,self.model_name)
+        max_result_token = self.max_token - ComputeKernel.llm_num_tokens(prompt,self.get_llm_model_name())
         #if max_result_token < MIN_PREDICT_TOKEN_LEN:
         #    return LLMResult.from_error_str(f"prompt too long,can not predict")
 
@@ -196,7 +197,11 @@ class BaseLLMProcess(ABC):
 
         # parse task_result to LLM Result
         if self.enable_json_resp:
-            llm_result = LLMResult.from_json_str(task_result.result_str)
+            try:
+                llm_result = LLMResult.from_json_str(task_result.result_str)
+            except Exception as e:
+                logger.error(f"parse llm result error:{e}")
+                llm_result = LLMResult.from_str(task_result.result_str)
         else:
             llm_result = LLMResult.from_str(task_result.result_str)
 
@@ -402,14 +407,18 @@ class AgentMessageProcess(LLMAgentBaseProcess):
             if self.enable_media2text:
                 logger.error(f"enable_media2text is not supported yet")
             else:
-                audio_file = msg.body
+                prompt, audio_file = msg.get_audio_body()
                 resp = await (ComputeKernel.get_instance().do_speech_to_text(audio_file, model=self.asr_model, prompt=None, response_format="text"))
                 if resp.result_code != ComputeTaskResultCode.OK:
                     error_resp = msg.create_error_resp(resp.error_str)
                     return error_resp
                 else:
-                    msg.body = resp.result_str
-                    msg_prompt.messages = [{"role":"user","content":resp.result_str}]
+                    if prompt == "":
+                        msg.body = resp.result_str
+                        msg_prompt.messages = [{"role":"user","content":resp.result_str}]
+                    else:
+                        msg.body = f"{prompt}\nVoice content:{resp.result_str}"
+                        msg_prompt.messages = [{"role":"user","content": prompt}, {"role": "user", "content": f"Voice content:{resp.result_str}"}]
         else:
             msg_prompt.messages = [{"role":"user","content":msg.body}]
 
@@ -495,7 +504,8 @@ class AgentMessageProcess(LLMAgentBaseProcess):
         else:
             resp_msg = msg.create_resp_msg(llm_result.resp)
 
-        llm_result.raw_result["_resp_msg"] = resp_msg
+        if llm_result.raw_result is not None:
+            llm_result.raw_result["_resp_msg"] = resp_msg
 
         action_params = {}
         action_params["_input"] = input
