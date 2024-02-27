@@ -3,6 +3,7 @@ from typing import List, Tuple
 
 import cv2
 import numpy as np
+import moviepy.editor as mp
 
 
 def precess_image(image):
@@ -120,3 +121,8 @@ def extract_frames(video_path: str, resize: Tuple[int, int] = None, smooth=False
         i += 1
     vidcap.release()
     return frames
+
+
+def extract_audio(video_path: str, audio_path: str):
+    my_clip = mp.VideoFileClip(video_path)
+    my_clip.audio.write_audiofile(audio_path)

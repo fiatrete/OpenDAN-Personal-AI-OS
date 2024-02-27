@@ -80,16 +80,16 @@ class LLMPrompt:
     def append_system_message(self,content:str):
         if content is None:
             return
-        
+
         if self.system_message is None:
             self.system_message = {"role":"system","content":content}
         else:
             self.system_message["content"] += content
-    
+
     def append_user_message(self,content:str):
         if content is None:
             return
-        
+
         self.messages.append({"role":"user","content":content})
 
     def as_str(self)->str:
@@ -109,13 +109,13 @@ class LLMPrompt:
             result.append(self.system_message)
         result.extend(self.messages)
         return result
-    
-    
+
+
 
     def append(self,prompt:'LLMPrompt'):
         if prompt is None:
             return
-        
+
         if prompt.inner_functions:
             if self.inner_functions is None:
                 self.inner_functions = copy.deepcopy(prompt.inner_functions)
@@ -164,8 +164,8 @@ class LLMResult:
     @classmethod
     def from_error_str(self,error_str:str) -> 'LLMResult':
         r = LLMResult()
-        r.state = "error"
-        r.compute_error_str = error_str
+        r.state = LLMResultStates.ERROR
+        r.error_str = error_str
         return r
 
     @classmethod
@@ -177,7 +177,7 @@ class LLMResult:
         if llm_json_str == "**IGNORE**":
             r.state = LLMResultStates.IGNORE
             return r
-        
+
         r.state = LLMResultStates.OK
 
         llm_json = json.loads(llm_json_str)
@@ -198,7 +198,7 @@ class LLMResult:
         func_name = str_list[0]
         params = str_list[1:]
         return func_name, params
-    
+
     @classmethod
     def from_str(self,llm_result_str:str,valid_func:List[str]=None) -> 'LLMResult':
         r = LLMResult()
@@ -210,8 +210,14 @@ class LLMResult:
             r.state = LLMResultStates.IGNORE
             return r
 
-        if llm_result_str[0] == "{":
-            return LLMResult.from_json_str(llm_result_str)
+        try:
+            if llm_result_str[0] == "{":
+                return LLMResult.from_json_str(llm_result_str)
+
+            if llm_result_str.lstrip().rstrip().startswith("```json"):
+                return LLMResult.from_json_str(llm_result_str[7:-3])
+        except:
+            pass
 
         lines = llm_result_str.splitlines()
         is_need_wait = False
@@ -226,10 +232,10 @@ class LLMResult:
                     target_id = action_item.args[0]
                     msg_content = action_item.body
                     new_msg.set("",target_id,msg_content)
-                    
+
                     return True
 
-                    
+
             return False
 
 
@@ -255,6 +261,8 @@ class LLMResult:
                 r.resp += current_action.dumps()
             else:
                 r.action_list.append(current_action)
+
+        r.state = LLMResultStates.OK
         return r
 
 class ComputeTask:

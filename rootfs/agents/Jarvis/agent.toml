@@ -16,6 +16,8 @@ Only clearly specifying the task you completed can be completed independently.
 type="AgentMessageProcess"
 # TODO: 是否应该自动记录 inner function和action的执行细节
 mutil_model="gpt-4-vision-preview"
+asr_model="openai-whisper"
+tts_model="tts-1"
 
 process_description="""
 1. Based on your role and the existing information, please think and then make a brief and efficient reply.
@@ -30,7 +32,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 {
     think:'$think step-by-step to be sure you have the right reply.'
     resp: '$What you want to reply',
-    actions: [{ 
+    actions: [{
     name: '$action_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
     }]
@@ -63,7 +65,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 {
     think:'$think step-by-step to be sure you can triage tasks well.'
     resp : '$determine, summary what you do',
-    actions: [{ 
+    actions: [{
     name: '$action_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
     }]
@@ -89,7 +91,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 {
     think:'$thinking step by step to ensure the accurate and efficient processing task.',
     resp:'$determine, summary what you do'
-    actions: [{ 
+    actions: [{
     name: '$action_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
     }]
@@ -114,7 +116,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 {
     think:'$think step-by-step to be sure you have the right result.',
     resp : '$determine, summary what you will do',
-    actions: [{ 
+    actions: [{
     name: '$action_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
     }]
@@ -124,11 +126,11 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 llm_context.actions.enable = ["agent.workspace.cancel_task","agent.workspace.update_task"]
 
 context="Your Principal now in {location}, time: {now}, weather: {weather}."
-[behavior.do] 
+[behavior.do]
 # do TODO
 type="AgentDo"
 process_description="""
-The input is a TODO comes from a Task. 
+The input is a TODO comes from a Task.
 1. Your task is to combine your role definition, tools on hand, known information, and complete a certain Todo.After completing the Todo, you will get a tip of $ 200.
 2. 8000 word limit for short term memory. Your short term memory is short, so immediately save important information to files.
 3. In the process of completing Todo, you should think first and then execute. During the execution, you can use functions to access the results of the front steps.
@@ -141,10 +143,10 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 {
     think:'$think step by step, how to complete the todo',
     resp: '$simport report about what you do',
-    actions: [{ 
+    actions: [{
     name: '$action1_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
-    }, ... 
+    }, ...
     ]
 }
 """
@@ -168,7 +170,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     resp:'$think step by step, how to check the todo',
     name: '$action1_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
-    }, ... 
+    }, ...
     ]
 }
 """
@@ -197,7 +199,7 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
     resp:'$Summary in one sentence',
     name: '$action1_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
-    }, ... 
+    }, ...
     ]
 }
 """

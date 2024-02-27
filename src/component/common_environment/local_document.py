@@ -13,6 +13,7 @@ import PyPDF2
 import datetime
 from typing import Optional, List
 from aios import *
+from aios.environment.workspace_env import TodoListEnvironment, TodoListType
 from .local_file_system import FilesystemEnvironment
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class MetaDatabase:
     def __init__(self,db_path:str):
         self.db_path = db_path
         self._get_conn()
-        
+
     def _get_conn(self):
         """ get db connection """
         local = threading.local()
@@ -43,7 +44,7 @@ class MetaDatabase:
             self._create_tables(conn)
 
         return conn
-    
+
     def _create_tables(self,conn):
         cursor = conn.cursor()
         cursor.execute('''
@@ -68,7 +69,7 @@ class MetaDatabase:
                 create_time TEXT
             )
         ''')
-            
+
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_documents_doc_hash
             ON documents (doc_hash)
@@ -110,7 +111,7 @@ class MetaDatabase:
             WHERE doc_path = ?
         ''', (doc_hash, doc_path))
         conn.commit()
-    
+
     def get_docs_without_hash(self,limit:int=1024) -> List[str]:
         conn = self._get_conn()
         cursor = conn.cursor()
@@ -186,7 +187,7 @@ class MetaDatabase:
         row = cursor.fetchone()
         if row is None:
             return None
-        
+
         # get doc path
         cursor.execute('''
             SELECT doc_path
@@ -197,7 +198,7 @@ class MetaDatabase:
         if row2 is None:
             return None
         doc_path = row2[0]
-    
+
 
         return {
             "full_path": doc_path,
@@ -261,7 +262,7 @@ class LearningCache:
     def remove(self, key):
         with self.cache_lock:
             return self.cache.pop(key, None)
-    
+
 
 class LocalKnowledgeBase(CompositeEnvironment):
     def __init__(self, workspace: str) -> None:
@@ -275,10 +276,10 @@ class LocalKnowledgeBase(CompositeEnvironment):
         async def learn(op:dict):
             full_path = op.get("original_path")
             if not full_path:
-                return 
+                return
             meta = self.learning_cache.get(full_path)
             meta.update(op)
-            
+
         self.add_ai_operation(SimpleAIAction(
             op="learn",
             description="update knowledge llm summary",
@@ -287,16 +288,16 @@ class LocalKnowledgeBase(CompositeEnvironment):
 
         self.fs = FilesystemEnvironment(self.root_path)
         self.add_env(self.fs)
-    
+
     async def get_knowledege_catalog(self,path:str=None,only_dir =True,max_depth:int=5)->str:
         if path:
             full_path = f"{self.root_path}/{path}"
         else:
             full_path = self.root_path
-        
+
         catlogs,file_count = await self.get_directory_structure(full_path,max_depth,only_dir)
         return catlogs
- 
+
     async def get_directory_structure(self,root_dir, max_depth:int=4, only_dir=True, indent=1):
         file_count = 0
         structure_str = ''
@@ -315,11 +316,11 @@ class LocalKnowledgeBase(CompositeEnvironment):
 
                 if only_dir is False:
                     for file_name in sub_files:
-                        structure_str = structure_str + '  ' * (indent+1) + file_name + '\n' 
+                        structure_str = structure_str + '  ' * (indent+1) + file_name + '\n'
 
             dir_name = os.path.basename(root_dir)
             dir_info = f"{dir_name} <count: {file_count}>"
-        
+
 
             structure_str = '  ' * indent + dir_info + '\n' + structure_str
 
@@ -328,7 +329,7 @@ class LocalKnowledgeBase(CompositeEnvironment):
         else:
             return structure_str, file_count
 
-    # inner_function    
+    # inner_function
     async def get_knowledge_meta(self,path:str) -> str:
         full_path = f"{self.root_path}/{path}"
         if os.islink(full_path):
@@ -336,9 +337,9 @@ class LocalKnowledgeBase(CompositeEnvironment):
             hash = self.meta_db.get_hash_by_doc_path(org_path)
             if hash:
                 return self.meta_db.get_knowledge(org_path)
-        
+
         return "not found"
-    
+
     async def load_knowledge_content(self,path:str,pos:int=0,length:int=None) -> str:
         if path.endswith("pdf"):
             logger.info("load_knowledge_content:pdf")
@@ -367,12 +368,12 @@ class ScanLocalDocument:
         workspace = string.Template(config["workspace"]).substitute(myai_dir=AIStorage.get_instance().get_myai_dir())
         path = string.Template(config["path"]).substitute(myai_dir=AIStorage.get_instance().get_myai_dir())
         self.knowledge_base = LocalKnowledgeBase(workspace)
-        self.path = path  
+        self.path = path
 
     def _support_file(self,file_name:str) -> bool:
         if file_name.startswith("."):
             return False
-        
+
         if file_name.endswith(".pdf"):
             return True
         if file_name.endswith(".md"):
@@ -380,7 +381,7 @@ class ScanLocalDocument:
         if file_name.endswith(".txt"):
             return True
         return False
-        
+
     async def next(self):
         while True:
             for root, dirs, files in os.walk(self.path):
@@ -391,10 +392,10 @@ class ScanLocalDocument:
                         if self.knowledge_base.meta_db.is_doc_exist(full_path):
                             continue
                         yield(full_path, full_path)
-                    else: 
+                    else:
                         continue
             yield(None, None)
-                        
+
 
 
 class ParseLocalDocument:
@@ -425,7 +426,7 @@ class ParseLocalDocument:
                 await self.knowledge_base.fs.symlink(full_path, new_path)
                 logger.info(f"create soft link {full_path} -> {new_path}")
         return full_path
-        
+
     async def _get_meta_prompt(self,meta: dict,temp_meta = None,need_catalogs = False) -> str:
         kb_tree = await self.knowledge_base.get_knowledege_catalog()
 
@@ -473,7 +474,7 @@ class ParseLocalDocument:
         full_content_len = self._token_len(full_content)
         full_path = meta["original_path"]
         self.knowledge_base.learning_cache.add(full_path, meta)
-       
+
 
         if full_content_len < self.token_limit:
             # 短文章不用总结catalog
@@ -521,7 +522,7 @@ class ParseLocalDocument:
                 if item.title:
                     new_item = {}
                     new_item["page"] = item.page.idnum
-                    new_item["title"] = item.title 
+                    new_item["title"] = item.title
                     my_childs = []
                     if item.childs:
                         if len(item.childs) > 0:
@@ -573,7 +574,7 @@ class ParseLocalDocument:
         return {}
 
     def _parse_md(self,doc_path:str):
-        metadata = {} 
+        metadata = {}
         cur_encode = "utf-8"
         with open(doc_path,'rb') as f:
             cur_encode = chardet.detect(f.read(1024))['encoding']
@@ -588,7 +589,7 @@ class ParseLocalDocument:
             toc = md.toc
             if toc:
                 metadata['catalogs'] = toc
-            
+
         return metadata
 
     def _parse_document(self,doc_path:str):
@@ -614,5 +615,4 @@ class ParseLocalDocument:
             meta_data["title"] = title
         logger.info("parse document %s!",doc_path)
         return hash_result, meta_data
-        
-    
+

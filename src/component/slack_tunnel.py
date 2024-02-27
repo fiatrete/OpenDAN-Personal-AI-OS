@@ -119,6 +119,7 @@ class SlackTunnel(AgentTunnel):
                             continue
                         await download_file(file_info["file"]["url_private_download"], file_path, self.token)
 
+                        mime_type = file["mimetype"]
                         if file["mimetype"].startswith("image/"):
                             if file_type is None:
                                 file_type = "image"

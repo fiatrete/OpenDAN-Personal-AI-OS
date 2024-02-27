@@ -156,3 +156,4 @@ opencv-python
 discord.py
 slack_bolt
 wget
+moviepy
