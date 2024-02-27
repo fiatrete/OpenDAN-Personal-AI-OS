@@ -14,6 +14,37 @@ Self Loop (自省)
 
 
 #### Agent.Memory
+Memory模块设计的主要目的是能按一定的模式，在Token Limit的情况下构成Agent的一些上下文。
+Memory的原始记录写入：原则上说，Agent的任何LLM行为都应至少将input/resp 写入Memory,毕竟LLM是非常高开销的行为。LLM的过程可以视情况写入（inner function的调用，action的执行，根据input构造的完整提示词等）
+Memory的使用：LLM过程在构造提示词的“已知信息”部分时，通常都会有加载Memory的需求。尤其是在Input并不包含完整信息的情况下（非幂等LLM推理），更需要根据“上下文”来理解Input的含义。这在“ChatCompetition”过程中尤为明显。
+
+使用Memory基本是两种方式
+1. 加载写入的原始记录
+2. 访问根据原始记录加工（Self-Thinking）后的Object-Summary。或则访问一个根据原始记录整理的，用文件系统方式组织的“记忆片段”
+
+这里的核心痛点是：一个LLM过程，如何根据Input加载合适的Memory成为“已知信息”。
+1. 如果明确的知道Input属于一个session，那么可以加载这个session相关的所有record(注意token limit和最大条数)与session的summary，其它的Memory的信息通过inner_function访问。但要防止LLM过程中对Inner function的过度使用
+2. 在不明确的情况下，如何判断input属于哪个session?（包括是否需要创建新的session）
+
+从上述思考中，得到现在的设计方案：
+1. 依旧保留Session，且创建session是明确的用户行为。有一些tunnel根本没有创建session的能力。UI可以用 Lite-LLM来进行辅助的session合并（比如类似GMail的Email归集）。系统可以基于session做“已知信息”的自动加载
+2. 在处理Input时，允许使用Agent.Memory的接口来访问更多的Memory的内容。从流程上看，这个过程和访问KB的原理是基本一致的。
+3. Self-Thinking的过程中，既要对Session进行整理（得到Session Summary）,也要站在更全局的角度对涉及到的Object进行整理（得到Object Summary）。
+4. Self-Thinking的过程也是以session为单位的,以更新session-summary为首要目标，并可以在Thiking的过程中，访问已有的object-summary，选择性的更新object-summary
+5. Self-Thinking会尽量以时间从新到旧处理所有的原始记录，因此会涉及到对多个Session的Summary的更新。
+
+设计方案的主要风险在于inner function模式可能会带来大量的，无用的object summary查询。
+
+对于UI上不方便创建Session的情况：
+1. 通过标题尝试自动创建
+2. 通过时间尝试自动创建
+3. 既然用户看到的就是一个session，那么我们就必须当一个session来处理
+
+
+一些推论：
+Agent通过一个DB list来访问/写入结构化数据，并拥有自己创建DB的能力
+Agent通过一个FileSystem来访问/创建非结构化数据，并拥有理解文件系统组织设计的能力
+“不要给Agent直接扩展能力，而是尽量给Agent扩展元能力（读说明书的能力）”
 
 #### Agent.Workspace
 
