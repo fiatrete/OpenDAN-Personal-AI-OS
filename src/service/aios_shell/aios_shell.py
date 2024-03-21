@@ -152,7 +152,9 @@ class AIOS_Shell:
         #AgentManager.get_instance().register_environment("fs", FilesystemEnvironment)
         #AgentManager.get_instance().register_environment("knowledge", LocalKnowledgeBase)
         AgentWorkspace.register_ai_functions()
+        AgentMemory.register_ai_functions()
         ShellEnvironment.register_ai_functions()
+       
 
         if await AgentManager.get_instance().initial() is not True:
             logger.error("agent manager initial failed!")
@@ -256,7 +258,7 @@ class AIOS_Shell:
 
 
     def get_version(self) -> str:
-        return "0.5.1"
+        return "0.5.2"
 
     async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None, msg_mime:str=None) -> str:
         if sender == self.username:

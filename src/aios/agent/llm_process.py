@@ -39,8 +39,9 @@ class BaseLLMProcess(ABC):
         #None means system default,
         # TODO: support abcstract model name like: local-hight,local-low,local-medium,remote-hight,remote-low,remote-medium
         self.model_name = None
-        self.max_token = 1000 # result_token
-        self.max_prompt_token = 1000 # not include input prompt
+        self.max_token = 2000 # result_token
+        self.max_prompt_token = 2000 # not include input prompt
+        self.chat_summary_token_len = 500
         self.timeout = 1800 # 30 min
 
         self.llm_context:LLMProcessContext = None
@@ -63,6 +64,9 @@ class BaseLLMProcess(ABC):
     @abstractmethod
     async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
         pass
+
+    def get_remain_prompt_length(self,prompt:LLMPrompt,will_append_str:str) -> int:
+        return self.max_prompt_token - ComputeKernel.llm_num_tokens(prompt,self.model_name)
 
     @abstractmethod
     async def load_from_config(self,config:dict) -> bool:
@@ -166,6 +170,10 @@ class BaseLLMProcess(ABC):
 
         # Action define in prompt, will be execute after llm compute
         prompt = await self.prepare_prompt(input)
+        if prompt is None:
+            logger.warn(f"prepare_prompt return None, break llm_process")
+            return LLMResult.from_error_str("prepare_prompt return None")
+        
         max_result_token = self.max_token - ComputeKernel.llm_num_tokens(prompt,self.get_llm_model_name())
         #if max_result_token < MIN_PREDICT_TOKEN_LEN:
         #    return LLMResult.from_error_str(f"prompt too long,can not predict")
@@ -429,14 +437,15 @@ class AgentMessageProcess(LLMAgentBaseProcess):
         #TODO Is sender an agent?
         return await self.memory.get_contact_summary(sender_id)
 
-    async def load_chatlogs(self,msg:AgentMsg)->str:
+    async def load_chatlogs(self,msg:AgentMsg,max_length_by_token:int)->str:
         ## like
         #sender,[2023-11-1 12:00:00]
         #content
-        return await self.memory.load_chatlogs(msg)
+        return await self.memory.load_chatlogs(msg,max_length_by_token)
 
-    async def get_log_summary(self,msg:AgentMsg)->str:
-        return None
+    async def get_chat_summary(self,msg:AgentMsg)->str:
+        return await self.memory.get_chat_summary(msg)
+
 
 
     async def get_extend_known_info(self,msg:AgentMsg,prompt:LLMPrompt)->str:
@@ -466,18 +475,7 @@ class AgentMessageProcess(LLMAgentBaseProcess):
         ### 信息发送者资料
         known_info["sender_info"] = await self.sender_info(msg)
         #prompt.append_system_message(await self.sender_info(self,msg))
-        ### 近期的聊天记录
-        chat_record = await self.load_chatlogs(msg)
-        if chat_record:
-            if len(chat_record) > 4:
-                known_info["chat_record"] = chat_record
-        #prompt.append_system_message(await self.load_chatlogs(self,msg))
-        ### 交流总结
-        summary = await self.get_log_summary(msg)
-        if summary:
-            if len(summary) > 4:
-                known_info["summary"] = summary
-        #prompt.append_system_message(await self.get_log_summary(self,msg))
+
         system_prompt_dict["known_info"] = known_info
 
         prompt.inner_functions =LLMProcessContext.aifunctions_to_inner_functions(self.llm_context.get_all_ai_functions())
@@ -490,10 +488,24 @@ class AgentMessageProcess(LLMAgentBaseProcess):
             logger.info(f"enable kb")
 
 
-        prompt.append_system_message(json.dumps(system_prompt_dict,ensure_ascii=False))
-        ## 扩展已知信息 (这可能是一个LLM过程)
-        prompt.append_system_message(await self.get_extend_known_info(msg,prompt))
+        ### 根据Token Limit加载聊天记录
+        remain_token = self.get_remain_prompt_length(prompt,json.dumps(system_prompt_dict,ensure_ascii=False))
+        chat_record,is_all = await self.load_chatlogs(msg,remain_token - self.chat_summary_token_len)
+        if chat_record:
+            if len(chat_record) > 4:
+                known_info["chat_record"] = chat_record
 
+            if not is_all :
+                ### 如果出触发了Token Limit,则删除几条信息后，加载summary （summary的长度基本是固定的）
+                summary = await self.get_chat_summary(msg)
+                if summary:
+                    if len(summary) > 4:
+                        known_info["chat_summary"] = summary
+
+        # TODO: extend known info
+        #prompt.append_system_message(await self.get_extend_known_info(msg,prompt))
+         
+        prompt.append_system_message(json.dumps(system_prompt_dict,ensure_ascii=False))
         return prompt
 
 
@@ -527,117 +539,77 @@ class AgentMessageProcess(LLMAgentBaseProcess):
 class AgentSelfThinking(LLMAgentBaseProcess):
     def __init__(self) -> None:
         super().__init__()
+        
 
     async def load_from_config(self, config: dict) -> Coroutine[Any, Any, bool]:
         if await super().load_from_config(config) is False:
             return False
 
+    async def _load_chat_history(self,token_limit:int):
+        chat_history = {}
+        session_list = AIChatSession.list_session(self.memory.agent_id ,self.memory.memory_db)
+        total_read_msg = 0
+        for session_id in session_list:
+            chatsession = AIChatSession.get_session_by_id(session_id,self.memory.memory_db)
+            session_history = {}
+            session_history["summary"] = chatsession.summary
+            session_history["id"] = chatsession.session_id
+            token_limit -= ComputeKernel.llm_num_tokens_from_text(chatsession.summary,self.model_name)
+            read_history_msg = 0
+            
+            if token_limit > 8:
+                # load session chat history
+                cur_pos = chatsession.summarize_pos
+                messages = chatsession.read_history(0,cur_pos,"natural") # read
+                history_str = ""
+                for msg in messages:
+                    read_history_msg += 1
+                    total_read_msg += 1
+                    cur_pos += 1
+                    dt = datetime.fromtimestamp(float(msg.create_time))
+                    formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
+                    record_str = f"{msg.sender},[{formatted_time}]\n{msg.body}\n"
+                    token_limit -= ComputeKernel.llm_num_tokens_from_text(record_str,self.model_name)
+                    if token_limit < 8:
+                        break
 
-    async def _get_history_prompt_for_think(self,chatsession,summary:str,system_token_len:int,pos:int)->(LLMPrompt,int):
-        history_len = (self.max_token_size * 0.7) - system_token_len
+                    history_str = history_str + record_str
 
-        messages = chatsession.read_history(self.history_len,pos,"natural") # read
-        result_token_len = 0
-        result_prompt = LLMPrompt()
-        have_summary = False
-        if summary is not None:
-            if len(summary) > 1:
-                have_summary = True
+                if read_history_msg >= 2:
+                    session_history["history"] = history_str
+                    chat_history[session_id] = session_history
+                    chatsession.summarize_pos = cur_pos
 
-        if have_summary:
-                result_prompt.messages.append({"role":"user","content":summary})
-                result_token_len -= len(summary)
-        else:
-            result_prompt.messages.append({"role":"user","content":"There is no summary yet."})
-            result_token_len -= 6
-
-        read_history_msg = 0
-        history_str : str = ""
-        for msg in messages:
-            read_history_msg += 1
-            dt = datetime.datetime.fromtimestamp(float(msg.create_time))
-            formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
-            record_str = f"{msg.sender},[{formatted_time}]\n{msg.body}\n"
-            history_str = history_str + record_str
-
-            history_len -= len(msg.body)
-            result_token_len += len(msg.body)
-            if history_len < 0:
-                logger.warning(f"_get_prompt_from_session reach limit of token,just read {read_history_msg} history message.")
-                break
-
-        result_prompt.messages.append({"role":"user","content":history_str})
-        return result_prompt,pos+read_history_msg
-
-    async def _think_chatsession(self,session_id):
-        if self.agent_think_prompt is None:
-            return
-        logger.info(f"agent {self.agent_id} think session {session_id}")
-        chatsession = AIChatSession.get_session_by_id(session_id,self.chat_db)
-
-        while True:
-            cur_pos = chatsession.summarize_pos
-            summary = chatsession.summary
-            prompt:LLMPrompt = LLMPrompt()
-            #prompt.append(self._get_agent_prompt())
-            prompt.append(await self._get_agent_think_prompt())
-            system_prompt_len = ComputeKernel.llm_num_tokens(prompt)
-            #think env?
-            history_prompt,next_pos = await self._get_history_prompt_for_think(chatsession,summary,system_prompt_len,cur_pos)
-            prompt.append(history_prompt)
-            is_finish = next_pos - cur_pos < 2
-            if is_finish:
-                logger.info(f"agent {self.agent_id} think session {session_id} is finished!,no more history")
-                break
-            #3) llm summarize chat history
-            task_result:ComputeTaskResult = await self.do_llm_complection(prompt)
-            if task_result.result_code != ComputeTaskResultCode.OK:
-                logger.error(f"think_chatsession llm compute error:{task_result.error_str}")
-                break
             else:
-                new_summary= task_result.result_str
-                logger.info(f"agent {self.agent_id} think session {session_id} from {cur_pos} to {next_pos} summary:{new_summary}")
-                chatsession.update_think_progress(next_pos,new_summary)
-        return
+                logger.info(f"load_chat_history reach token limit,load {total_read_msg} history messages.")
+                return chat_history
+            
+        if total_read_msg < 2:
+            logger.info(f"load_chat_history: no history messages,return NONE")
+            return None
+        
+        return chat_history   
+                
 
     async def prepare_prompt(self,input:Dict) -> LLMPrompt:
         prompt = LLMPrompt()
 
-        record_list = input.get("record_list")
         context_info = input.get("context_info")
-
-        if record_list is None:
-            logger.error(f"AgentSelfThinking prepare_prompt failed! input  not found")
-            return None
-
-        prompt.append_user_message(json.dumps(record_list,ensure_ascii=False))
+        
         system_prompt_dict = self.prepare_role_system_prompt(context_info)
 
         # Known_info is the SESSION summary of the existence, the current task work record summary,
-        known_info = {}
-        have_known_info = False
-        known_session_list = input.get("known_session_list")
-        known_task_list = input.get("known_task_list")
-        known_contact_list = input.get("known_contact_list")
-        known_experience_list = input.get("known_experience_list")
-        if known_session_list:
-            known_info["known_session_list"] = known_session_list
-            have_known_info = True
-        if known_task_list:
-            known_info["known_task_list"] = known_task_list
-            have_known_info = True
-        if known_contact_list:
-            known_info["known_contact_list"] = known_contact_list
-            have_known_info = True
-        if known_experience_list:
-            known_info["known_experience_list"] = known_experience_list
-            have_known_info = True
-
-        if have_known_info:
-            system_prompt_dict["known_info"] = known_info
-
+        token_remain = self.get_remain_prompt_length(prompt,json.dumps(system_prompt_dict,ensure_ascii=False))
+        chat_history = await self._load_chat_history(token_remain)
+        if chat_history is None:
+            logger.info(f"prepare_prompt: no history messages,return NONE")
+            return None
+        
         prompt.inner_functions =LLMProcessContext.aifunctions_to_inner_functions(self.llm_context.get_all_ai_functions())
+        
         prompt.append_system_message(json.dumps(system_prompt_dict,ensure_ascii=False))
+        prompt.append_user_message(json.dumps(chat_history,ensure_ascii=False))
+        return prompt 
 
     async def post_llm_process(self,actions:List[ActionNode],input:Dict,llm_result:LLMResult) -> bool:
         action_params = {}

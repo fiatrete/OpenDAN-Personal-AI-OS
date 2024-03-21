@@ -13,7 +13,7 @@ class EmbeddingEnvironment(SimpleEnvironment):
         query_param = {
             "tokens": "key words to query", 
             "types": "prefered knowledge types, one or more of [text, image]",
-            "index": "index of query result"
+            "limit": "index of query result"
         }
         self.add_ai_function(SimpleAIFunction("query_knowledge", 
                                             "vector query content from local knowledge base",

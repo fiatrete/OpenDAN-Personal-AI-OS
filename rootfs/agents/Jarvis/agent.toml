@@ -14,7 +14,6 @@ Only clearly specifying the task you completed can be completed independently.
 
 [behavior.on_message]
 type="AgentMessageProcess"
-# TODO: 是否应该自动记录 inner function和action的执行细节
 mutil_model="gpt-4-vision-preview"
 asr_model="openai-whisper"
 tts_model="tts-1"
@@ -167,7 +166,8 @@ process_description="""
 reply_format = """
 The Response must be directly parsed by `python json.loads`. Here is an example:
 {
-    resp:'$think step by step, how to check the todo',
+    resp: '$simport report about what you do',
+    actions: [{
     name: '$action1_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
     }, ...
@@ -179,24 +179,24 @@ llm_context.actions.enable = ["agent.workspace.update_todo"]
 llm_context.functions.enable =  ["agent.workspace.read_file","agent.workspace.list_dir","system.shell.exec","system.shell.run_code","aigc.image_2_text","aigc.voice_2_text","web.search.duckduckgo"]
 
 
-[behavior.self_thinking2]
+[behavior.self_thinking]
 # self thing的主要目的是对各种chatlog,worklog进行分析，并更新面向人和事的summary。
+# TODO，先不支持worklog,先支持好chatlog
 type="AgentSelfThinking"
 process_description="""
-You are very good at thinking and summarizing what you have already happened。Your input is a chat history and work record,After you think about it, you will follow the requirements below to generate abstract.
+You are very good at thinking and summarizing what you have already happened。Your input is chat history and work records,After you think about it, you will follow the requirements below to generate abstract.
 1. Try to understand the theme of each sentence, and call the relevant operation to record the relationship between the dialogue and the theme
 2. Try to analyze the personality of different people involved in information
 3. Try to summarize important events in the information and record it
 4. Try to understand the attitude of different people on different topics or events
 5. Pay attention to the time order when summarizing, and combine the summary you have done to update Summary
-6. The summary of the generation cannot exceed 400 token
-7. 思考的目的是让自己未来的工作更加高效
-8. 总结中只包含有长期价值和未完成的事情，已经完成的事情不需要总结
+6. The summary of the generation cannot exceed 500 token
 """
 reply_format = """
 The Response must be directly parsed by `python json.loads`. Here is an example:
 {
-    resp:'$Summary in one sentence',
+    resp: '$simport report about what you do',
+    actions: [{
     name: '$action1_name',
     $param_name: '$parm' #Optional, fill in only if the action has parameters.
     }, ...
@@ -204,8 +204,8 @@ The Response must be directly parsed by `python json.loads`. Here is an example:
 }
 """
 context="Your Principal is {owner}, now in {location}, time: {now}, weather: {weather}."
-llm_context.actions.enable = ["agent.memory.update_summary","agent.memory.update_contact_summary","agent.memory.update_relation_summary","agent.memory.set_experience"]
-llm_context.functions.enable =  ["agent.memory.get_summary","agent.memory.get_contact_summary","agent.memory.list_summary","agent.memory.get_relation_summary","agent.memory.get_experience"]
+llm_context.actions.enable = ["agent.memory.update_chat_summary"]
+
 
 
 #[behavior.self_improve]

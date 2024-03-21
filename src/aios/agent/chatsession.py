@@ -198,6 +198,9 @@ class ChatSessionDB:
         try:
             conn = self._get_conn()
             cursor = conn.cursor()
+            if limit == 0:
+                limit = 1024
+
             cursor.execute("""
                 SELECT MessageID, SessionID, MsgType, PrevMsgID, SenderID, ReceiverID, Timestamp, Topic,Mentions,ContentMIME,Content,ActionName,ActionParams,ActionResult,DoneTime,Status FROM Messages
                 WHERE SessionID = ?
@@ -234,6 +237,8 @@ class ChatSessionDB:
         try:
             conn = self._get_conn()
             cursor = conn.cursor()
+            if limit == 0:
+                limit = 1024
             cursor.execute("""
                 SELECT MessageID, SessionID, MsgType, PrevMsgID, SenderID, ReceiverID, Timestamp, Topic,Mentions,ContentMIME,Content,ActionName,ActionParams,ActionResult,DoneTime,Status FROM Messages
                 WHERE SessionID = ?
@@ -296,6 +301,7 @@ class ChatSessionDB:
 # chat session might be large, so can read / write at stream mode.
 class AIChatSession:
     _dbs = {}
+    _sessions = {}
     #@classmethod
     #async def get_session_by_id(cls,session_id:str,db_path:str):
     #    db = cls._dbs.get(db_path)
@@ -345,18 +351,24 @@ class AIChatSession:
             cls._dbs[db_path] = db
 
         result = None
+        for session in cls._sessions.values():
+            if session.owner_id == owner_id and session.topic == session_topic:
+                return session
+            
         session = db.get_chatsession_by_owner_topic(owner_id,session_topic)
         if session is None:
             if auto_create:
                 session_id = "CS#" + uuid.uuid4().hex
                 db.insert_chatsession(session_id,owner_id,session_topic,datetime.datetime.now())
                 result = AIChatSession(owner_id,session_id,db)
+                cls._sessions[session_id] = result
         else:
             result = AIChatSession(owner_id,session[0],db)
             result.topic = session_topic
             result.summarize_pos = session[4]
             result.summary = session[5]
             result.openai_thread_id = session[6]
+            cls._sessions[result.session_id] = result
 
         return result
     
@@ -368,6 +380,10 @@ class AIChatSession:
             cls._dbs[db_path] = db
 
         result = None
+        session = cls._sessions.get(session_id)
+        if session:
+            return session
+        
         session = db.get_chatsession_by_id(session_id)
         if session is None:
             return None
@@ -377,6 +393,7 @@ class AIChatSession:
             result.summarize_pos = session[4]
             result.summary = session[5]
             result.openai_thread_id = session[6]
+            cls._sessions[session_id] = result
 
         return result        
 
@@ -402,13 +419,13 @@ class AIChatSession:
         self.topic : str = None
         self.start_time : str = None
         self.summarize_pos : int = 0
-        self.summary = None
+        self.summary : str = None
         self.openai_thread_id = None
 
     def get_owner_id(self) -> str:
         return self.owner_id
 
-    def read_history(self, number:int=10,offset=0,order="revers") -> [AgentMsg]:
+    def read_history(self, number:int=0,offset=0,order="revers") -> [AgentMsg]:
         if order == "revers":
             msgs = self.db.get_messages(self.session_id, number, offset)
         else:
@@ -444,9 +461,8 @@ class AIChatSession:
         self.db.insert_message(msg,tags)
 
 
-    def update_think_progress(self,progress:int,new_summary:str) -> None:
-        self.db.update_session_summary(self.session_id,progress,new_summary)
-        self.summarize_pos = progress
+    def update_summary(self,new_summary:str) -> None:
+        self.db.update_session_summary(self.session_id,self.summarize_pos,new_summary)
         self.summary = new_summary
 
     def update_openai_thread_id(self,thread_id:str) -> None:

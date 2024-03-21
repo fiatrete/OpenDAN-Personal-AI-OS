@@ -8,7 +8,7 @@ class ParameterDefine:
         self.type:str = "string"
         self.enum:List[str] = None
         self.description = desc
-        self.is_required = False
+        self.is_required = True
 
     @classmethod
     def create_parameters(cls,json_obj:dict) -> Dict[str,'ParameterDefine']:

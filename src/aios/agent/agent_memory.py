@@ -92,49 +92,31 @@ class AgentMemory:
         work_records = self.load_worklogs(self.agent_id,token_limit=tokenlimit)
         pass
 
-    async def load_chatlogs(self,msg:AgentMsg,n:int=6,m:int=64,token_limit=800)->str:
+    async def load_chatlogs(self,msg:AgentMsg,token_limit=800):
         chatsession = self.get_session_from_msg(msg)
         # Must load n (n> = 2), and hope to load the M
         # The information in the # M is gradually added, knowing that it is less than 72 hours from the current time, and consumes enough tokens
 
-        messages_n = chatsession.read_history(n) # read
-        if len(messages_n) >= n:
-            messages_m = chatsession.read_history(m,n)
-        else:
-            messages_m = []
-
+        messages_n = chatsession.read_history() # read
         histroy_str = ""
         read_count = 0
+        is_all = True
         for msg in messages_n:
             dt = datetime.fromtimestamp(float(msg.create_time))
             formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
             record_str = f"{msg.sender},[{formatted_time}]\n{msg.body}\n"
             token_limit -= ComputeKernel.llm_num_tokens_from_text(record_str,self.model_name)
             if token_limit <= 32:
+                is_all = False
                 break
             read_count += 1
             histroy_str = record_str + histroy_str
 
-        if len(messages_n) > 2:
-            if read_count < 3:
-                logging.warning(f"read history {read_count} < 3, will not load more")
-
-        now = datetime.now()
-        for msg in messages_m:
-            dt = datetime.fromtimestamp(float(msg.create_time))
-            time_diff = now - dt
-            if time_diff > timedelta(hours=self.threshold_hours):
-                break
-
-            formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
-            record_str = f"{msg.sender},[{formatted_time}]\n{msg.body}\n"
-            token_limit -= ComputeKernel.llm_num_tokens_from_text(record_str,self.model_name)
-            if token_limit <= 32:
-                break
-            read_count += 1
-            histroy_str = record_str + histroy_str
-
-        return histroy_str 
+        return histroy_str,is_all
+    
+    async def get_chat_summary(self,msg:AgentMsg) -> str:
+        chatsession : AIChatSession = self.get_session_from_msg(msg)
+        return chatsession.summary
     
     # async def action_chatlog_append(self,params:Dict) -> str:
     #    
@@ -293,7 +275,7 @@ class AgentMemory:
         try:
             async with aiofiles.open(summary_path, mode='w') as file:
                 await file.write(summary)
-                return "OK"
+                return "OK" 
         except Exception as e:
             logger.error(f"write summary failed: {e}")
             return f"write summary failed: {e}"
@@ -363,141 +345,157 @@ class AgentMemory:
 
     @staticmethod
     def register_ai_functions():
-        async def get_contact_summary(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            contact_name = parameters.get("contact_name")
-            return await agent_memory.get_contact_summary(contact_name)
-        parameters = ParameterDefine.create_parameters({
-            "contact_name": {"type": "string", "description": "contact name"}
-        })
-        get_contact_summary_func = SimpleAIFunction("agent.memory.get_contact_summary",
-                                                    "get contact summary",
-                                                    get_contact_summary,
-                                                    parameters)
-        GlobaToolsLibrary.register_tool_function(get_contact_summary_func)
-
-        async def update_contact_summary(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            contact_name = parameters.get("contact_name")
+        async def update_chat_summary(parameters):
+            agent_memory:AgentMemory = parameters.get("_memory")
+            chatsession = AIChatSession.get_session_by_id(parameters.get("session_id"),agent_memory.memory_db)
             summary = parameters.get("summary")
-            return await agent_memory.update_contact_summary(contact_name,summary)
+            chatsession.update_summary(summary)
+            return "OK"
         parameters = ParameterDefine.create_parameters({
-            "contact_name": {"type": "string", "description": "contact name"},
+            "session_id": {"type": "string", "description": "session id"},
             "summary": {"type": "string", "description": "new summary"}
         })
-        update_contact_summary_func = SimpleAIFunction("agent.memory.update_contact_summary",
-                                                    "update contact summary",
-                                                    update_contact_summary,
+        update_chat_summary_func = SimpleAIFunction("agent.memory.update_chat_summary",
+                                                    "update chat summary",
+                                                    update_chat_summary,
                                                     parameters)
-        GlobaToolsLibrary.register_tool_function(update_contact_summary_func)
+        GlobaToolsLibrary.get_instance().register_tool_function(update_chat_summary_func)
 
-        async def get_summary(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            object_name = parameters.get("object_name")
-            return await agent_memory.get_summary(object_name)
-        parameters = ParameterDefine.create_parameters({
-            "object_name": {"type": "string", "description": "object name"}
-        })
-        get_summary_func = SimpleAIFunction("agent.memory.get_summary",
-                                                    "get summary of sth",
-                                                    get_summary,
-                                                    parameters)
-        GlobaToolsLibrary.register_tool_function(get_summary_func)
+        # async def get_contact_summary(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     contact_name = parameters.get("contact_name")
+        #     return await agent_memory.get_contact_summary(contact_name)
+        # parameters = ParameterDefine.create_parameters({
+        #     "contact_name": {"type": "string", "description": "contact name"}
+        # })
+        # get_contact_summary_func = SimpleAIFunction("agent.memory.get_contact_summary",
+        #                                             "get contact summary",
+        #                                             get_contact_summary,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(get_contact_summary_func)
 
-        async def update_summary(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            object_name = parameters.get("object_name")
-            summary = parameters.get("summary")
-            return await agent_memory.update_summary(object_name,summary)
-        parameters = ParameterDefine.create_parameters({
-            "object_name": {"type": "string", "description": "object name"},
-            "summary": {"type": "string", "description": "new summary"}
-        })
-        update_summary_func = SimpleAIFunction("agent.memory.update_summary",
-                                                    "update summary of sth",
-                                                    update_summary,
-                                                    parameters)
-        GlobaToolsLibrary.register_tool_function(update_summary_func)
+        # async def update_contact_summary(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     contact_name = parameters.get("contact_name")
+        #     summary = parameters.get("summary")
+        #     return await agent_memory.update_contact_summary(contact_name,summary)
+        # parameters = ParameterDefine.create_parameters({
+        #     "contact_name": {"type": "string", "description": "contact name"},
+        #     "summary": {"type": "string", "description": "new summary"}
+        # })
+        # update_contact_summary_func = SimpleAIFunction("agent.memory.update_contact_summary",
+        #                                             "update contact summary",
+        #                                             update_contact_summary,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(update_contact_summary_func)
 
-        async def list_summary_object_names(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            return await agent_memory.list_summary_object_names()
-        parameters = ParameterDefine.create_parameters({})
-        list_summary_object_names_func = SimpleAIFunction("agent.memory.list_summary",
-                                                    "list summary object names",
-                                                    list_summary_object_names,
-                                                    parameters)
-        GlobaToolsLibrary.register_tool_function(list_summary_object_names_func)
+        # async def get_summary(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     object_name = parameters.get("object_name")
+        #     return await agent_memory.get_summary(object_name)
+        # parameters = ParameterDefine.create_parameters({
+        #     "object_name": {"type": "string", "description": "object name"}
+        # })
+        # get_summary_func = SimpleAIFunction("agent.memory.get_summary",
+        #                                             "get summary of sth",
+        #                                             get_summary,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(get_summary_func)
 
-        async def get_relation_summary(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            object_name1 = parameters.get("object1_name")
-            object_name2 = parameters.get("object2_name")
-            return await agent_memory.get_relation_summary(object_name1,object_name2)
-        parameters = ParameterDefine.create_parameters({
-            "object1_name": {"type": "string", "description": "object name1"},
-            "object2_name": {"type": "string", "description": "object name2"}
-        })
-        get_relation_summary_func = SimpleAIFunction("agent.memory.get_relation_summary",
-                                                    "object1 feel object2 is ...",
-                                                    get_relation_summary,
-                                                    parameters)
-        GlobaToolsLibrary.register_tool_function(get_relation_summary_func)
+        # async def update_summary(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     object_name = parameters.get("object_name")
+        #     summary = parameters.get("summary")
+        #     return await agent_memory.update_summary(object_name,summary)
+        # parameters = ParameterDefine.create_parameters({
+        #     "object_name": {"type": "string", "description": "object name"},
+        #     "summary": {"type": "string", "description": "new summary"}
+        # })
+        # update_summary_func = SimpleAIFunction("agent.memory.update_summary",
+        #                                             "update summary of sth",
+        #                                             update_summary,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(update_summary_func)
 
-        async def update_relation_summary(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            object_name1 = parameters.get("object1_name")
-            object_name2 = parameters.get("object2_name")
-            summary = parameters.get("summary")
-            return await agent_memory.update_relation_summary(object_name1,object_name2,summary)
-        parameters = ParameterDefine.create_parameters({
-            "object1_name": {"type": "string", "description": "object name1"},
-            "object2_name": {"type": "string", "description": "object name2"},
-            "summary": {"type": "string", "description": "new summary"}
-        })
-        update_relation_summary_func = SimpleAIFunction("agent.memory.update_relation_summary",
-                                                    "object1 feel object2 is ...",
-                                                    update_relation_summary,
-                                                    parameters)
-        GlobaToolsLibrary.register_tool_function(update_relation_summary_func)
+        # async def list_summary_object_names(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     return await agent_memory.list_summary_object_names()
+        # parameters = ParameterDefine.create_parameters({})
+        # list_summary_object_names_func = SimpleAIFunction("agent.memory.list_summary",
+        #                                             "list summary object names",
+        #                                             list_summary_object_names,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(list_summary_object_names_func)
 
-        async def get_experience(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            topic_name = parameters.get("topic_name")
-            return await agent_memory.get_experience(topic_name)
-        parameters = ParameterDefine.create_parameters({
-            "topic_name": {"type": "string", "description": "topic name"}
-        })
-        get_experience_func = SimpleAIFunction("agent.memory.get_experience",
-                                                    "get experience",
-                                                    get_experience,
-                                                    parameters)
-        GlobaToolsLibrary.register_tool_function(get_experience_func)
+        # async def get_relation_summary(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     object_name1 = parameters.get("object1_name")
+        #     object_name2 = parameters.get("object2_name")
+        #     return await agent_memory.get_relation_summary(object_name1,object_name2)
+        # parameters = ParameterDefine.create_parameters({
+        #     "object1_name": {"type": "string", "description": "object name1"},
+        #     "object2_name": {"type": "string", "description": "object name2"}
+        # })
+        # get_relation_summary_func = SimpleAIFunction("agent.memory.get_relation_summary",
+        #                                             "object1 feel object2 is ...",
+        #                                             get_relation_summary,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(get_relation_summary_func)
 
-        async def set_experience(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            topic_name = parameters.get("topic_name")
-            summary = parameters.get("summary")
-            return await agent_memory.set_experience(topic_name,summary)
-        parameters = ParameterDefine.create_parameters({
-            "topic_name": {"type": "string", "description": "topic name"},
-            "summary": {"type": "string", "description": "new summary"}
-        })
-        set_experience_func = SimpleAIFunction("agent.memory.set_experience",
-                                                    "set experience",
-                                                    set_experience,
-                                                    parameters)
-        GlobaToolsLibrary.register_tool_function(set_experience_func)
+        # async def update_relation_summary(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     object_name1 = parameters.get("object1_name")
+        #     object_name2 = parameters.get("object2_name")
+        #     summary = parameters.get("summary")
+        #     return await agent_memory.update_relation_summary(object_name1,object_name2,summary)
+        # parameters = ParameterDefine.create_parameters({
+        #     "object1_name": {"type": "string", "description": "object name1"},
+        #     "object2_name": {"type": "string", "description": "object name2"},
+        #     "summary": {"type": "string", "description": "new summary"}
+        # })
+        # update_relation_summary_func = SimpleAIFunction("agent.memory.update_relation_summary",
+        #                                             "object1 feel object2 is ...",
+        #                                             update_relation_summary,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(update_relation_summary_func)
 
-        async def list_experience(parameters):
-            agent_memory:AgentMemory = parameters.get("_agent_memory")
-            return await agent_memory.list_experience()
-        parameters = ParameterDefine.create_parameters({})
-        list_experience_func = SimpleAIFunction("agent.memory.list_experience",
-                                                    "list exist experience topics",
-                                                    list_experience,
-                                                    parameters)
-        GlobaToolsLibrary.register_tool_function(list_experience_func)
+        # async def get_experience(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     topic_name = parameters.get("topic_name")
+        #     return await agent_memory.get_experience(topic_name)
+        # parameters = ParameterDefine.create_parameters({
+        #     "topic_name": {"type": "string", "description": "topic name"}
+        # })
+        # get_experience_func = SimpleAIFunction("agent.memory.get_experience",
+        #                                             "get experience",
+        #                                             get_experience,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(get_experience_func)
+
+        # async def set_experience(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     topic_name = parameters.get("topic_name")
+        #     summary = parameters.get("summary")
+        #     return await agent_memory.set_experience(topic_name,summary)
+        # parameters = ParameterDefine.create_parameters({
+        #     "topic_name": {"type": "string", "description": "topic name"},
+        #     "summary": {"type": "string", "description": "new summary"}
+        # })
+        # set_experience_func = SimpleAIFunction("agent.memory.set_experience",
+        #                                             "set experience",
+        #                                             set_experience,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(set_experience_func)
+
+        # async def list_experience(parameters):
+        #     agent_memory:AgentMemory = parameters.get("_memory")
+        #     return await agent_memory.list_experience()
+        # parameters = ParameterDefine.create_parameters({})
+        # list_experience_func = SimpleAIFunction("agent.memory.list_experience",
+        #                                             "list exist experience topics",
+        #                                             list_experience,
+        #                                             parameters)
+        # GlobaToolsLibrary.register_tool_function(list_experience_func)
 
         
 

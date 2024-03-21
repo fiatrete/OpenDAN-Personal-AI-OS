@@ -248,14 +248,11 @@ class AIAgent(BaseAIAgent):
             logger.info(f"agent {self.agent_id} self thinking start!")
 
             context_info = await self._get_context_info()
-            known_session_list = AIChatSession.list_session(self.agent_id,self.memory.memory_db)
-            known_experience_list = await self.memory.list_experience()
-            record_list = await self.memory.load_records(await self.memory.get_last_think_time())
+            #chat_history = AIChatSession.list_session(self.agent_id,self.memory.memory_db)
+            #known_experience_list = await self.memory.list_experience()
+            #record_list = await self.memory.load_records(await self.memory.get_last_think_time())
 
             input_parms = {
-                "record_list":record_list,
-                "known_session_list":known_session_list,
-                "known_experience_list":known_experience_list,
                 "context_info":context_info
             }
 
@@ -266,7 +263,7 @@ class AIAgent(BaseAIAgent):
                 logger.info(f"llm process self thinking  ignore!")
             else:
                 logger.info(f"llm process self thinking  ok!,think is:{llm_result.resp}")
-                self.memory.set_last_think_time(time.time())
+                await self.memory.set_last_think_time(time.time())
             self.agent_energy -= 2
             return
 
