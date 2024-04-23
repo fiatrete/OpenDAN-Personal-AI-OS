@@ -14,6 +14,7 @@ from .workspace import AgentWorkspace
 from .llm_context import LLMProcessContext,GlobaToolsLibrary, SimpleLLMContext
 
 from ..frame.compute_kernel import ComputeKernel
+from ..knowledge.knowledge_base import BaseKnowledgeGraph
 
 from abc import ABC,abstractmethod
 import copy
@@ -229,8 +230,7 @@ class LLMAgentBaseProcess(BaseLLMProcess):
 
         self.workspace : AgentWorkspace = None # If Workspace is not none , enable Agent Tasklist
         self.memory : AgentMemory = None
-        self.enable_kb : bool = False
-        self.kb = None
+        self.enable_kb_list : List[str] = None
 
     async def initial(self,params:Dict = None) -> bool:
         self.memory = params.get("memory")
@@ -265,26 +265,49 @@ class LLMAgentBaseProcess(BaseLLMProcess):
         if config.get("context"):
             self.context = config.get("context")
 
+        if config.get("knowledge_grpah_introduce"):
+            self.knowledge_grpah_introduce = config.get("knowledge_grpah_introduce")
+
         self.llm_context = SimpleLLMContext()
         if config.get("llm_context"):
             self.llm_context.load_from_config(config.get("llm_context"))
 
-        if config.get("enable_kb"):
-            self.enable_kb = config.get("enable_kb") == "true"
+    def prepare_knowledge_grpah_prompt(self) -> Dict:
+        result = {}
+ 
+        result["introduce"] = BaseKnowledgeGraph.get_kb_default_desc_str()
+        result["knowledge_graph_list"] = {}
+        have_kb = False
 
+        if self.memory.enable_knowledge_graph:
+            result["knowledge_graph_list"][self.memory.knowledge_graph.kb_id] = self.memory.knowledge_graph.get_description()
+            have_kb = True
+        
+        if self.enable_kb_list:
+            for kb_id in self.enable_kb_list:
+                kb = BaseKnowledgeGraph.get_kb(kb_id) 
+                if kb:
+                    have_kb = True
+                    result["knowledge_graph_list"][kb_id] = kb.get_description()
+                else:
+                    logger.error(f"knowledge base {kb_id} not found")
+        
+        if have_kb is False:
+            return None
+        
+        return result
+    
+   
     def prepare_role_system_prompt(self,context_info:Dict) -> Dict:
         system_prompt_dict = {}
-        # System Prompt
-        ## LLM的身份说明
-        system_prompt_dict["role_description"] = self.role_description
-        #prompt.append_system_message(self.role_description)
 
-        ## 处理信息的流程说明
+        system_prompt_dict["role_description"] = self.role_description
         system_prompt_dict["process_rule"] = self.process_description
-        #prompt.append_system_message(self.process_description)
-        ### 回复的格式
         system_prompt_dict["reply_format"] = self.reply_format
-        #prompt.append_system_message(self.reply_format)
+
+        kb_prompt = self.prepare_knowledge_grpah_prompt()
+        if kb_prompt:
+            system_prompt_dict["knowledge_graph"] = kb_prompt
 
         ## Context
         if self.context:
@@ -301,9 +324,13 @@ class LLMAgentBaseProcess(BaseLLMProcess):
 
     def get_action_desc(self) -> Dict:
         result = {}
-        actions_list = self.llm_context.get_all_ai_action()
+        actions_list = []
+
+        actions_list.extend(self.llm_context.get_all_ai_action())
+    
         for action in actions_list:
             result[action.get_name()] = action.get_description()
+ 
         return result
 
     async def get_inner_function_for_exec(self,func_name:str) -> AIFunction:
@@ -483,10 +510,6 @@ class AgentMessageProcess(LLMAgentBaseProcess):
             #TODO eanble workspace functions?
             logger.info(f"workspace is not none,enable workspace functions")
 
-        ## 给予查询KB的权限
-        if self.enable_kb:
-            logger.info(f"enable kb")
-
 
         ### 根据Token Limit加载聊天记录
         remain_token = self.get_remain_prompt_length(prompt,json.dumps(system_prompt_dict,ensure_ascii=False))
@@ -575,7 +598,7 @@ class AgentSelfThinking(LLMAgentBaseProcess):
 
                     history_str = history_str + record_str
 
-                if read_history_msg >= 2:
+                if ComputeKernel.llm_num_tokens_from_text(history_str,self.model_name) > self.chat_summary_token_len:
                     session_history["history"] = history_str
                     chat_history[session_id] = session_history
                     chatsession.summarize_pos = cur_pos

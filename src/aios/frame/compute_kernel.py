@@ -105,7 +105,7 @@ class ComputeKernel:
         return True
 
     @staticmethod
-    def llm_num_tokens_from_text(text:str,model:str) -> int:
+    def llm_num_tokens_from_text(text:str,model:str = None) -> int:
         if model is None:
             model = "gpt-4-turbo-preview"
 

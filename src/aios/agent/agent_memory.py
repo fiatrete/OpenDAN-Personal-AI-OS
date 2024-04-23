@@ -9,10 +9,11 @@ import sqlite3
 import aiofiles
 
 from ..storage.storage import AIStorage
+from ..knowledge.knowledge_base import BaseKnowledgeGraph,ObjFSKnowledgeGrpah
 from ..frame.compute_kernel import ComputeKernel
 from ..frame.contact_manager import ContactManager
 from ..frame.contact import Contact
-from ..proto.ai_function import ParameterDefine, SimpleAIAction, SimpleAIFunction
+from ..proto.ai_function import ParameterDefine, SimpleAIFunction
 from ..proto.agent_msg import AgentMsg, AgentMsgType
 from ..proto.agent_task import AgentWorkLog
 
@@ -35,20 +36,34 @@ logger = logging.getLogger(__name__)
 
 
 class AgentMemory:
-    def __init__(self,agent_id:str,base_dir:str) -> None:
+    def __init__(self,agent_id:str,base_dir:str,enable_knowledge_graph = True) -> None:
         self.agent_memory_base_dir = base_dir
         self.agent_id:str= agent_id
 
         AIStorage.get_instance().ensure_directory_exists(self.agent_memory_base_dir)
-        AIStorage.get_instance().ensure_directory_exists(f"{self.agent_memory_base_dir}/experience")
-        AIStorage.get_instance().ensure_directory_exists(f"{self.agent_memory_base_dir}/contacts")
-        AIStorage.get_instance().ensure_directory_exists(f"{self.agent_memory_base_dir}/relations")
-        AIStorage.get_instance().ensure_directory_exists(f"{self.agent_memory_base_dir}/summary")
+        #AIStorage.get_instance().ensure_directory_exists(f"{self.agent_memory_base_dir}/experience")
+        #AIStorage.get_instance().ensure_directory_exists(f"{self.agent_memory_base_dir}/contacts")
+        #AIStorage.get_instance().ensure_directory_exists(f"{self.agent_memory_base_dir}/relations")
+        #AIStorage.get_instance().ensure_directory_exists(f"{self.agent_memory_base_dir}/summary")
 
         self.memory_db:str = f"{self.agent_memory_base_dir}/memory.db"
-        self.model_name:str = "gp4-1106-preview"
+        
         self.threshold_hours = 72
         self.last_think_time : float = 0.0
+        self.enable_knowledge_graph : bool = enable_knowledge_graph
+        if self.enable_knowledge_graph:
+            kb_desc = """The Knowledgegraph is used to store important information obtained by Agent in the conversation.Use the following ways to store information:
+            /contacts/$name:Related information of the contact
+            /relations/$obj1/$obj2:The relationship between obj2 and obj1
+            /summary/$topic:Based on topic summary
+            """
+
+            self.knowledge_graph = ObjFSKnowledgeGrpah(f"{self.agent_id}.memory",self.memory_db,kb_desc)
+            BaseKnowledgeGraph.add_kb(self.knowledge_graph)
+            self.simple_memory_sentences = None
+        else:
+            self.knowledge_graph = None
+            self.simple_memory_sentences : List[str] = []
 
         self.load_memory_meta()
 
@@ -84,7 +99,7 @@ class AgentMemory:
         return chatsession
     
     # return last record time
-    async def load_records(self,starttime,tokenlimit=8000)->float:
+    async def load_records(self,starttime,tokenlimit=8000,model_name=None)->float:
         # 专用思路：做聊天记录/工作经验的整理
         # 通用思路：没有具体的目的，让Agent根据提示词自己工作（可能效果很差也可能很好）
         # 先实现通用思路
@@ -92,7 +107,7 @@ class AgentMemory:
         work_records = self.load_worklogs(self.agent_id,token_limit=tokenlimit)
         pass
 
-    async def load_chatlogs(self,msg:AgentMsg,token_limit=800):
+    async def load_chatlogs(self,msg:AgentMsg,token_limit=800,model_name=""):
         chatsession = self.get_session_from_msg(msg)
         # Must load n (n> = 2), and hope to load the M
         # The information in the # M is gradually added, knowing that it is less than 72 hours from the current time, and consumes enough tokens
@@ -105,7 +120,7 @@ class AgentMemory:
             dt = datetime.fromtimestamp(float(msg.create_time))
             formatted_time = dt.strftime('%y-%m-%d %H:%M:%S')
             record_str = f"{msg.sender},[{formatted_time}]\n{msg.body}\n"
-            token_limit -= ComputeKernel.llm_num_tokens_from_text(record_str,self.model_name)
+            token_limit -= ComputeKernel.llm_num_tokens_from_text(record_str)
             if token_limit <= 32:
                 is_all = False
                 break
@@ -156,7 +171,7 @@ class AgentMemory:
         rows = c.fetchall()
 
 
-        return [self.from_db_row(row) for row in rows]
+        return [self.worklog_from_db_row(row) for row in rows]
 
     def _create_table(self,conn):
         c = conn.cursor()
@@ -176,7 +191,7 @@ class AgentMemory:
         #conn.close()
 
     @classmethod
-    def from_db_row(self,row):
+    def worklog_from_db_row(self,row):
         log = AgentWorkLog()
         # 这里高度依赖表结构的顺序
         log.logid, log.owner_id, log.work_type, log.timestamp, log.content, log.result, meta_str, log.operator = row
@@ -202,6 +217,7 @@ class AgentMemory:
     
     def load_meta(self,Dict):
         self.last_think_time = Dict.get("last_think_time",0.0)
+        self.simple_memory_sentences = Dict.get("simple_memory_sentences",[])
     
     def load_memory_meta(self):
         meta_file_path = f"{self.agent_memory_base_dir}/meta.json"
@@ -230,7 +246,12 @@ class AgentMemory:
         self.last_think_time = last_time    
         self.save_memory_meta()
 
+    
     async def get_contact_summary(self,contact_id:str) -> str:
+        # There is two part of contact summary
+        # Part 1. user defined summary (set by owner or by contac) , global , imutable
+        # Part 2. auto generated summary, local in agent memory , mutable
+
         if contact_id is None:
             return "Contact id is None"
         
@@ -241,107 +262,107 @@ class AgentMemory:
             result["relation"] = contact_info.relationship
             result["notes"]  = contact_info.notes
 
-        summary_path = f"{self.agent_memory_base_dir}/contacts/{contact_id}.summary"
-        try:
-            async with aiofiles.open(summary_path, mode='r') as file:
-                result["summary"] =  await file.read()
+        # summary_path = f"{self.agent_memory_base_dir}/contacts/{contact_id}.summary"
+        # try:
+        #     async with aiofiles.open(summary_path, mode='r') as file:
+        #         result["summary"] =  await file.read()
                 
-        except Exception as e:
-            logger.error(f"read contact summary failed: {e}")
+        # except Exception as e:
+        #     logger.error(f"read contact summary failed: {e}")
             
         return json.dumps(result,ensure_ascii=False)
     
-    async def update_contact_summary(self,contact_id:str,summary:str):
-        summary_path = f"{self.agent_memory_base_dir}/contacts/{contact_id}.summary"
-        try:
-            async with aiofiles.open(summary_path, mode='w') as file:
-                await file.write(summary)
-                return "OK"
-        except Exception as e:
-            logger.error(f"write contact summary failed: {e}")
-            return "write contact summary failed: {e}"
+    # async def update_contact_summary(self,contact_id:str,summary:str):
+    #     summary_path = f"{self.agent_memory_base_dir}/contacts/{contact_id}.summary"
+    #     try:
+    #         async with aiofiles.open(summary_path, mode='w') as file:
+    #             await file.write(summary)
+    #             return "OK"
+    #     except Exception as e:
+    #         logger.error(f"write contact summary failed: {e}")
+    #         return "write contact summary failed: {e}"
     
-    async def get_summary(self,object_name:str) -> str:
-        summary_path = f"{self.agent_memory_base_dir}/{object_name}.summary"
-        try:
-            async with aiofiles.open(summary_path, mode='r') as file:
-                return await file.read()
-        except Exception as e:
-            logger.error(f"read summary failed: {e}")
-            return f"read summary failed: {e}"
+    # async def get_summary(self,object_name:str) -> str:
+    #     summary_path = f"{self.agent_memory_base_dir}/{object_name}.summary"
+    #     try:
+    #         async with aiofiles.open(summary_path, mode='r') as file:
+    #             return await file.read()
+    #     except Exception as e:
+    #         logger.error(f"read summary failed: {e}")
+    #         return f"read summary failed: {e}"
         
-    async def update_summary(self,object_name:str,summary:str) -> str:
-        summary_path = f"{self.agent_memory_base_dir}/{object_name}.summary"
-        try:
-            async with aiofiles.open(summary_path, mode='w') as file:
-                await file.write(summary)
-                return "OK" 
-        except Exception as e:
-            logger.error(f"write summary failed: {e}")
-            return f"write summary failed: {e}"
+    # async def update_summary(self,object_name:str,summary:str) -> str:
+    #     summary_path = f"{self.agent_memory_base_dir}/{object_name}.summary"
+    #     try:
+    #         async with aiofiles.open(summary_path, mode='w') as file:
+    #             await file.write(summary)
+    #             return "OK" 
+    #     except Exception as e:
+    #         logger.error(f"write summary failed: {e}")
+    #         return f"write summary failed: {e}"
     
-    async def list_summary_object_names(self) -> List[str]:
-        # list dir
-        try:
-            contents = os.listdir(self.agent_memory_base_dir)
-            return [x for x in contents if x.endswith(".summary")]
-        except Exception as e:
-            logger.error(f"list summary object names failed: {e}")
-            return []
+    # async def list_summary_object_names(self) -> List[str]:
+    #     # list dir
+    #     try:
+    #         contents = os.listdir(self.agent_memory_base_dir)
+    #         return [x for x in contents if x.endswith(".summary")]
+    #     except Exception as e:
+    #         logger.error(f"list summary object names failed: {e}")
+    #         return []
         
     # means object1 feel object2 is ... 
-    async def get_relation_summary(self,object_name1:str,object_name2:str) -> str:
-        summary_path = f"{self.agent_memory_base_dir}/relations/{object_name1}.relation.{object_name2}.summary"
-        try:
-            async with aiofiles.open(summary_path, mode='r') as file:
-                await file.read()
-        except FileNotFoundError:
-            return "no summary"
-        except Exception as e:
-            logger.error(f"read relation summary failed: {e}")
-            return f"read relation summary failed: {e}"
+    # async def get_relation_summary(self,object_name1:str,object_name2:str) -> str:
+    #     summary_path = f"{self.agent_memory_base_dir}/relations/{object_name1}.relation.{object_name2}.summary"
+    #     try:
+    #         async with aiofiles.open(summary_path, mode='r') as file:
+    #             await file.read()
+    #     except FileNotFoundError:
+    #         return "no summary"
+    #     except Exception as e:
+    #         logger.error(f"read relation summary failed: {e}")
+    #         return f"read relation summary failed: {e}"
         
     
-    async def update_relation_summary(self,object_name1:str,object_name2:str,summary:Dict):
-        summary_path = f"{self.agent_memory_base_dir}/relations/{object_name1}.relation.{object_name2}.summary"
-        try:
-            async with aiofiles.open(summary_path, mode='w') as file:
-                await file.write(json.dumps(summary))
-                return "OK"
-        except Exception as e:
-            logger.error(f"write relation summary failed: {e}")
-            return "write relation summary failed: {e}"
+    # async def update_relation_summary(self,object_name1:str,object_name2:str,summary:Dict):
+    #     summary_path = f"{self.agent_memory_base_dir}/relations/{object_name1}.relation.{object_name2}.summary"
+    #     try:
+    #         async with aiofiles.open(summary_path, mode='w') as file:
+    #             await file.write(json.dumps(summary))
+    #             return "OK"
+    #     except Exception as e:
+    #         logger.error(f"write relation summary failed: {e}")
+    #         return "write relation summary failed: {e}"
     
-    async def get_experience(self,topic_name:str) -> str:
-        experience_path = f"{self.agent_memory_base_dir}/experience/{topic_name}.experience"
-        try:
-            async with aiofiles.open(experience_path, mode='r') as file:
-                await file.read()
-        except FileNotFoundError:
-            return "no experience"
-        except Exception as e:
-            logger.error(f"read experience failed: {e}")
-            return f"read experience failed: {e}"
+    # async def get_experience(self,topic_name:str) -> str:
+    #     experience_path = f"{self.agent_memory_base_dir}/experience/{topic_name}.experience"
+    #     try:
+    #         async with aiofiles.open(experience_path, mode='r') as file:
+    #             await file.read()
+    #     except FileNotFoundError:
+    #         return "no experience"
+    #     except Exception as e:
+    #         logger.error(f"read experience failed: {e}")
+    #         return f"read experience failed: {e}"
 
     
-    async def set_experience(self,topic_name:str,summary:str) -> str:
-        experience_path = f"{self.agent_memory_base_dir}/experience/{topic_name}.experience"
-        try:
-            async with aiofiles.open(experience_path, mode='w') as file:
-                await file.write(summary)
-                return "OK"
-        except Exception as e:
-            logger.error(f"write experience failed: {e}")
-            return "write experience failed: {e}"
+    # async def set_experience(self,topic_name:str,summary:str) -> str:
+    #     experience_path = f"{self.agent_memory_base_dir}/experience/{topic_name}.experience"
+    #     try:
+    #         async with aiofiles.open(experience_path, mode='w') as file:
+    #             await file.write(summary)
+    #             return "OK"
+    #     except Exception as e:
+    #         logger.error(f"write experience failed: {e}")
+    #         return "write experience failed: {e}"
     
-    async def list_experience(self) -> List[str]:
-        dir_path = f"{self.agent_memory_base_dir}/experience"
-        try:
-            contents = os.listdir(dir_path)
-            return [x for x in contents if x.endswith(".experience")]
-        except Exception as e:
-            logger.error(f"list experience failed: {e}")
-            return []
+    # async def list_experience(self) -> List[str]:
+    #     dir_path = f"{self.agent_memory_base_dir}/experience"
+    #     try:
+    #         contents = os.listdir(dir_path)
+    #         return [x for x in contents if x.endswith(".experience")]
+    #     except Exception as e:
+    #         logger.error(f"list experience failed: {e}")
+    #         return []
 
     @staticmethod
     def register_ai_functions():

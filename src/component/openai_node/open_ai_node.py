@@ -27,7 +27,7 @@ class OpenAI_ComputeNode(ComputeNode):
 
     @classmethod
     def declare_user_config(cls):
-        if os.getenv("OPENAI_API_KEY_") is None:
+        if os.getenv("OPENAI_API_KEY") is None:
             user_config = AIStorage.get_instance().get_user_config()
             user_config.add_user_config("openai_api_key","openai api key",False,None)
 

@@ -12,6 +12,28 @@ Your name is Jarvis, the super personal assistant to the Principal. Help the Pri
 Only clearly specifying the task you completed can be completed independently.
 """
 
+kb_query_desc = """
+$ introduce (have default config)
+$ dir descriptions
+$     dir1
+$     dir2
+$     dir3
+$ support actions(if enable)
+$ support funcitons(if enable)
+
+现有信息以知识图谱的形式保存在存储系统中。
+1. 介绍知识图谱的结构 
+2. 不同部分的规则说明（可选）创建知识图谱的指导思路（目前不允许AI自创结构）
+
+
+# read (function)
+access_knowledge_graph($op_name,$params) 
+
+# write (action)
+update_knowledge_graph($op_name,$params) 
+
+"""
+
 [behavior.on_message]
 type="AgentMessageProcess"
 mutil_model="gpt-4-vision-preview"
@@ -45,8 +67,8 @@ known_info_tips = """
 
 tools_tips = """
 """
-llm_context.actions.enable = ["agent.workspace.create_task","agent.workspace.cancel_task"]
-llm_context.functions.enable = ["agent.workspace.list_task"]
+llm_context.actions.enable = ["agent.workspace.create_task","agent.workspace.cancel_task","knowledge_base.knowledge_graph_update"]
+llm_context.functions.enable = ["agent.workspace.list_task","knowledge_base.knowledge_graph_read"]
 
 
 [behavior.triage_tasks]
