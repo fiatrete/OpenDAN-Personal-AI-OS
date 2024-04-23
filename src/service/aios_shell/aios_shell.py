@@ -11,7 +11,6 @@ from logging.handlers import RotatingFileHandler
 from typing import Any, Optional, TypeVar, Tuple, Sequence
 import argparse
 
-
 from prompt_toolkit import HTML, PromptSession, prompt,print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.selection import SelectionState
@@ -20,18 +19,37 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 
+
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
-
+# import os
+# os.environ['HTTP_PROXY'] = '127.0.0.1:10809'
+# os.environ['HTTPS_PROXY'] = '127.0.0.1:10809'
 
 import proxy
-from aios_kernel import *
-
+from aios import *
+import local_compute_node_builder
+from component.llama_node.local_llama_compute_node import LocalLlama_ComputeNode
 
 sys.path.append(directory + '/../../component/')
+
+from google_node import *
+from llama_node import *
+from openai_node import *
+from sd_node import *
+from st_node import *
+
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
+from knowledge_manager import KnowledgePipelineManager
+from tg_tunnel import TelegramTunnel
+from email_tunnel import EmailTunnel
+from discord_tunnel import DiscordTunnel
+from slack_tunnel import SlackTunnel
+from common_environment import LocalKnowledgeBase, FilesystemEnvironment, ShellEnvironment, ScanLocalDocument, ParseLocalDocument
+
+from compute_node_config import *
 
 
 logger = logging.getLogger(__name__)
@@ -42,7 +60,6 @@ shell_style = Style.from_dict({
     'prompt': '#00FF00',
     'error': '#8F0000 bold'
 })
-
 
 class AIOS_Shell:
     def __init__(self,username:str) -> None:
@@ -59,8 +76,9 @@ class AIOS_Shell:
 
         user_config = AIStorage.get_instance().get_user_config()
         user_config.add_user_config("username","username is your full name when using AIOS",False,None)
-        user_config.add_user_config("telegram","Your telgram username",False,None)
-        user_config.add_user_config("email","Your email",False,None)
+        user_config.add_user_config("user_telegram","Your telgram username",False,None)
+        user_config.add_user_config("user_email","Your email",False,None)
+        user_config.add_user_config("user_notes","Introduce yourself to your Agent!",False,None)
 
         user_config.add_user_config("feature.llama","enable Local-llama feature",True,"False")
         user_config.add_user_config("feature.aigc","enable AIGC feature",True,"False")
@@ -71,13 +89,15 @@ class AIOS_Shell:
         user_config.add_user_config("shell.current","last opened target and topic",True,"default@Jarvis")
         proxy.declare_user_config()
 
-        google_text_to_speech = GoogleTextToSpeechNode.get_instance()
-        google_text_to_speech.declare_user_config()
+        # google_text_to_speech = GoogleTextToSpeechNode.get_instance()
+        # google_text_to_speech.declare_user_config()
 
         Local_Stability_ComputeNode.declare_user_config()
 
         #Stability_ComputeNode.declare_user_config()
 
+    def init_global_action_lib(self):
+        AgentMemory.register_actions()
 
 
     async def _handle_no_target_msg(self,bus:AIBus,target_id:str) -> bool:
@@ -91,6 +111,11 @@ class AIOS_Shell:
             bus.register_message_handler(target_id,a_workflow._process_msg)
             return True
 
+        a_contact = ContactManager.get_instance().find_contact_by_name(target_id)
+        if a_contact is not None:
+            bus.register_message_handler(target_id,a_contact._process_msg)
+            return True
+
         return False
 
     async def is_agent(self,target_id:str) -> bool:
@@ -102,41 +127,60 @@ class AIOS_Shell:
 
     async def initial(self) -> bool:
         cm = ContactManager.get_instance()
-        owenr = cm.find_contact_by_name(self.username)
-        if owenr is None:
-            owenr = Contact(self.username)
-            owenr.added_by = self.username
-            owenr.is_family_member = True
-            owenr.email = AIStorage.get_instance().get_user_config().get_value("email")
-            owenr.telegram = AIStorage.get_instance().get_user_config().get_value("telegram")
+        owner = cm.find_contact_by_name(self.username)
+        if owner is None:
+            owner = Contact(self.username)
+            owner.added_by = self.username
+            owner.relationship = "Principal"
+            owner.email = AIStorage.get_instance().get_user_config().get_value("user_email")
+            owner.telegram = AIStorage.get_instance().get_user_config().get_value("user_telegram")
+            owner.notes = AIStorage.get_instance().get_user_config().get_value("user_notes")
 
-            cm.add_family_member(self.username,owenr)
+            cm.add_contact(self.username,owner)
 
-        knowledge_env = KnowledgeEnvironment("knowledge")
-        Environment.set_env_by_id("knowledge",knowledge_env)
+        # cal_env = CalenderEnvironment("calender")
+        # await cal_env.start()
+        # Environment.set_env_by_id("calender",cal_env)
 
-        cal_env = CalenderEnvironment("calender")
-        await cal_env.start()
-        Environment.set_env_by_id("calender",cal_env)
+        # workspace_env = ShellEnvironment("bash")
+        # Environment.set_env_by_id("bash",workspace_env)
 
-        workspace_env = WorkspaceEnvironment("bash")
-        Environment.set_env_by_id("bash",workspace_env)
+        # paint_env = PaintEnvironment("paint")
+        # Environment.set_env_by_id("paint",paint_env)
 
-        paint_env = PaintEnvironment("paint")
-        Environment.set_env_by_id("paint",paint_env)
+        #AgentManager.get_instance().register_environment("bash", ShellEnvironment)
+        #AgentManager.get_instance().register_environment("fs", FilesystemEnvironment)
+        #AgentManager.get_instance().register_environment("knowledge", LocalKnowledgeBase)
+        AgentWorkspace.register_ai_functions()
+        AgentMemory.register_ai_functions()
+        ShellEnvironment.register_ai_functions()
+       
 
         if await AgentManager.get_instance().initial() is not True:
             logger.error("agent manager initial failed!")
             return False
         if await WorkflowManager.get_instance().initial() is not True:
-            logger.error("workflow manager initial failed!")
-            return False
+             logger.error("workflow manager initial failed!")
+             return False
 
         open_ai_node = OpenAI_ComputeNode.get_instance()
         if await open_ai_node.initial() is not True:
             logger.error("openai node initial failed!")
             return False
         ComputeKernel.get_instance().add_compute_node(open_ai_node)
+
+        whisper_node = WhisperComputeNode.get_instance()
+        ComputeKernel.get_instance().add_compute_node(whisper_node);
+
+        openai_tts_node = OpenAITTSComputeNode.get_instance()
+        ComputeKernel.get_instance().add_compute_node(openai_tts_node)
+
+        dall_e_node = DallEComputeNode.get_instance()
+        if await dall_e_node.initial() is not True:
+            logger.error("dall-e node initial failed!")
+        else:
+            await dall_e_node.start()
+            ComputeKernel.get_instance().add_compute_node(dall_e_node)
 
         llama_nodes = ComputeNodeConfig.get_instance().initial()
         for llama_node in llama_nodes:
@@ -153,43 +197,52 @@ class AIOS_Shell:
                 await AIStorage.get_instance().set_feature_init_result("llama",False)
 
 
-        if await AIStorage.get_instance().is_feature_enable("aigc"):
-            try:
-                google_text_to_speech_node = GoogleTextToSpeechNode.get_instance()
-                google_text_to_speech_node.init()
-                ComputeKernel.get_instance().add_compute_node(google_text_to_speech_node)
-            except Exception as e:
-                logger.error(f"google text to speech node initial failed! {e}")
-                await AIStorage.get_instance.set_feature_init_result("aigc",False)
+        # if await AIStorage.get_instance().is_feature_enable("aigc"):
+            # try:
+            #     google_text_to_speech_node = GoogleTextToSpeechNode.get_instance()
+            #     google_text_to_speech_node.init()
+            #     ComputeKernel.get_instance().add_compute_node(google_text_to_speech_node)
+            # except Exception as e:
+            #     logger.error(f"google text to speech node initial failed! {e}")
+            #     await AIStorage.get_instance.set_feature_init_result("aigc",False)
 
             # stability_api_node = Stability_ComputeNode()
             # if await stability_api_node.initial() is not True:
             #     logger.error("stability api node initial failed!")
             # ComputeKernel.get_instance().add_compute_node(stability_api_node)
 
-        
-        
+
+
         local_st_text_compute_node = LocalSentenceTransformer_Text_ComputeNode()
         if local_st_text_compute_node.initial() is not True:
             logger.error("local sentence transformer text embedding node initial failed!")
         else:
             ComputeKernel.get_instance().add_compute_node(local_st_text_compute_node)
-            
+
         local_st_image_compute_node = LocalSentenceTransformer_Image_ComputeNode()
         if local_st_image_compute_node.initial() is not True:
             logger.error("local sentence transformer image embedding node initial failed!")
         else:
             ComputeKernel.get_instance().add_compute_node(local_st_image_compute_node)
-       
+
 
         await ComputeKernel.get_instance().start()
 
         AIBus().get_default_bus().register_unhandle_message_handler(self._handle_no_target_msg)
-        AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
-        KnowledgePipline.get_instance().initial()
+        #AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+
+
+        pipelines = KnowledgePipelineManager.initial(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge/pipelines"))
+        pipelines.register_input("scan_local", ScanLocalDocument)
+        pipelines.register_parser("parse_local", ParseLocalDocument)
+        pipelines.load_dir(os.path.join(AIStorage().get_instance().get_system_app_dir(), "knowledge_pipelines"))
+        pipelines.load_dir(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge_pipelines"))
+        asyncio.create_task(pipelines.run())
 
         TelegramTunnel.register_to_loader()
         EmailTunnel.register_to_loader()
+        DiscordTunnel.register_to_loader()
+        SlackTunnel.register_to_loader()
         user_data_dir = str(AIStorage.get_instance().get_myai_dir())
         tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
         tunnel_config = None
@@ -198,18 +251,21 @@ class AIOS_Shell:
             if tunnel_config is not None:
                 await AgentTunnel.load_all_tunnels_from_config(tunnel_config)
         except Exception as e:
-            logger.warning(f"load tunnels config from {tunnels_config_path} failed!")
+            logger.warning(f"load tunnels config from {tunnels_config_path} failed! {e}")
 
 
         return True
 
 
     def get_version(self) -> str:
-        return "0.5.1"
+        return "0.5.2"
 
-    async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None) -> str:
+    async def send_msg(self,msg:str,target_id:str,topic:str,sender:str = None, msg_mime:str=None) -> str:
+        if sender == self.username:
+            AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
+
         agent_msg = AgentMsg()
-        agent_msg.set(sender,target_id,msg)
+        agent_msg.set(sender,target_id,msg,body_mime=msg_mime)
         agent_msg.topic = topic
         resp = await AIBus.get_default_bus().send_message(agent_msg)
         if resp is not None:
@@ -222,7 +278,7 @@ class AIOS_Shell:
 
     async def _user_process_msg(self,msg:AgentMsg) -> AgentMsg:
         pass
-    
+
 
     async def get_tunnel_config_from_input(self,tunnel_target,tunnel_type):
         tunnel_config = {}
@@ -233,10 +289,22 @@ class AIOS_Shell:
         match tunnel_type:
             case "telegram":
                 tunnel_config["type"] = "TelegramTunnel"
-                input_table["token"] = UserConfigItem("telegram bot token")
+                input_table["token"] = UserConfigItem("telegram bot token\n You can get it from https://t.me/BotFather ,read https://core.telegram.org/bots#how-do-i-create-a-bot for more details")
                 input_table["allow"] = UserConfigItem("allow group (default is member,you can choose contact or guest)")
             case "email":
                 tunnel_config["type"] = "EmailTunnel"
+                input_table["email"] = UserConfigItem("email address agent will use \n")
+                input_table["imap"] = UserConfigItem("imap server address,like hostname:port")
+                input_table["smtp"] = UserConfigItem("smtp server address,like hostname:port")
+                input_table["user"] = UserConfigItem("mail server login user name")
+                input_table["password"] = UserConfigItem("main server login password")
+            case "discord":
+                tunnel_config["type"] = "DiscordTunnel"
+                input_table["token"] = UserConfigItem("discord bot token\n You can get it from https://discord.com/developers/applications ,read https://discordpy.readthedocs.io/en/stable/discord.html for more details")
+            case "slack":
+                tunnel_config["type"] = "SlackTunnel"
+                input_table["token"] = UserConfigItem("slack bot token\n You can get it from https://api.slack.com/apps")
+                input_table["app_token"] = UserConfigItem("slack app token\n You can get it from https://api.slack.com/apps")
             case _:
                 error_text = FormattedText([("class:error", f"tunnel type {tunnel_type}not support!")])
                 print_formatted_text(error_text,style=shell_style)
@@ -256,7 +324,7 @@ class AIOS_Shell:
     async def append_tunnel_config(self,tunnel_config):
         user_data_dir = AIStorage.get_instance().get_myai_dir()
         tunnels_config_path = os.path.abspath(f"{user_data_dir}/etc/tunnels.cfg.toml")
-        all_tunnels = None 
+        all_tunnels = None
         try:
             all_tunnels = toml.load(tunnels_config_path)
         except Exception as e:
@@ -309,68 +377,43 @@ class AIOS_Shell:
         if contact_telegram is None:
             return None
         contact.telegram = contact_telegram
-        
+
         contact_email = await try_get_input(f"Input {contact_name}'s email:")
         if contact_email is None:
             return None
         contact.email = contact_email
-        
+
         contact_phone = await try_get_input(f"Input {contact_name}'s phone (optional):")
         if contact_phone is not None:
             contact.phone = contact_phone
 
         contact_note = await try_get_input(f"Input {contact_name}'s note (optional):")
         if contact_note is not None:
-            contact.note = contact_note
-        
+            contact.notes = contact_note
+
         contact.added_by = self.username
         if is_update:
             cm.set_contact(contact_name,contact)
         else:
             cm.add_contact(contact_name,contact)
-    
+
     async def handle_knowledge_commands(self, args):
-        show_text = FormattedText([("class:title", "sub command not support!\n" 
-                              "/knowledge add email | dir\n"
-                              "/knowledge journal [$topn]\n"
+        show_text = FormattedText([("class:title", "sub command not support!\n"
+                              "/knowledge pipelines\n" 
+                              "/knowledge journal $pipeline [$topn]\n"
                               "/knowledge query $object_id\n")])
         if len(args) < 1:
             return show_text
         sub_cmd = args[0]
-        if sub_cmd == "add":
-            if len(args) < 2:
-                return show_text
-            if args[1] == "email":
-                config = dict()
-                for key, item in KnowledgeEmailSource.user_config_items():
-                    user_input = await try_get_input(f"{key} : {item}")
-                    if user_input is None:
-                        return show_text
-                    config[key] = user_input
-                error = KnowledgePipline.get_instance().add_email_source(KnowledgeEmailSource(config))
-                if error is not None:
-                    return FormattedText([("class:title", f"/knowledge add email failed {error}\n")])
-                else:
-                    KnowledgePipline.get_instance().save_cosnfig()
-            if args[1] == "dir":
-                config = dict()
-                for key, item in KnowledgeDirSource.user_config_items():
-                    user_input = await try_get_input(f"{key} : {item}")
-                    if user_input is None:
-                        return show_text
-                    config[key] = user_input
-                error = KnowledgePipline.get_instance().add_dir_source(KnowledgeDirSource(config))
-                if error is not None:
-                    return FormattedText([("class:title", f"/knowledge add dir failed {error}\n")])
-                else:
-                    KnowledgePipline.get_instance().save_config()
-            else:
-                return show_text
+        if sub_cmd == "pipelines":
+            pipelines = KnowledgePipelineManager.get_instance().get_pipelines()
+            print_formatted_text("\r\n".join(pipeline.get_name() for pipeline in pipelines))
         if sub_cmd == "journal":
             try:
-                topn = 10 if len(args) == 1 else int(args[1])
-                journals = [str(journal) for journal in KnowledgePipline.get_instance().get_latest_journals(topn)]
-                print_formatted_text("\r\n".join(journals))
+                name = args[1]
+                topn = 10 if len(args) == 2 else int(args[2])
+                journals = [str(journal) for journal in KnowledgePipelineManager.get_instance().get_pipeline(name).get_journal().latest_journals(topn)]
+                print_formatted_text("\r\n".join(str(journal) for journal in journals))
             except ValueError:
                 return FormattedText([("class:title", f"/knowledge journal failed: {args[1]} is not a valid integer.\n")])
         if sub_cmd == "query":
@@ -381,48 +424,41 @@ class AIOS_Shell:
             if object_id.get_object_type() == ObjectType.Image:
                 from PIL import Image
                 import io
-                image = KnowledgeBase().load_object(object_id)
-                image_data = KnowledgeBase().bytes_from_object(image)
+                image = KnowledgeStore().load_object(object_id)
+                image_data = KnowledgeStore().bytes_from_object(image)
                 image = Image.open(io.BytesIO(image_data))
                 image.show()
 
     async def handle_node_commands(self, args):
         show_text = FormattedText([("class:title", "sub command not support!\n" 
-                              "/node add llama $model_name $url\n"
-                              "/node rm llama $model_name $url\n"
+                              "/node add $model_name $url\n"
+                              "/node create\n"
+                              "/node rm $model_name $url\n"
                               "/node list\n")])
         if len(args) < 1:
             return show_text
         sub_cmd = args[0]
-        if sub_cmd == "add":
-            if len(args) < 2:
+        if sub_cmd == "create":
+            await local_compute_node_builder.build(session, shell_style)
+        elif sub_cmd == "add":
+            if len(args) < 3:
                 return show_text
-            if args[1] == "llama":
-                if len(args) < 4:
-                    return show_text
-                
-                model_name = args[2]
-                url = args[3]
-                ComputeNodeConfig.get_instance().add_node("llama", url, model_name)
-                ComputeNodeConfig.get_instance().save()
-                node = LocalLlama_ComputeNode(url, model_name)
-                node.start()
-                ComputeKernel.get_instance().add_compute_node(node)
-            else:
-                return show_text
+
+            model_name = args[1]
+            url = args[2]
+            ComputeNodeConfig.get_instance().add_node("llama", url, model_name)
+            ComputeNodeConfig.get_instance().save()
+            node = LocalLlama_ComputeNode(url, model_name)
+            node.start()
+            ComputeKernel.get_instance().add_compute_node(node)
         elif sub_cmd == "rm":
-            if len(args) < 2:
+            if len(args) < 3:
                 return show_text
-            if args[1] == "llama":
-                if len(args) < 4:
-                    return show_text
-                
-                model_name = args[2]
-                url = args[3]
-                ComputeNodeConfig.get_instance().remove_node("llama", url, model_name)
-                ComputeNodeConfig.get_instance().save()
-            else:
-                return show_text
+
+            model_name = args[1]
+            url = args[2]
+            ComputeNodeConfig.get_instance().remove_node("llama", url, model_name)
+            ComputeNodeConfig.get_instance().save()
         elif sub_cmd == "list":
             print_formatted_text(ComputeNodeConfig.get_instance().list())
 
@@ -430,13 +466,69 @@ class AIOS_Shell:
         match func_name:
             case 'send':
                 show_text = FormattedText([("class:error", f'send args error,/send Tracy "Hello! It is a good day!" default')])
+                sender = None
                 if len(args) == 3:
                     target_id = args[0]
                     msg_content = args[1]
                     topic = args[2]
-                    resp = await self.send_msg(msg_content,target_id,topic,self.username)
-                    show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
-                                            ("class:content", resp)])
+                    sender = self.username
+                elif len(args) == 4:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    topic = args[2]
+                    sender = args[3]
+
+                resp = await self.send_msg(msg_content,target_id,topic,sender)
+                show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
+                                        ("class:content", resp)])
+                return show_text
+            case 'send_img':
+                sender = None
+                if len(args) == 4:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    image_path = args[2]
+                    topic = args[3]
+                    sender = self.username
+                elif len(args) == 5:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    image_path = args[2]
+                    topic = args[3]
+                    sender = args[4]
+
+                ext = os.path.splitext(image_path)[1][1:]
+                resp = await self.send_msg(AgentMsg.create_image_body([image_path], msg_content),
+                                           target_id,
+                                           topic,
+                                           sender,
+                                           f"image/{ext}")
+                show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
+                                           ("class:content", resp)])
+                return show_text
+            case 'send_video':
+                sender = None
+                if len(args) == 4:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    video_path = args[2]
+                    topic = args[3]
+                    sender = self.username
+                elif len(args) == 5:
+                    target_id = args[0]
+                    msg_content = args[1]
+                    video_path = args[2]
+                    topic = args[3]
+                    sender = args[4]
+
+                ext = os.path.splitext(video_path)[1][1:]
+                resp = await self.send_msg(AgentMsg.create_video_body(video_path, msg_content),
+                                           target_id,
+                                           topic,
+                                           sender,
+                                           f"video/{ext}")
+                show_text = FormattedText([("class:title", f"{self.current_topic}@{self.current_target} >>> "),
+                                           ("class:content", resp)])
                 return show_text
             case 'set_config':
                 show_text = FormattedText([("class:error", f"set config args error,/set_config $config_item! ")])
@@ -463,7 +555,7 @@ class AIOS_Shell:
                     tunnel_type = "telegram"
                 else:
                     tunnel_type = args[1]
-
+                tunnel_type = tunnel_type.lower()
                 tunnel_config = await self.get_tunnel_config_from_input(tunnel_target,tunnel_type)
                 if tunnel_config:
                     if await AgentTunnel.load_tunnel_from_config(tunnel_config):
@@ -482,17 +574,33 @@ class AIOS_Shell:
                     the_agent = await AgentManager.get_instance().get(target_id)
                     if the_agent is not None:
                         await the_agent._do_think()
+            case 'wakeup':
+                if len(args) >= 1:
+                    target_id = args[0]
+                    the_agent = await AgentManager.get_instance().get(target_id)
+                    if the_agent is not None:
+                        the_agent.wake_up()
             case 'open':
                 if len(args) >= 1:
                     target_id = args[0]
                 else:
                     show_text = FormattedText([("class:error", "/open Need Target Agent/Workflow ID! like /open Jarvis default")])
                     return show_text
-                
+
                 if len(args) >= 2:
                     topic = args[1]
                 else:
                     topic = "default"
+
+                target_exist = False
+                if await AgentManager.get_instance().is_exist(target_id):
+                    target_exist = True
+                # if await WorkflowManager.get_instance().is_exist(target_id):
+                #     target_exist = True
+
+                if target_exist is False:
+                    show_text = FormattedText([("class:error", f"Target {target_id} not exist!")])
+                    return show_text
 
                 self.current_target = target_id
                 self.current_topic = topic
@@ -520,11 +628,11 @@ class AIOS_Shell:
                 else:
                     show_text = FormattedText([("class:error", "/disable Need Feature Name! like /disable llama")])
                     return show_text
-                
+
                 if not await AIStorage.get_instance().is_feature_enable(feature):
                     show_text = FormattedText([("class:title", f"Feature {feature} already disabled!")])
                     return show_text
-                
+
                 await AIStorage.get_instance().disable_feature(feature)
                 show_text = FormattedText([("class:title", f"Feature {feature} disabled!")])
                 return show_text
@@ -546,8 +654,8 @@ class AIOS_Shell:
                 db_path = ""
                 if await self.is_agent(self.current_target):
                     db_path = AgentManager.get_instance().db_path
-                else:
-                    db_path = WorkflowManager.get_instance().db_file
+                # else:
+                #     db_path = WorkflowManager.get_instance().db_file
                 chatsession:AIChatSession = AIChatSession.get_session(self.current_target,f"{self.username}#{self.current_topic}",db_path,False)
                 if chatsession is not None:
                     msgs = chatsession.read_history(num,offset)
@@ -608,9 +716,9 @@ async def get_user_config_from_input(check_result:dict) -> bool:
                 continue
             else:
                 True
-
-        if len(user_input) > 0:
-            AIStorage.get_instance().get_user_config().set_value(key,user_input)
+        if user_input:
+            if len(user_input) > 0:
+                AIStorage.get_instance().get_user_config().set_value(key,user_input)
 
     await AIStorage.get_instance().get_user_config().save_to_user_config()
     return True
@@ -661,9 +769,8 @@ def print_welcome_screen():
 \033[1;94m\tGive your Agent a Telegram account :\033[0m /connect $agent_name
 \033[1;94m\tAdd personal files to the AI Knowledge Base. \033[0m
 \t\t1) Copy your file to ~/myai/data 
-\t\t2) /knowlege add dir
 \033[1;94m\tSearch your knowledge base :\033[0m /open Mia
-\033[1;94m\tCheck the progress of AI reading personal data :\033[0m /knowledge journal
+\033[1;94m\tCheck the progress of AI reading personal data :\033[0m /knowledge $pipeline journal
 \033[1;94m\tQuery object with ID in knowledge base :\033[0m /knowledge query $object_id
 \033[1;94m\tOpen AI Bash (For Developer Only):\033[0m /open ai_bash
 \033[1;94m\tEnable AIGC Feature :\033[0m /enable aigc
@@ -701,8 +808,8 @@ async def main():
 
         logging.basicConfig(handlers=[handler],
                             level=logging.INFO,
-                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')    
-    
+                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
     is_daemon = False
     logger.info(f"Check Host OS :{os.name}")
     if os.name != 'nt':
@@ -723,7 +830,7 @@ async def main():
     shell.username = AIStorage.get_instance().get_user_config().get_value("username")
     init_result = await shell.initial()
     proxy.apply_storage()
-    
+
     if init_result is False:
         if is_daemon:
             logger.error("aios shell initial failed!")
@@ -738,18 +845,21 @@ async def main():
         return await main_daemon_loop(shell)
 
     completer = WordCompleter(['/send $target $msg $topic',
+                               '/send_img $target $msg $img_path $topic',
+                               '/send_video $target &msg &video_path $topic',
                                '/open $target $topic',
                                '/history $num $offset',
                                '/connect $target',
                                '/contact $name',
-                               '/knowledge add email | dir',
-                               '/knowledge journal [$topn]', 
+                               '/knowledge pipelines',
+                               '/knowledge journal $pipeline [$topn]',
                                '/knowledge query $object_id',
                                '/set_config $key',
                                '/enable $feature',
                                '/disable $feature',
-                               '/node add llama $model_name $url',
-                               '/node rm llama $model_name $url',
+                               '/node add $model_name $url',
+                               '/node create',
+                               '/node rm $model_name $url',
                                '/node list',
                                '/show',
                                '/exit',

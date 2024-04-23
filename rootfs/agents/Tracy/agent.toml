@@ -1,5 +1,7 @@
 instance_id = "Tracy"
 fullname = "Tracy"
+llm_model_name = "Llama-2-13b-chat"
+max_token_size = 2000
 
 [[prompt]]
 role = "system"

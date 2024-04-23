@@ -4,10 +4,10 @@ import asyncio
 
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../src')
-from aios_kernel import WorkspaceEnvironment
+from aios_kernel import ShellEnvironment
 
 async def test_workflow():
-    env = WorkspaceEnvironment("test")
+    env = ShellEnvironment("test")
 
     test_code ="""
 import toml

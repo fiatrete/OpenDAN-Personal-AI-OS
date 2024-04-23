@@ -1,0 +1,6 @@
+name = "Mia"
+input.module = "input.py"
+input.params.path = "${myai_dir}/data"
+parser.module = "parser.py"
+parser.params.path = "${myai_dir}/knowledge/indices/embedding"
+

@@ -14,12 +14,12 @@ from aios_kernel.compute_task import ComputeTaskType, ComputeTask, ComputeTaskSt
 #to launch a local stability node, please check:
 #https://github.com/glen0125/stable-diffusion-webui-docker
 
-os.environ["LOCAL_STABILITY_URL"] = ""
-os.environ["TEXT2IMG_DEFAULT_MODEL"] = "v1-5-pruned-emaonly"
-os.environ["TEXT2IMG_OUTPUT_DIR"] = "./"
+#os.environ["LOCAL_STABILITY_URL"] = "http://aigc:7860"
+#os.environ["TEXT2IMG_DEFAULT_MODEL"] = "v1-5-pruned-emaonly"
+#os.environ["TEXT2IMG_OUTPUT_DIR"] = "./"
 
 @pytest.mark.asyncio
-async def test_local_sd_node(propmt, model):
+async def test_local_sd_node(propmt, model, negative_prompt):
     node = Local_Stability_ComputeNode.get_instance()
     if await node.initial() is not True:
         print("node initial failed!")
@@ -31,6 +31,7 @@ async def test_local_sd_node(propmt, model):
     task.task_id = uuid.uuid4().hex
     task.params['model_name'] = model
     task.params['prompt'] = propmt
+    task.params['negative_prompt'] = negative_prompt
     await node.push_task(task)
 
     while True:
@@ -51,9 +52,12 @@ if __name__ == "__main__":
     arg_len = len(os.sys.argv)
     prompt = "a beautiful sunset"
     model = "v1-5-pruned-emaonly"
+    negative_prompt = None
     if arg_len >= 2:
         prompt = os.sys.argv[1]
     if arg_len == 3:
         model = os.sys.argv[2]
+    if arg_len == 4:
+        negative_prompt = os.sys.argv[3]
 
-    asyncio.run(test_local_sd_node(prompt, model))
+    asyncio.run(test_local_sd_node(prompt, model, negative_prompt))

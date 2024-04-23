@@ -9,7 +9,7 @@ import logging
 directory = os.path.dirname(__file__)
 sys.path.append(directory + '/../../')
 
-from aios_kernel import AIStorage
+from aios import AIStorage
 
 logger = logging.getLogger(__name__)
 

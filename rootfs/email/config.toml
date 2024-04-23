@@ -1,7 +1,0 @@
-
-
-EMAIL_IMAP_SERVER = "imap.gmail.com"
-EMAIL_ADDRESS = '<>'
-EMAIL_PASSWORD = '<>'
-EMAIL_IMAP_PORT = 993
-LOCAL_DIR = 'rootfs/data'

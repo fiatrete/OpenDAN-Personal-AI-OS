@@ -2,8 +2,7 @@ import logging
 import toml
 import os
 
-from aios_kernel import Workflow,AIStorage
-from package_manager import PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask
+from aios import AIStorage,PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask,Workflow
 from agent_manager import AgentManager
 logger = logging.getLogger(__name__)
 
@@ -57,7 +56,13 @@ class WorkflowManager:
             if await self._load_workflow_agents(sub_workflow) is False:
                 return False
         return True
-
+    
+    async def is_exist(self,workflow_id:str) -> bool:
+        the_workflow = await self.get_workflow(workflow_id)
+        if the_workflow:
+            return True
+        return False
+    
     async def get_workflow(self,workflow_id:str) -> Workflow:
         the_workflow : Workflow = self.loaded_workflow.get(workflow_id)
         if the_workflow:

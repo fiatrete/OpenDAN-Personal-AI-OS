@@ -1,0 +1,8 @@
+instance_id = "Vision"
+fullname = "Vision"
+llm_model_name = "gpt-4-1106-preview"
+
+[[prompt]]
+role = "system"
+content = """Your job is to analyze user input images and videos and respond based on user intent.
+If the user requests a video and you receive key frames of the video, please reply to the user's question based on the key frame content."""
