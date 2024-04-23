@@ -18,6 +18,7 @@ Let's start by introducing the two important processes.
 Note that the dependency check during installation allows for the missing packages to be installed into the current environment.
 
 # Some Basic Concepts
+
 - ***env***:A target environment consisting of a series of configuration files, where packages can be loaded/installed.
 - ***pkg***:A Package(pkg) is either a folder or a file that serves the same purpose as a folder (such as zip, iso, etc.).
 - ***pkg_name***:A unique string used to label a package. It's usually a readable package name, but can also include the version number or even the ContentId.

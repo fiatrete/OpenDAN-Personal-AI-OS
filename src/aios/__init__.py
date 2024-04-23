@@ -29,6 +29,7 @@ from .ai_functions.image_2_text_function import Image2TextFunction
 from .environment.workspace_env import WorkspaceEnvironment
 
 from .storage.storage import ResourceLocation,AIStorage,UserConfig,UserConfigItem
+from .storage.objfs import ObjFS
 
 from .net import *
 from .knowledge import *
@@ -36,4 +37,4 @@ from .package_manager import *
 from .utils import *
 
 
-AIOS_Version = "0.5.2, build 2023-12-15"
+AIOS_Version = "0.5.2, build 2024-3-31"

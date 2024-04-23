@@ -153,6 +153,7 @@ class AIOS_Shell:
         #AgentManager.get_instance().register_environment("knowledge", LocalKnowledgeBase)
         AgentWorkspace.register_ai_functions()
         AgentMemory.register_ai_functions()
+        BaseKnowledgeGraph.register_ai_functions()
         ShellEnvironment.register_ai_functions()
        
 
