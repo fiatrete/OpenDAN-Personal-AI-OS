@@ -6,7 +6,7 @@ from .proto.agent_task import *
 
 from .agent.agent_base import *
 from .agent.chatsession import AIChatSession
-from .agent.agent import AIAgent,AIAgentTemplete, BaseAIAgent
+from .agent.agent import AIAgent, BaseAIAgent
 from .agent.role import AIRole,AIRoleGroup
 from .agent.workflow import Workflow
 from .agent.agent_memory import AgentMemory

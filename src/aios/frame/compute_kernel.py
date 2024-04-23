@@ -8,6 +8,7 @@ from asyncio import Queue
 
 from ..proto.compute_task import *
 from ..knowledge import ObjectID
+from ..storage.storage import AIStorage
 
 from .compute_node import ComputeNode
 
@@ -122,12 +123,13 @@ class ComputeKernel:
     def llm_num_tokens(prompt: LLMPrompt, model_name: str = None) -> int:
         return ComputeKernel.llm_num_tokens_from_text(prompt.as_str(), model_name)
 
+
     # friendly interface for use:
-    def llm_completion(self, prompt: LLMPrompt, resp_mode:str="text",mode_name: Optional[str] = None, max_token: int = 0,inner_functions = None):
+    def llm_completion(self, prompt: LLMPrompt, resp_mode:str="text",model_name: Optional[str] = None, max_token: int = 0,inner_functions = None):
         # craete a llm_work_task ,push on queue's end
         # then task_schedule would run this task.(might schedule some work_task to another host)
         task_req = ComputeTask()
-        task_req.set_llm_params(prompt,resp_mode,mode_name, max_token,inner_functions)
+        task_req.set_llm_params(prompt,resp_mode,model_name, max_token,inner_functions)
         self.run(task_req)
         return task_req
 

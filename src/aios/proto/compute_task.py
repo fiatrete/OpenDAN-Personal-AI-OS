@@ -287,9 +287,9 @@ class ComputeTask:
         self.callchain_id = callchain_id
         self.params["prompts"] = prompts.to_message_list()
         self.params["resp_mode"] = resp_mode
-        if model_name is None:
-             model_name = AIStorage.get_instance().get_user_config().get_value("llm_model_name")
-        self.params["model_name"] = model_name
+        
+        self.params["model_name"] = AIStorage.get_instance().get_user_config().llm_get_real_model_name(model_name)
+ 
         if max_token_size is None:
             self.params["max_token_size"] = 4000
         else:

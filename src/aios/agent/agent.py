@@ -31,29 +31,6 @@ from ..proto.compute_task import LLMPrompt,LLMResult
 
 logger = logging.getLogger(__name__)
 
-class AIAgentTemplete:
-    def __init__(self) -> None:
-        self.llm_model_name:str = "gpt-4-turbo-preview"
-        self.max_token_size:int = 0
-        self.template_id:str = None
-        self.introduce:str = None
-        self.author:str = None
-        self.prompt:LLMPrompt = None
-
-
-    def load_from_config(self,config:dict) -> bool:
-        if config.get("llm_model_name") is not None:
-            self.llm_model_name = config["llm_model_name"]
-        if config.get("max_token_size") is not None:
-            self.max_token_size = config["max_token_size"]
-        if config.get("template_id") is not None:
-            self.template_id = config["template_id"]
-        if config.get("prompt") is not None:
-            self.prompt = LLMPrompt()
-            if self.prompt.load_from_config(config["prompt"]) is False:
-                logger.error("load prompt from config failed!")
-                return False
-
 
 class AIAgent(BaseAIAgent):
     def __init__(self) -> None:
@@ -80,19 +57,6 @@ class AIAgent(BaseAIAgent):
         self.contact_prompt_str = None
         self.history_len = 10
         self.read_report_prompt = None
-
-        todo_prompts = {}
-        todo_prompts[TodoListType.TO_WORK] = {
-            "do": None,
-            "check": None,
-            "review": None,
-        }
-        todo_prompts[TodoListType.TO_LEARN] = {
-            "do": None,
-            "check": None,
-            "review": None,
-        }
-        self.todo_prompts = todo_prompts
 
         self.base_dir = None
         #self.memory_db = None
@@ -178,9 +142,6 @@ class AIAgent(BaseAIAgent):
         return self.template_id
 
     def get_llm_model_name(self) -> str:
-        if self.llm_model_name is None:
-            return AIStorage.get_instance().get_user_config().get_value("llm_model_name")
-
         return self.llm_model_name
 
     def get_max_token_size(self) -> int:

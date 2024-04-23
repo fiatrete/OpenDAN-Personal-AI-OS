@@ -40,7 +40,10 @@ class UserConfig:
         self.config_table = {}
         self.user_config_path:str = None
 
-        self._init_default_value("llm_model_name","gpt-4-turbo-preview")
+        self._init_default_value("llm_default_model","gpt-4-turbo")
+        self._init_default_value("llm_plan_model","gpt-4-turbo")
+        self._init_default_value("llm_outline_model","gpt-3.5-turbo")
+        self._init_default_value("llm_swift_model","gpt-3.5-turbo")
 
     def _init_default_value(self,key:str,value:Any) -> None:
         if self.config_table.get(key) is not None:
@@ -52,6 +55,23 @@ class UserConfig:
         self.config_table[key] = new_config_item
 
 
+    def llm_get_real_model_name(self,mode_name:str) -> str:
+        default_model_name = self.get_value("llm_default_model")
+        plan_llm_model_name = self.get_value("llm_plan_model")
+        outline_model_name = self.get_value("llm_outline_model")
+        swift_model_name = self.get_value("llm_swift_model")
+        if mode_name is None:
+            return default_model_name
+        if mode_name == "default":
+            return default_model_name
+        if mode_name == "plan_llm":
+            return plan_llm_model_name
+        if mode_name == "outline_llm":
+            return outline_model_name
+        if mode_name == "swift_llm":
+            return swift_model_name
+        
+        return mode_name
     def add_user_config(self,key:str,desc:str,is_optional:bool,default_value:Any=None,item_type="str") -> None:
         if self.config_table.get(key) is not None:
             logger.warning("user config key %s already exist, will be overrided",key)

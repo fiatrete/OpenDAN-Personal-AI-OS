@@ -6,7 +6,7 @@ import sys
 import runpy
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from aios import AIAgent,AIAgentTemplete,AIStorage,BaseAIAgent,PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask,WorkspaceEnvironment
+from aios import AIAgent,AIStorage,BaseAIAgent,PackageEnv,PackageEnvManager,PackageMediaInfo,PackageInstallTask,WorkspaceEnvironment
 
 logger = logging.getLogger(__name__)
 
@@ -82,12 +82,6 @@ class AgentManager:
     def remove(self,agent_id:str)->int:
         pass
 
-    async def get_templete(self,templete_id) -> AIAgentTemplete:
-        template_media_info = self.agent_templete_env.get(templete_id)
-        if template_media_info is None:
-            return None
-        return self._load_templete_from_media(template_media_info)
-
     def install(self,templete_id) -> PackageInstallTask:
         installer = self.agent_templete_env.get_installer()
         return installer.install(templete_id)
@@ -95,8 +89,7 @@ class AgentManager:
     def uninstall(self,templete_id) -> int:
         pass
 
-    async def _load_templete_from_media(self,templete_media:PackageMediaInfo) -> AIAgentTemplete:
-        pass
+
 
     async def _load_agent_from_media(self,agent_media:PackageMediaInfo) -> BaseAIAgent:
         reader = self.agent_env._create_media_loader(agent_media)
