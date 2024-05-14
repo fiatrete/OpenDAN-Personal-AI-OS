@@ -40,8 +40,8 @@ class UserConfig:
         self.config_table = {}
         self.user_config_path:str = None
 
-        self._init_default_value("llm_default_model","gpt-4-turbo")
-        self._init_default_value("llm_plan_model","gpt-4-turbo")
+        self._init_default_value("llm_default_model","gpt-4o")
+        self._init_default_value("llm_plan_model","gpt-4o")
         self._init_default_value("llm_outline_model","gpt-3.5-turbo")
         self._init_default_value("llm_swift_model","gpt-3.5-turbo")
 
