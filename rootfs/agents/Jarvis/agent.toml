@@ -36,7 +36,7 @@ update_knowledge_graph($op_name,$params)
 
 [behavior.on_message]
 type="AgentMessageProcess"
-model_name="llm_default_model"
+#model_name="llm_default_model"
 mutil_model="gpt-4-vision-preview"
 asr_model="openai-whisper"
 tts_model="tts-1"
@@ -202,9 +202,8 @@ llm_context.actions.enable = ["agent.workspace.update_todo"]
 llm_context.functions.enable =  ["agent.workspace.read_file","agent.workspace.list_dir","system.shell.exec","system.shell.run_code","aigc.image_2_text","aigc.voice_2_text","web.search.duckduckgo"]
 
 
-[behavior.self_thinking]
+[behavior.self_thinking2]
 # self thing的主要目的是对各种chatlog,worklog进行分析，并更新面向人和事的summary。
-# TODO，先不支持worklog,先支持好chatlog
 type="AgentSelfThinking"
 process_description="""
 You are very good at thinking and summarizing what you have already happened。Your input is chat history and work records,After you think about it, you will follow the requirements below to generate abstract.
