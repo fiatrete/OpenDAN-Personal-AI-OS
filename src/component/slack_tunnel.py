@@ -12,7 +12,7 @@ import aiohttp
 from slack_bolt.adapter.socket_mode.websockets import AsyncSocketModeHandler
 from slack_bolt.app.async_app import AsyncApp
 
-from aios import KnowledgeStore, ObjectType
+#from aios import KnowledgeStore, ObjectType
 from aios.frame.tunnel import AgentTunnel
 from aios.proto.agent_msg import AgentMsg, AgentMsgType
 from aios.storage.storage import AIStorage
@@ -189,26 +189,26 @@ class SlackTunnel(AgentTunnel):
                     if len(resp_msg.body) < 1:
                         return
 
-                    knownledge_object = KnowledgeStore().parse_object_in_message(resp_msg.body)
-                    if knownledge_object is not None:
-                        if knownledge_object.get_object_type() == ObjectType.Image:
-                            image = KnowledgeStore().bytes_from_object(knownledge_object)
-                            try:
-                                async with aiofiles.open("image.jpg", "wb") as f:
-                                    await f.write(image)
-                                    await app.client.files_upload_v2(channel=event["channel"], file="image.jpg")
-                            except Exception as e:
-                                logger.error(f"save image error:{e}")
-                                logger.exception(e)
-                            return
-                    else:
-                        pos = resp_msg.body.find("audio file")
-                        if pos != -1:
-                            audio_file = resp_msg.body[pos+11:].strip()
-                            if audio_file.startswith("\""):
-                                audio_file = audio_file[1:-1]
-                            await app.client.files_upload_v2(channel=event["channel"], file=audio_file)
-                            return
+                    # knownledge_object = KnowledgeStore().parse_object_in_message(resp_msg.body)
+                    # if knownledge_object is not None:
+                    #     if knownledge_object.get_object_type() == ObjectType.Image:
+                    #         image = KnowledgeStore().bytes_from_object(knownledge_object)
+                    #         try:
+                    #             async with aiofiles.open("image.jpg", "wb") as f:
+                    #                 await f.write(image)
+                    #                 await app.client.files_upload_v2(channel=event["channel"], file="image.jpg")
+                    #         except Exception as e:
+                    #             logger.error(f"save image error:{e}")
+                    #             logger.exception(e)
+                    #         return
+                    # else:
+                    #     pos = resp_msg.body.find("audio file")
+                    #     if pos != -1:
+                    #         audio_file = resp_msg.body[pos+11:].strip()
+                    #         if audio_file.startswith("\""):
+                    #             audio_file = audio_file[1:-1]
+                    #         await app.client.files_upload_v2(channel=event["channel"], file=audio_file)
+                    #         return
                     await app.client.chat_postMessage(channel=event["channel"], text=resp_msg.body)
                 else:
                     if resp_msg.is_image_msg():

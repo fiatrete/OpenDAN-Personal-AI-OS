@@ -38,16 +38,16 @@ from google_node import *
 from llama_node import *
 from openai_node import *
 from sd_node import *
-from st_node import *
 
 from agent_manager import AgentManager
 from workflow_manager import WorkflowManager
-from knowledge_manager import KnowledgePipelineManager
+#from knowledge_manager import KnowledgePipelineManager
 from tg_tunnel import TelegramTunnel
 from email_tunnel import EmailTunnel
 from discord_tunnel import DiscordTunnel
 from slack_tunnel import SlackTunnel
-from common_environment import LocalKnowledgeBase, FilesystemEnvironment, ShellEnvironment, ScanLocalDocument, ParseLocalDocument
+from common_environment import FilesystemEnvironment, ShellEnvironment
+#from common_environment import ScanLocalDocument, ParseLocalDocument
 
 from compute_node_config import *
 
@@ -214,17 +214,17 @@ class AIOS_Shell:
 
 
 
-        local_st_text_compute_node = LocalSentenceTransformer_Text_ComputeNode()
-        if local_st_text_compute_node.initial() is not True:
-            logger.error("local sentence transformer text embedding node initial failed!")
-        else:
-            ComputeKernel.get_instance().add_compute_node(local_st_text_compute_node)
+        # local_st_text_compute_node = LocalSentenceTransformer_Text_ComputeNode()
+        # if local_st_text_compute_node.initial() is not True:
+        #     logger.error("local sentence transformer text embedding node initial failed!")
+        # else:
+        #     ComputeKernel.get_instance().add_compute_node(local_st_text_compute_node)
 
-        local_st_image_compute_node = LocalSentenceTransformer_Image_ComputeNode()
-        if local_st_image_compute_node.initial() is not True:
-            logger.error("local sentence transformer image embedding node initial failed!")
-        else:
-            ComputeKernel.get_instance().add_compute_node(local_st_image_compute_node)
+        # local_st_image_compute_node = LocalSentenceTransformer_Image_ComputeNode()
+        # if local_st_image_compute_node.initial() is not True:
+        #     logger.error("local sentence transformer image embedding node initial failed!")
+        # else:
+        #     ComputeKernel.get_instance().add_compute_node(local_st_image_compute_node)
 
 
         await ComputeKernel.get_instance().start()
@@ -233,12 +233,12 @@ class AIOS_Shell:
         #AIBus().get_default_bus().register_message_handler(self.username,self._user_process_msg)
 
 
-        pipelines = KnowledgePipelineManager.initial(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge/pipelines"))
-        pipelines.register_input("scan_local", ScanLocalDocument)
-        pipelines.register_parser("parse_local", ParseLocalDocument)
-        pipelines.load_dir(os.path.join(AIStorage().get_instance().get_system_app_dir(), "knowledge_pipelines"))
-        pipelines.load_dir(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge_pipelines"))
-        asyncio.create_task(pipelines.run())
+        #pipelines = KnowledgePipelineManager.initial(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge/pipelines"))
+        #pipelines.register_input("scan_local", ScanLocalDocument)
+        #pipelines.register_parser("parse_local", ParseLocalDocument)
+        #pipelines.load_dir(os.path.join(AIStorage().get_instance().get_system_app_dir(), "knowledge_pipelines"))
+        #pipelines.load_dir(os.path.join(AIStorage().get_instance().get_myai_dir(), "knowledge_pipelines"))
+        #asyncio.create_task(pipelines.run())
 
         TelegramTunnel.register_to_loader()
         EmailTunnel.register_to_loader()

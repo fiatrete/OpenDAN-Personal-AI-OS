@@ -1,8 +1,0 @@
-name = "JarvisPlus"
-input.module = "scan_local"
-input.params.workspace = "${myai_dir}/workspace/JarvisPlus"
-input.params.path = "${myai_dir}/data"
-parser.module = "parse_local"
-parser.params.workspace = "${myai_dir}/workspace/JarvisPlus"
-parser.params.assign_to = "JarvisPlus"
-

@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 class AgentMemory:
-    def __init__(self,agent_id:str,base_dir:str,enable_knowledge_graph = True) -> None:
+    def __init__(self,agent_id:str,base_dir:str,enable_knowledge_graph = False) -> None:
         self.agent_memory_base_dir = base_dir
         self.agent_id:str= agent_id
 
@@ -52,15 +52,17 @@ class AgentMemory:
         self.last_think_time : float = 0.0
         self.enable_knowledge_graph : bool = enable_knowledge_graph
         if self.enable_knowledge_graph:
-            kb_desc = """The Knowledgegraph is used to store important information obtained by Agent in the conversation.Use the following ways to store information:
-            /contacts/$name:Related information of the contact
-            /relations/$obj1/$obj2:The relationship between obj2 and obj1
-            /summary/$topic:Based on topic summary
+            kb_desc = """
+The Knowledgegraph is used to store important information obtained by Agent in the conversation.Use the following ways to store information:
+- /contacts/$name:Related information of the contact
+- /relations/$obj1/$obj2:The relationship between obj2 and obj1
+- /summary/$topic:Based on topic summary
             """
 
             self.knowledge_graph = ObjFSKnowledgeGrpah(f"{self.agent_id}.memory",self.memory_db,kb_desc)
             BaseKnowledgeGraph.add_kb(self.knowledge_graph)
             self.simple_memory_sentences = None
+            
         else:
             self.knowledge_graph = None
             self.simple_memory_sentences : List[str] = []

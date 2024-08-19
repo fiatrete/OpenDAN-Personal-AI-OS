@@ -12,7 +12,7 @@ from telegram import Bot
 from telegram.ext import Updater
 from telegram.error import Forbidden, NetworkError
 
-from aios import ObjectType, KnowledgeStore,AgentTunnel,AIStorage,ContactManager,Contact,AgentMsg,AgentMsgType
+from aios import AgentTunnel,AIStorage,ContactManager,Contact,AgentMsg,AgentMsgType
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +160,68 @@ class TelegramTunnel(AgentTunnel):
         if not os.path.exists(path):
             os.makedirs(path)
         return path
+    
+    async def conver_agent_msg_to_tg_msg(self,resp_msg:AgentMsg,update: Update):
+        
+        if resp_msg.body_mime is None:
+            if resp_msg.body is None:
+                return
+
+            if len(resp_msg.body) < 1:
+                await update.message.reply_text("")
+                return
+
+            # knowledge_object = KnowledgeStore().parse_object_in_message(resp_msg.body)
+            # knowledge_object = None
+            # if knowledge_object is not None:
+            #     if knowledge_object.get_object_type() == ObjectType.Image:
+            #         image = KnowledgeStore().bytes_from_object(knowledge_object)
+            #         try:
+            #             async with aiofiles.open("tg_send_temp.png", mode='wb') as local_file:
+            #                 if local_file:
+            #                     await local_file.write(image)
+            #                     await update.message.reply_photo("tg_send_temp.png")
+            #         except Exception as e:
+            #             logger.error(f"save image error: {e}")
+            #         return
+            # else:
+            #     pos = resp_msg.body.find("audio file")
+            #     if pos != -1:
+            #         audio_file = resp_msg.body[pos+11:].strip()
+            #         if audio_file.startswith("\""):
+            #             audio_file = audio_file[1:-1]
+            #         await update.message.reply_voice(audio_file)
+            #         return
+            await update.message.reply_text(resp_msg.body)
+        else:
+            if resp_msg.is_image_msg():
+                text, images = resp_msg.get_image_body()
+                if text is not None:
+                    await update.message.reply_text(text)
+                for image in images:
+                    if os.path.exists(image):
+                        await update.message.reply_photo(image)
+                    else:
+                        await update.message.reply_text(image)
+            elif resp_msg.is_video_msg():
+                text, video_file = resp_msg.get_video_body()
+                if text is not None:
+                    await update.message.reply_text(text)
+                if os.path.exists(video_file):
+                    await update.message.reply_video(video_file)
+                else:
+                    await update.message.reply_text(video_file)
+            elif resp_msg.is_audio_msg():
+                text, audio_file = resp_msg.get_audio_body()
+                if text is not None:
+                    await update.message.reply_text(text)
+
+                if os.path.exists(audio_file):
+                    await update.message.reply_voice(audio_file)
+                else:
+                    await update.message.reply_text(audio_file)
+            else:
+                await update.message.reply_text(resp_msg.body)
 
     async def conver_tg_msg_to_agent_msg(self,message:Message) -> AgentMsg:
         agent_msg = AgentMsg()
@@ -246,6 +308,7 @@ class TelegramTunnel(AgentTunnel):
 
         return False
 
+    # main entry for telegram message
     async def on_message(self, bot:Bot, update: Update) -> None:
         message = update.message
         logger.info(f"on_message: {message.message_id} from {message.from_user.username} ({update.effective_user.username}) to {message.chat.title}({message.chat.id})")
@@ -312,63 +375,8 @@ class TelegramTunnel(AgentTunnel):
         if resp_msg is None:
             await update.message.reply_text(f"System Error: Timeout,{self.target_id}  no resopnse! Please check logs/aios.log for more details!")
         else:
-            if resp_msg.body_mime is None:
-                if resp_msg.body is None:
-                    return
+            await self.conver_agent_msg_to_tg_msg(resp_msg,update)
 
-                if len(resp_msg.body) < 1:
-                    await update.message.reply_text("")
-                    return
-
-                knowledge_object = KnowledgeStore().parse_object_in_message(resp_msg.body)
-                if knowledge_object is not None:
-                    if knowledge_object.get_object_type() == ObjectType.Image:
-                        image = KnowledgeStore().bytes_from_object(knowledge_object)
-                        try:
-                            async with aiofiles.open("tg_send_temp.png", mode='wb') as local_file:
-                                if local_file:
-                                    await local_file.write(image)
-                                    await update.message.reply_photo("tg_send_temp.png")
-                        except Exception as e:
-                            logger.error(f"save image error: {e}")
-                        return
-                else:
-                    pos = resp_msg.body.find("audio file")
-                    if pos != -1:
-                        audio_file = resp_msg.body[pos+11:].strip()
-                        if audio_file.startswith("\""):
-                            audio_file = audio_file[1:-1]
-                        await update.message.reply_voice(audio_file)
-                        return
-                await update.message.reply_text(resp_msg.body)
-            else:
-                if resp_msg.is_image_msg():
-                    text, images = resp_msg.get_image_body()
-                    if text is not None:
-                        await update.message.reply_text(text)
-                    for image in images:
-                        if os.path.exists(image):
-                            await update.message.reply_photo(image)
-                        else:
-                            await update.message.reply_text(image)
-                elif resp_msg.is_video_msg():
-                    text, video_file = resp_msg.get_video_body()
-                    if text is not None:
-                        await update.message.reply_text(text)
-                    if os.path.exists(video_file):
-                        await update.message.reply_video(video_file)
-                    else:
-                        await update.message.reply_text(video_file)
-                elif resp_msg.is_audio_msg():
-                    text, audio_file = resp_msg.get_audio_body()
-                    if text is not None:
-                        await update.message.reply_text(text)
-
-                    if os.path.exists(audio_file):
-                        await update.message.reply_voice(audio_file)
-                    else:
-                        await update.message.reply_text(audio_file)
-                else:
-                    await update.message.reply_text(resp_msg.body)
+           
 
 

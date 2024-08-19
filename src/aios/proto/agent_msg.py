@@ -61,7 +61,7 @@ class AgentMsg:
         self.mentions:[] = None #use in group chat only
         #self.title:str = None
         self.body:str = None
-        self.body_mime:str = None #//default is "text/plain",encode is utf8
+        self.body_mime:str = "text/plain" #//default is "text/plain",encode is utf8
 
         #type is call / action
         self.func_name = None
